@@ -47,6 +47,22 @@ Only upgrades for paths a consumer serves are taken, so other WebSocket servers 
 share the HTTP server. Clients are pinged every 20 seconds and dropped when they stop
 answering, as uvicorn does for Python's chanx.
 
+### Other runtimes
+
+- **Bun, Deno, Cloudflare Workers, h3, Nitro, Nuxt:** `chanxHooks(chanx)` from
+  `@chanx-js/server/crossws` gives [crossws](https://crossws.h3.dev) hooks for any of its
+  adapters.
+- **Hono, on any runtime:** `chanxHono(chanx, upgradeWebSocket)` from
+  `@chanx-js/server/hono`, with the runtime's `upgradeWebSocket`:
+
+  ```ts
+  app.get('/ws/*', chanxHono(chanx, upgradeWebSocket));
+  ```
+
+- **Fastify:** `attachChanx(fastify.server, chanx)`.
+
+The crossws and Hono adapters are tested on Node; they leave pings to the runtime.
+
 ## Groups and events
 
 Connections join groups through a [channel layer](../layers): in-memory by default, or
