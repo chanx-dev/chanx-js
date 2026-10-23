@@ -28,6 +28,25 @@ const chat = consumer('/ws/chat/{room}', { name: 'chat', emits: [Notice] })
 export const chanx = createChanx({ consumers: [chat] });
 ```
 
+## Serving it
+
+`@chanx-js/server/node` serves an app on any Node HTTP server, through
+[`ws`](https://github.com/websockets/ws) (a peer dependency): plain `http`, or the
+server under Express, Fastify, Koa or NestJS.
+
+```ts
+import { createServer } from 'node:http';
+import { attachChanx } from '@chanx-js/server/node';
+
+const server = createServer(expressApp); // or nestApp.getHttpServer(), fastify.server
+attachChanx(server, chanx);
+server.listen(8000);
+```
+
+Only upgrades for paths a consumer serves are taken, so other WebSocket servers can
+share the HTTP server. Clients are pinged every 20 seconds and dropped when they stop
+answering, as uvicorn does for Python's chanx.
+
 ## Groups and events
 
 Connections join groups through a [channel layer](../layers): in-memory by default, or
