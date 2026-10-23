@@ -1,3 +1,4 @@
+import swc from 'unplugin-swc';
 import { defineConfig } from 'vitest/config';
 
 // Workspace packages resolve to their TypeScript source, so tests need no build first.
@@ -15,6 +16,7 @@ const nodeConditions = [source, 'module', 'node', 'development|production'];
 const solidConditions = [source, 'solid', 'browser', 'import', 'module', 'default'];
 
 const solidTests = 'packages/client/tests/solid.test.ts';
+const nestTests = 'packages/nestjs/tests/**/*.test.ts';
 
 export default defineConfig({
   test: {
@@ -36,7 +38,22 @@ export default defineConfig({
           name: 'default',
           environment: 'node',
           include: ['packages/*/tests/**/*.test.ts', 'packages/*/tests/**/*.test.tsx'],
-          exclude: ['**/node_modules/**', solidTests],
+          exclude: ['**/node_modules/**', solidTests, nestTests],
+        },
+      },
+      {
+        resolve: { conditions: nodeConditions },
+        ssr: { resolve: { conditions: nodeConditions } },
+        // Nest needs emitDecoratorMetadata for injection and pipes, which esbuild lacks.
+        plugins: [
+          swc.vite({
+            jsc: { transform: { legacyDecorator: true, decoratorMetadata: true } },
+          }),
+        ],
+        test: {
+          name: 'nestjs',
+          environment: 'node',
+          include: [nestTests],
         },
       },
     ],

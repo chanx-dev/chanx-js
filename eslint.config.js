@@ -30,6 +30,13 @@ export default tseslint.config(
     },
   },
   {
+    // Nest injects by the constructor's parameter types, so those imports must stay values.
+    files: ['packages/nestjs/**/*.ts'],
+    languageOptions: {
+      parserOptions: { emitDecoratorMetadata: true, experimentalDecorators: true },
+    },
+  },
+  {
     // Hand-written plain JavaScript, type-checked by tsc through checkJs instead.
     files: ['conformance-js/**/*.js'],
     languageOptions: { globals: { console: 'readonly' } },

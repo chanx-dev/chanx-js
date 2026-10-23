@@ -1,0 +1,93 @@
+{
+  "name": "@chanx-js/nestjs",
+  "version": "0.1.2",
+  "private": true,
+  "description": "chanx for NestJS: consumers as injectable gateways, with guards, interceptors, pipes and exception filters.",
+  "license": "MIT",
+  "author": "Huy Nguyen",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/huynguyengl99/chanx-js.git",
+    "directory": "packages/nestjs"
+  },
+  "bugs": "https://github.com/huynguyengl99/chanx-js/issues",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "bin": {
+    "chanx-nestjs": "./dist/cli.mjs"
+  },
+  "exports": {
+    ".": {
+      "@chanx-js/source": "./src/index.ts",
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown src/index.ts src/cli.ts --format esm --dts.eager --clean",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@chanx-js/server": "workspace:*"
+  },
+  "peerDependencies": {
+    "@nestjs/common": ">=11",
+    "@nestjs/core": ">=11",
+    "@nestjs/swagger": ">=12",
+    "class-transformer": ">=0.5",
+    "class-validator": ">=0.14",
+    "class-validator-jsonschema": ">=5",
+    "reflect-metadata": ">=0.2",
+    "rxjs": ">=7",
+    "ws": ">=8.17",
+    "yaml": ">=2"
+  },
+  "devDependencies": {
+    "@nestjs/common": "^12.2.0",
+    "@nestjs/core": "^12.2.0",
+    "@nestjs/platform-express": "^12.2.0",
+    "@nestjs/platform-fastify": "^12.2.0",
+    "@nestjs/platform-socket.io": "^12.2.0",
+    "@nestjs/platform-ws": "^12.2.0",
+    "@nestjs/swagger": "^12.0.3",
+    "@nestjs/websockets": "^12.2.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
+    "class-validator-jsonschema": "^5.2.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "socket.io-client": "^4.8.4",
+    "ws": "^8.21.3",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.7"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "nestjs",
+    "websocket",
+    "chanx",
+    "asyncapi"
+  ],
+  "peerDependenciesMeta": {
+    "class-validator": {
+      "optional": true
+    },
+    "class-transformer": {
+      "optional": true
+    },
+    "@nestjs/swagger": {
+      "optional": true
+    },
+    "class-validator-jsonschema": {
+      "optional": true
+    },
+    "yaml": {
+      "optional": true
+    }
+  }
+}

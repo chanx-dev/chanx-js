@@ -4,7 +4,8 @@
     { "filename": "packages/client/package.json", "type": "json" },
     { "filename": "packages/codegen/package.json", "type": "json" },
     { "filename": "packages/layers/package.json", "type": "json" },
-    { "filename": "packages/server/package.json", "type": "json" }
+    { "filename": "packages/server/package.json", "type": "json" },
+    { "filename": "packages/nestjs/package.json", "type": "json" }
   ],
   "tagPrefix": "v",
   "sign": true,

@@ -15,6 +15,7 @@ implementation of its protocol held in line by tests.
 | `packages/codegen`  | `@chanx-js/codegen`: AsyncAPI 3 schema to typed channel descriptors.               |
 | `packages/layers`   | `@chanx-js/layers`: channel layers; Redis pub/sub compatible with Python's.        |
 | `packages/server`   | `@chanx-js/server`: consumers, dispatch and the chanx protocol, server side.       |
+| `packages/nestjs`   | `@chanx-js/nestjs`: consumers and topics as injectable NestJS gateways.            |
 | `conformance*`      | Generated TS and JS clients from chanx's sandbox schema, type-checked.             |
 | `docs`              | VitePress site, guide and TypeDoc API reference.                                   |
 
