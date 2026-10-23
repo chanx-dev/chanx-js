@@ -1,5 +1,5 @@
 import type { MiddlewareHandler } from 'hono';
-import type { UpgradeWebSocket, WSMessageReceive } from 'hono/ws';
+import type { UpgradeWebSocket } from 'hono/ws';
 
 import type { Chanx } from './app';
 import type { Session } from './session';
@@ -19,8 +19,6 @@ export function chanxHono(
 ): MiddlewareHandler {
   const upgrade = upgradeWebSocket((c) => {
     let session: Session | undefined;
-    // Binary frames decode asynchronously; the queue keeps frames in arrival order.
-    let queue = Promise.resolve();
     return {
       onOpen(_event, ws) {
         session = chanx.connect(
@@ -33,7 +31,7 @@ export function chanxHono(
         if (!session) ws.close(1008, 'No consumer serves this path');
       },
       onMessage(event) {
-        queue = queue.then(async () => session?.receive(await text(event.data)));
+        session?.receive(event.data);
       },
       onClose() {
         void session?.closed();
@@ -41,10 +39,4 @@ export function chanxHono(
     };
   });
   return (c, next) => (chanx.match(c.req.path) ? upgrade(c, next) : next());
-}
-
-async function text(data: WSMessageReceive): Promise<string> {
-  if (typeof data === 'string') return data;
-  if (data instanceof Blob) return data.text();
-  return new TextDecoder().decode(data);
 }

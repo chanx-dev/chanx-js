@@ -154,12 +154,25 @@ describe.each(ADAPTERS)('the %s adapter', (_name, start) => {
     await expect(open(`${await start(app())}/ws/elsewhere`).opened).rejects.toThrow();
   });
 
-  it('takes JSON sent as a binary frame', async () => {
+  it('refuses a binary frame, as chanx does, keeping the connection', async () => {
     const client = open(`${await start(app())}/ws/chat/lobby`);
     await client.opened;
     client.ws.send(Buffer.from(JSON.stringify({ action: 'ping' })), { binary: true });
-    await client.next(2);
-    expect(client.frames[1]).toEqual({ action: 'pong', payload: null });
+    client.ws.send(JSON.stringify({ action: 'ping' }));
+    await client.next(3);
+    expect(client.frames.slice(1)).toEqual([
+      {
+        action: 'error',
+        payload: [
+          {
+            type: 'json_invalid',
+            loc: [],
+            msg: 'Invalid JSON: binary frames are not supported',
+          },
+        ],
+      },
+      { action: 'pong', payload: null },
+    ]);
   });
 
   it('works with @chanx-js/client', async () => {

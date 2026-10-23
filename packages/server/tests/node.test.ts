@@ -164,6 +164,34 @@ describe('attachChanx', () => {
     await chanxClient.next(1);
   });
 
+  it("keeps chanx's paths from a WebSocket server attached before it, which refuses the rest", async () => {
+    const server = createServer();
+    // ws, given the server, answers 400 to any path but its own.
+    const other = new WebSocketServer({ server, path: '/other' });
+    other.on('connection', (ws) => ws.send('"other"'));
+    const attachment = attachChanx(
+      server,
+      createChanx({ consumers: [chat], logger: { error() {}, warn() {} } }),
+    );
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    cleanups.push(
+      () => new Promise((resolve) => server.close(resolve)),
+      () => new Promise((resolve) => other.close(resolve)),
+    );
+    const url = `ws://127.0.0.1:${(server.address() as AddressInfo).port}`;
+
+    const chanxClient = open(`${url}/ws/chat/lobby`, auth);
+    await chanxClient.next(1);
+    expect(chanxClient.frames[0]).toMatchObject({ action: 'authentication' });
+    const before = open(`${url}/other`);
+    await before.next(1);
+
+    await attachment.close();
+    const after = open(`${url}/other`);
+    await after.next(1);
+    expect(after.frames).toEqual(['other']);
+  });
+
   it('closes every socket with 1001 when detached', async () => {
     const { url, attachment } = await serve();
     const client = open(`${url}/ws/chat/lobby`, auth);
@@ -184,15 +212,27 @@ describe('attachChanx', () => {
     expect(healthy.ws.readyState).toBe(WebSocket.OPEN);
   });
 
-  it('takes JSON sent as a binary frame', async () => {
+  it('refuses a binary frame, as chanx does, keeping the connection', async () => {
     const { url } = await serve();
     const client = open(`${url}/ws/chat/lobby`, auth);
     await client.opened;
 
     client.ws.send(Buffer.from(JSON.stringify({ action: 'ping' })), { binary: true });
-
-    await client.next(2);
-    expect(client.frames[1]).toEqual({ action: 'pong', payload: null });
+    client.ws.send(JSON.stringify({ action: 'ping' }));
+    await client.next(3);
+    expect(client.frames.slice(1)).toEqual([
+      {
+        action: 'error',
+        payload: [
+          {
+            type: 'json_invalid',
+            loc: [],
+            msg: 'Invalid JSON: binary frames are not supported',
+          },
+        ],
+      },
+      { action: 'pong', payload: null },
+    ]);
   });
 });
 

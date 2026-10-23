@@ -8,6 +8,7 @@ import type {
   ConsumerDefinition,
   ConsumerOptions,
   ErrorHooks,
+  HandlerArgs,
   HandlerDefinition,
   HandlerOptions,
   HandlerSet,
@@ -17,6 +18,7 @@ import type {
 import { TOPIC, build, handlerSetOf } from './consumer';
 import type { AnyMessageDefinition, Message, MessageOf } from './messages';
 
+/** What a topic's handlers and hooks get as `ctx`. */
 export interface TopicContext<
   Pattern extends string,
   User,
@@ -32,33 +34,42 @@ export interface TopicContext<
   readonly state: State;
   /** The `ref` of the frame being handled; absent in lifecycle hooks and events. */
   readonly ref: string | undefined;
+  /** Aborts when the connection closes, so long-running work can stop. */
   readonly signal: AbortSignal;
   /** Send on this topic, stamped with the frame's `ref`. */
   send(message: Emits): Promise<void>;
   /** Send on this topic as a server push, without a `ref`. */
   push(message: Emits): Promise<void>;
-  /** Publish an event to everyone subscribed to this topic, as Python's `Topic.broadcast`. */
+  /** Publish an event to everyone subscribed to this topic, across processes. */
   publish(event: Message, options?: PublishOptions): Promise<void>;
 }
 
 /** What a `Topic` class's handlers receive as their second argument. */
-export type TopicClassContext = TopicContext<string, any, Message, Topic<any>>;
+export type TopicClassContext<User = unknown> = TopicContext<
+  string,
+  User,
+  Message,
+  Topic<User>
+>;
 
+/** Options for publishing to a topic. */
 export interface PublishOptions {
   /** Caller-assigned, for gap detection only; leave unset with several writers. */
   seq?: number;
 }
 
+/** Options for `topic()`. */
 export interface TopicOptions<
   Pattern extends string,
   User,
   State = Record<never, never>,
 > extends ErrorHooks<TopicContext<Pattern, User, Message, State>> {
   /**
-   * Name of the topic's channel layer group namespace, as the Python class name: two
-   * servers sharing a layer must agree on it. Defaults to `RoomTopic` for `room:{...}`.
+   * Name of the topic's channel layer group namespace: two servers sharing a layer must
+   * agree on it. Defaults to `RoomTopic` for `room:{...}`.
    */
   name?: string;
+  /** The AsyncAPI channel's description. */
   description?: string;
   /** The channel layer to publish on. Defaults to `default`. */
   layer?: string;
@@ -93,7 +104,8 @@ export interface TopicDefinition {
 }
 
 /** A `topic()` builder, or a class extending `Topic`. */
-export type TopicLike = TopicSource | (abstract new (subscription: never) => Topic<any>);
+export type TopicLike =
+  TopicSource | (abstract new (subscription: never) => Topic<unknown>);
 
 type Outputs = AnyMessageDefinition | readonly AnyMessageDefinition[];
 type OutputMessages<O> = [O] extends [never]
@@ -102,6 +114,7 @@ type OutputMessages<O> = [O] extends [never]
 type Returned<O> = [O] extends [never] ? void : OutputMessages<O>;
 type Handler<In, Ctx, Out> = (message: In, ctx: Ctx) => Out | Promise<Out>;
 
+/** What `topic()` returns: chain handlers, then list it in a consumer's `topics`. */
 export interface TopicBuilder<
   Pattern extends string,
   User,
@@ -151,7 +164,7 @@ export interface TopicBuilder<
   with(params: PathParams<Pattern>): string;
   /**
    * Serve this topic alone on a route, where connecting subscribes it from the URL params
-   * and frames need no envelope, as Python's `Topic.as_consumer()`.
+   * and frames need no envelope.
    */
   asConsumer<const Path extends string>(
     path: Path,
@@ -186,18 +199,22 @@ export function topic<
 
 function topicFrom(definition: TopicDefinition): TopicSource {
   // Handler bookkeeping and its rules are the consumer builder's.
-  const set = build({
-    handlers: definition.handlers,
-    events: definition.events,
-    passthrough: definition.passthrough,
-    owner: `Topic "${definition.pattern}"`,
-  });
+  const set = build(
+    {
+      handlers: definition.handlers,
+      events: definition.events,
+      passthrough: definition.passthrough,
+    },
+    `Topic "${definition.pattern}"`,
+  );
   const next = (built: HandlerSet) =>
     topicFrom({ ...definition, ...handlerSetOf(built) });
   const source = {
     [TOPIC]: definition,
-    on: (...args: Parameters<typeof set.on>) => next(set.on(...args)),
-    event: (...args: Parameters<typeof set.event>) => next(set.event(...args)),
+    on: (message: AnyMessageDefinition, ...args: HandlerArgs) =>
+      next(set.on(message, ...args)),
+    event: (message: AnyMessageDefinition, ...args: HandlerArgs) =>
+      next(set.event(message, ...args)),
     passthrough: (...messages: AnyMessageDefinition[]) =>
       next(set.passthrough(...messages)),
     with: (params: Record<string, string | number>) =>

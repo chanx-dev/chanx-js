@@ -31,12 +31,15 @@ import { topicDefinitionOf, topicsOf } from './topic';
 import type { ValidationResult } from './validation';
 import { createValidator, envelopeIssues, isObject } from './validation';
 
+/** A binary WebSocket frame, in whichever form the runtime delivers it. */
+export type BinaryFrame = ArrayBufferLike | ArrayBufferView | Blob;
+
 /** One accepted socket, as an adapter drives it. */
 export interface Session {
   /** Resolves once connected (authenticated, groups joined, `onConnect` run), or false if not. */
   readonly ready: Promise<boolean>;
-  /** A text frame from the client. */
-  receive(data: string): void;
+  /** A frame from the client. Binary frames are answered with an error, as chanx does. */
+  receive(data: string | BinaryFrame): void;
   /** The socket closed, by either side. Resolves once `onDisconnect` ran and groups are left. */
   closed(): Promise<void>;
 }
@@ -256,7 +259,7 @@ export function openSession(
     const reply = (status_code: number, status_text: string, data: unknown) =>
       write(AuthenticationMessage.create({ status_code, status_text, data }), {});
     try {
-      const user = await consumer.authenticate!(request);
+      const user = await consumer.authenticate!(conn);
       if (user === false || user === null || user === undefined) {
         reply(401, 'Unauthorized', {
           detail: 'Authentication credentials were not provided.',
@@ -277,15 +280,24 @@ export function openSession(
     }
   }
 
-  async function handleFrame(data: string) {
+  async function handleFrame(data: string | BinaryFrame) {
     if (!(await ready) || isClosed) return;
 
+    const rejectFrame = (reason: string) => {
+      logger.warn('chanx: malformed frame', reason);
+      write(
+        ErrorMessage.create([
+          { type: 'json_invalid', loc: [], msg: `Invalid JSON: ${reason}` },
+        ]),
+        {},
+      );
+    };
+    if (typeof data !== 'string') return rejectFrame('binary frames are not supported');
     let content: unknown;
     try {
       content = JSON.parse(data);
-    } catch {
-      write(ErrorMessage.create({ detail: 'Invalid JSON' }), {});
-      return;
+    } catch (error) {
+      return rejectFrame((error as SyntaxError).message);
     }
     const issues = envelopeIssues(content);
     if (issues.length) return void write(ErrorMessage.create(issues), {});

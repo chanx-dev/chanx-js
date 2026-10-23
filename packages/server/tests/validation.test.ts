@@ -18,7 +18,7 @@ describe('a consumer with several handlers', () => {
         {
           type: 'union_tag_invalid',
           loc: [],
-          msg: "Input tag 'nope' found using 'action' does not match any of the expected tags: 'ping', 'chat'",
+          msg: "Input tag 'nope' found using 'action' does not match any of the expected tags: 'chat', 'ping'",
         },
       ],
     ],

@@ -8,22 +8,92 @@ import type { JsonSchema, StandardSchemaV1 } from './standard-schema';
 import type { TopicDefinition } from './topic';
 import { topicDefinitionOf, topicsOf } from './topic';
 
-export interface AsyncAPIOptions {
+/** Options for `chanx.asyncapi()`. Metadata given here goes into the document's `info`. */
+export interface AsyncAPIOptions extends Partial<
+  Pick<AsyncAPIInfo, 'termsOfService' | 'contact' | 'license' | 'tags' | 'externalDocs'>
+> {
+  /** Defaults to `AsyncAPI Documentation`. */
   title?: string;
+  /** The API's version. Defaults to `1.0.0`. */
   version?: string;
+  /** Defaults to an empty string. */
   description?: string;
-  /** The server's host, such as `api.example.com`. */
+  /** The server's host, such as `api.example.com`. Defaults to `localhost:8000`. */
   serverUrl?: string;
-  /** `ws` or `wss`. */
+  /** `ws` or `wss`. Defaults to `ws`. */
   serverProtocol?: string;
 }
 
-export type AsyncAPIDocument = Record<string, unknown>;
+interface Ref {
+  $ref: string;
+}
+
+/** A tag, on the API, a channel or an operation. */
+export interface AsyncAPITag {
+  name: string;
+  description?: string;
+  externalDocs?: AsyncAPIExternalDocs;
+}
+
+/** A link to documentation outside the document. */
+export interface AsyncAPIExternalDocs {
+  url: string;
+  description?: string;
+}
+
+/** The document's `info`: what the API is and who runs it. */
+export interface AsyncAPIInfo {
+  title: string;
+  version: string;
+  description: string;
+  /** A URL to the API's terms of service. */
+  termsOfService?: string;
+  contact?: { name?: string; url?: string; email?: string };
+  license?: { name: string; url?: string };
+  tags?: AsyncAPITag[];
+  externalDocs?: AsyncAPIExternalDocs;
+}
+
+/** An AsyncAPI 3 document, as chanx generates it. */
+export interface AsyncAPIDocument {
+  asyncapi: string;
+  info: AsyncAPIInfo;
+  servers: Record<string, { host: string; protocol: string }>;
+  channels: Record<string, AsyncAPIChannel>;
+  operations: Record<string, AsyncAPIOperation>;
+  components: {
+    messages: Record<string, { payload: Ref }>;
+    schemas: Record<string, JsonSchema>;
+  };
+}
+
+/** A consumer, or a topic at a consumer's address. */
+export interface AsyncAPIChannel {
+  address: string;
+  title: string;
+  description?: string;
+  parameters?: Record<string, { description: string }>;
+  /** chanx's extension marking a topic channel. */
+  'x-topic'?: { name: string; pattern: string; parameters: string[] };
+  messages: Record<string, Ref>;
+  tags?: AsyncAPITag[];
+}
+
+/** A handler (`receive`), or what the server sends unprompted (`send`). */
+export interface AsyncAPIOperation {
+  action: 'receive' | 'send';
+  channel: Ref;
+  summary: string;
+  description: string;
+  tags?: AsyncAPITag[];
+  messages?: Ref[];
+  reply?: { channel: Ref; messages: Ref[] };
+}
 
 /** A route as AsyncAPI documents it: a consumer, or a topic at a consumer's address. */
 interface Entry {
   channel: string;
-  /** The name an operation is prefixed with when its own name is taken, as chanx's `snake_name`. */
+  /** The name an operation is prefixed with when its own name is taken. */
   owner: string;
   path: string;
   description?: string;
@@ -43,16 +113,17 @@ export function generateAsyncAPI(
   {
     title = 'AsyncAPI Documentation',
     version = '1.0.0',
-    description,
+    description = '',
     serverUrl = 'localhost:8000',
     serverProtocol = 'ws',
+    ...metadata
   }: AsyncAPIOptions = {},
   { camelize: camel = false }: { camelize?: boolean } = {},
 ): AsyncAPIDocument {
   const entries = consumers.flatMap(entriesOf);
   const components = new Components();
-  const channels: Record<string, unknown> = {};
-  const operations: Record<string, unknown> = {};
+  const channels: AsyncAPIDocument['channels'] = {};
+  const operations: AsyncAPIDocument['operations'] = {};
 
   for (const entry of entries) {
     const messages = new Map<string, AnyMessageDefinition>();
@@ -100,7 +171,7 @@ export function generateAsyncAPI(
     const operation = (
       name: string,
       action: 'receive' | 'send',
-      body: Record<string, unknown>,
+      body: Omit<AsyncAPIOperation, 'action' | 'channel'>,
     ) => {
       const key = name in operations ? `${entry.owner}_${name}` : name;
       operations[key] = {
@@ -139,7 +210,7 @@ export function generateAsyncAPI(
 
   const document: AsyncAPIDocument = {
     asyncapi: '3.0.0',
-    info: { title, version, ...(description !== undefined && { description }) },
+    info: { title, version, description, ...metadata },
     servers: { [environment(serverUrl)]: { host: serverUrl, protocol: serverProtocol } },
     channels,
     operations,
@@ -186,7 +257,6 @@ function entriesOf(definition: ConsumerDefinition): Entry[] {
   return ownHandlers ? [consumerEntry, ...hosted] : hosted;
 }
 
-/** Operation names follow a Python handler's method name. */
 function operationName(handler: HandlerDefinition): string {
   return handler.name ?? `handle_${handler.message.action}`;
 }
@@ -206,8 +276,8 @@ function messageKey(message: AnyMessageDefinition): string {
 const snakeName = (name: string) => decamelizeKey(name);
 
 class Components {
-  readonly messages: Record<string, unknown> = {};
-  readonly schemas: Record<string, unknown> = {};
+  readonly messages: AsyncAPIDocument['components']['messages'] = {};
+  readonly schemas: AsyncAPIDocument['components']['schemas'] = {};
 
   message(message: AnyMessageDefinition): string {
     const key = messageKey(message);

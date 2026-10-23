@@ -1,7 +1,10 @@
-/** Thrown by `authenticate` to reject with a specific status, as DRF's responses do. */
+/** Thrown by `authenticate` to reject with a specific status. */
 export class AuthenticationError extends Error {
+  /** Sent as the `authentication` message's `status_code`. */
   readonly status: number;
+  /** Sent as its `status_text`. */
   readonly statusText: string;
+  /** Sent as its `data`. */
   readonly data: unknown;
 
   constructor({

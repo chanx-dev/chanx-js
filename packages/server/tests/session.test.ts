@@ -107,20 +107,36 @@ describe('errors', () => {
     });
   });
 
-  it('answers invalid JSON and keeps the connection', async () => {
+  it('answers a frame that is not JSON text as chanx does, keeping the connection', async () => {
     const sent: string[] = [];
     const session = app().chanx.connect(
       { url: '/ws/chat/lobby' },
       { send: (data) => sent.push(data), close() {} },
     )!;
     session.receive('{not json');
+    session.receive(new TextEncoder().encode(JSON.stringify({ action: 'ping' })));
     session.receive(JSON.stringify({ action: 'ping' }));
 
-    await vi.waitFor(() => expect(sent).toHaveLength(2));
-    expect(sent.map((data) => JSON.parse(data))).toEqual([
-      { action: 'error', payload: { detail: 'Invalid JSON' } },
-      { action: 'pong', payload: null },
-    ]);
+    await vi.waitFor(() => expect(sent).toHaveLength(3));
+    const [invalid, binary, pong] = sent.map((data) => JSON.parse(data));
+    // msg carries the JSON parser's own reason, which differs from Python's.
+    expect(invalid).toMatchObject({
+      action: 'error',
+      payload: [
+        { type: 'json_invalid', loc: [], msg: expect.stringMatching(/^Invalid JSON: /) },
+      ],
+    });
+    expect(binary).toEqual({
+      action: 'error',
+      payload: [
+        {
+          type: 'json_invalid',
+          loc: [],
+          msg: 'Invalid JSON: binary frames are not supported',
+        },
+      ],
+    });
+    expect(pong).toEqual({ action: 'pong', payload: null });
   });
 
   it('reports a failing handler generically and logs the cause', async () => {
@@ -394,6 +410,22 @@ describe('authentication', () => {
     client.send({ action: 'who' });
     await client.receive();
     expect((await client.receive()).payload).toEqual({ id: 7 });
+  });
+
+  it('authenticates the very connection it then serves', async () => {
+    const authenticated: object[] = [];
+    const connected: object[] = [];
+    const chanx = createChanx({
+      consumers: [
+        consumer('/ws', {
+          name: 'same',
+          authenticate: (request) => (authenticated.push(request), { id: 1 }),
+          onConnect: (ctx) => void connected.push(ctx.conn),
+        }),
+      ],
+    });
+    await connect(chanx, '/ws').ready;
+    expect(authenticated[0]).toBe(connected[0]);
   });
 });
 

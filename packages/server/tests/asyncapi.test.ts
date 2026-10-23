@@ -31,14 +31,7 @@ const fixture = JSON.parse(
     ),
     'utf8',
   ),
-) as {
-  channels: Record<string, Record<string, unknown>>;
-  operations: Record<string, { channel: { $ref: string } }>;
-  components: {
-    messages: Record<string, unknown>;
-    schemas: Record<string, Record<string, unknown>>;
-  };
-};
+) as AsyncAPIDocument;
 
 // The sandbox's topic hub, its two topics and the standalone RoomTopic route, rebuilt in
 // Node with the Python classes' names and docstrings.
@@ -89,7 +82,7 @@ const node = createChanx({
 }).asyncapi({
   title: 'FastAPI AsyncAPI documentation',
   serverUrl: 'testserver',
-}) as typeof fixture;
+});
 
 // The same topics as chanx's sandbox writes them, as classes.
 class RoomTopic extends Topic {
@@ -125,7 +118,7 @@ const classes = createChanx({
 }).asyncapi({
   title: 'FastAPI AsyncAPI documentation',
   serverUrl: 'testserver',
-}) as typeof fixture;
+});
 
 const CHANNELS = [
   'topic_hub',
@@ -135,9 +128,9 @@ const CHANNELS = [
 ];
 
 /** The fixture cut down to these channels, their operations and what they reference. */
-function subset(document: typeof fixture): AsyncAPIDocument {
+function subset(document: AsyncAPIDocument): AsyncAPIDocument {
   const channels = Object.fromEntries(
-    CHANNELS.map((name) => [name, document.channels[name]]),
+    CHANNELS.map((name) => [name, document.channels[name]!]),
   );
   const operations = Object.fromEntries(
     Object.entries(document.operations).filter(([, op]) =>
@@ -145,9 +138,7 @@ function subset(document: typeof fixture): AsyncAPIDocument {
     ),
   );
   const messages = new Set(
-    Object.values(channels).flatMap((channel) =>
-      Object.keys(channel!.messages as Record<string, unknown>),
-    ),
+    Object.values(channels).flatMap((channel) => Object.keys(channel.messages)),
   );
   const schemas = new Set<string>();
   const walk = (value: unknown): void => {
@@ -174,17 +165,17 @@ function subset(document: typeof fixture): AsyncAPIDocument {
     operations,
     components: {
       messages: Object.fromEntries(
-        [...messages].sort().map((name) => [name, document.components.messages[name]]),
+        [...messages].sort().map((name) => [name, document.components.messages[name]!]),
       ),
       schemas: Object.fromEntries(
-        [...schemas].sort().map((name) => [name, document.components.schemas[name]]),
+        [...schemas].sort().map((name) => [name, document.components.schemas[name]!]),
       ),
     },
   };
 }
 
-const python = subset(fixture) as typeof fixture;
-const operationBodies = (document: typeof fixture) =>
+const python = subset(fixture);
+const operationBodies = (document: AsyncAPIDocument) =>
   Object.values(document.operations)
     .map((op) => JSON.stringify(op))
     .sort();
@@ -272,11 +263,42 @@ describe('AsyncAPI from Topic classes, against chanx', () => {
 });
 
 describe('AsyncAPI', () => {
+  it("starts with chanx's defaults: Django's and FastAPI's, whose description is empty", () => {
+    const { asyncapi, info, servers } = createChanx({ consumers: [] }).asyncapi();
+    expect({ asyncapi, info, servers }).toEqual({
+      asyncapi: '3.0.0',
+      info: { title: 'AsyncAPI Documentation', version: '1.0.0', description: '' },
+      servers: { development: { host: 'localhost:8000', protocol: 'ws' } },
+    });
+  });
+
+  it('puts the metadata it is given into info, untouched by camelize', () => {
+    const metadata = {
+      termsOfService: 'https://example.com/terms',
+      contact: { name: 'API team', email: 'api@example.com' },
+      license: { name: 'MIT', url: 'https://opensource.org/licenses/MIT' },
+      tags: [{ name: 'chat', description: 'Chat rooms' }],
+      externalDocs: { url: 'https://example.com/docs' },
+    };
+    for (const camelize of [false, true]) {
+      const { info } = createChanx({ consumers: [], camelize }).asyncapi({
+        title: 'Chat API',
+        ...metadata,
+      });
+      expect(info).toEqual({
+        title: 'Chat API',
+        version: '1.0.0',
+        description: '',
+        ...metadata,
+      });
+    }
+  });
+
   it('documents what a consumer pushes, so a generated client can receive it', () => {
     const Notice = defineMessage('notice', z.object({ text: z.string() }));
     const document = createChanx({
       consumers: [consumer('/ws', { name: 'news', emits: [Notice] })],
-    }).asyncapi() as typeof fixture;
+    }).asyncapi();
     expect(document.operations.news_emits).toMatchObject({
       action: 'send',
       messages: [{ $ref: '#/channels/news/messages/notice_message' }],
@@ -297,7 +319,7 @@ describe('AsyncAPI', () => {
           (e) => ChatNotification.create({ message: e.payload }),
         ),
       ],
-    }).asyncapi() as typeof fixture;
+    }).asyncapi();
 
     expect(Object.keys(document.channels.chat!.messages as object)).toEqual([
       'chat_notification_message',
@@ -316,7 +338,7 @@ describe('AsyncAPI', () => {
     );
     const document = createChanx({
       consumers: [consumer('/ws', { name: 'x' }).on(Outer, () => {})],
-    }).asyncapi() as typeof fixture;
+    }).asyncapi();
 
     expect(document.components.schemas.Inner).toMatchObject({
       title: 'Inner',
@@ -348,8 +370,18 @@ describe('AsyncAPI', () => {
         return PongMessage.create();
       }
     }
-    const document = createChanx({ consumers: [Classy] }).asyncapi() as typeof fixture;
+    const document = createChanx({ consumers: [Classy] }).asyncapi();
     expect(Object.keys(document.operations)).toEqual(['handle_ping']);
+  });
+
+  it("names a builder handler's operation after its `name` option", () => {
+    const pinger = consumer('/ws', { name: 'pinger' }).on(
+      PingMessage,
+      { name: 'keep_alive', output: PongMessage },
+      () => PongMessage.create(),
+    );
+    const document = createChanx({ consumers: [pinger] }).asyncapi();
+    expect(Object.keys(document.operations)).toEqual(['keep_alive']);
   });
 
   it('camelizes names and properties when the app does, keeping schema names', () => {
@@ -360,7 +392,7 @@ describe('AsyncAPI', () => {
     const document = createChanx({
       camelize: true,
       consumers: [consumer('/ws', { name: 'chat_room' }).on(Joined, () => {})],
-    }).asyncapi() as typeof fixture;
+    }).asyncapi();
 
     expect(Object.keys(document.channels)).toEqual(['chatRoom']);
     expect(document.components.schemas.JoinedPayload).toMatchObject({

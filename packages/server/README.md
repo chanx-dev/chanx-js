@@ -62,6 +62,9 @@ answering, as uvicorn does for Python's chanx.
 - **Fastify:** `attachChanx(fastify.server, chanx)`.
 
 The crossws and Hono adapters are tested on Node; they leave pings to the runtime.
+Binary frames are refused with an error, as chanx refuses them. crossws drops
+uWebSockets' binary flag, so every frame there looks binary: chanx cannot run on
+crossws' uWebSockets adapter.
 
 ## Groups and events
 
@@ -210,6 +213,30 @@ chanx's pydantic errors have.
 ```ts
 import { connect } from '@chanx-js/server/testing';
 
-const client = connect(chanx, '/ws/chat/lobby');
-const reply = await client.request({ action: 'ping' });
+const client = connect(chanx, '/ws/hub');
+await client.ready;
+
+const reply = await client.request({ action: 'ping' }); // the reply echoing its ref
+client.sendMessage(Chat.create({ text: 'hi' }));
+await client.subscribe('room:lobby');
+const frames = await client.receiveAll(); // until the server goes quiet
+expect(await client.receiveNothing()).toBe(true);
+```
+
+To assert on what was sent rather than on what a second client received, capture it.
+Captures record without delivering unless given `{ suppress: false }`:
+
+```ts
+import { captureBroadcastEvents, captureTopicBroadcasts } from '@chanx-js/server/testing';
+
+const events = captureBroadcastEvents(chanx, room); // chanx.broadcastEvent() calls
+const posts = captureTopicBroadcasts(chanx, roomTopic); // ctx.publish() and chanx.publish()
+await client.request(
+  { action: 'post', payload: { body: 'hi' } },
+  { topic: 'room:lobby' },
+);
+expect(posts.captured).toEqual([
+  { topic: 'room:lobby', event: RoomEvent.create({ body: 'hi' }), seq: undefined },
+]);
+posts.restore();
 ```

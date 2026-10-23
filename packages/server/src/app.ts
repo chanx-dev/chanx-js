@@ -4,13 +4,14 @@ import { InMemoryChannelLayer } from '@chanx-js/layers';
 import type { AsyncAPIDocument, AsyncAPIOptions } from './asyncapi';
 import { generateAsyncAPI } from './asyncapi';
 import type { AsyncJsonWebsocketConsumer } from './classes';
-import type { ConsumerBuilder, ConsumerDefinition, EventsOf } from './consumer';
+import type { ConsumerDefinition, ConsumerSource, EventsOf } from './consumer';
 import { definitionOf } from './consumer';
 import type { PublishOptions, TopicLike } from './topic';
 import { topicDefinitionOf } from './topic';
 import type { Session } from './session';
 import { CHANNEL_EVENT, TOPIC_EVENT, openSession, topicGroup } from './session';
 
+/** Where chanx reports handler failures and development warnings. */
 export interface Logger {
   error(...data: unknown[]): void;
   warn(...data: unknown[]): void;
@@ -22,23 +23,25 @@ export interface Transport {
   close(code?: number, reason?: string): void;
 }
 
+/** Options for `createChanx()`. */
 export interface ChanxOptions {
-  consumers: readonly ConsumerSource[];
-  /** Channel layers by name, as Python's `CHANNEL_LAYERS`. Defaults to one in-memory layer. */
+  /** The consumers to serve: `consumer()` builders or `@Consumer` classes. */
+  consumers: readonly ConsumerLike[];
+  /** Channel layers by name. Defaults to `{ default: new InMemoryChannelLayer() }`. */
   layers?: Readonly<Record<string, ChannelLayer>>;
-  /** Convert keys between snake_case on the server and camelCase on the wire. */
+  /** Convert keys between snake_case on the server and camelCase on the wire. Defaults to `false`. */
   camelize?: boolean;
-  /** Send `complete` after each handled frame, as chanx's `send_completion`. */
+  /** Send a `complete` frame after each handled frame. Defaults to `false`. */
   sendCompletion?: boolean;
+  /** Defaults to `console`. */
   logger?: Logger;
   /** Development checks, such as undeclared replies. Defaults to `NODE_ENV !== 'production'`. */
   dev?: boolean;
 }
 
 /** A `consumer()` builder, or a class decorated with `@Consumer`. */
-export type ConsumerSource =
-  | ConsumerBuilder<any, any, any, any, any>
-  | (abstract new (...args: any[]) => AsyncJsonWebsocketConsumer<any>);
+export type ConsumerLike =
+  ConsumerSource | (abstract new (conn: never) => AsyncJsonWebsocketConsumer<unknown>);
 
 export interface ResolvedOptions {
   camelize: boolean;
@@ -47,6 +50,7 @@ export interface ResolvedOptions {
   dev: boolean;
 }
 
+/** A chanx app: serves consumers through an adapter, and sends to them from anywhere. */
 export interface Chanx {
   /** Whether a path belongs to a consumer, so an adapter can leave other upgrades alone. */
   match(path: string): boolean;
@@ -57,16 +61,16 @@ export interface Chanx {
   ): Session | undefined;
   /**
    * Send an event to a consumer's groups, from anywhere: a request handler, a worker,
-   * another process. Python's `broadcast_event`. Groups default to the consumer's own.
+   * another process. Groups default to the consumer's own.
    */
-  broadcastEvent<C extends ConsumerSource>(
+  broadcastEvent<C extends ConsumerLike>(
     consumer: C,
     event: EventsOf<C>,
     groups?: readonly string[],
   ): Promise<void>;
   /**
-   * Publish an event to everyone subscribed to a topic, from anywhere, as Python's
-   * `Topic.broadcast`. `seq` is caller-assigned, for gap detection only.
+   * Publish an event to everyone subscribed to a topic, from anywhere. `seq` is
+   * caller-assigned, for gap detection only.
    */
   publish<T extends TopicLike>(
     topic: T,
@@ -76,13 +80,22 @@ export interface Chanx {
   ): Promise<void>;
   /** The AsyncAPI 3 document for these consumers, for docs and `@chanx-js/codegen`. */
   asyncapi(options?: AsyncAPIOptions): AsyncAPIDocument;
-  /** Send an event to one connection, by its `channelName`. Python's `send_event`. */
-  sendEvent<C extends ConsumerSource>(
+  /** Send an event to one connection, by its `channelName`. */
+  sendEvent<C extends ConsumerLike>(
     consumer: C,
     event: EventsOf<C>,
     channelName: string,
   ): Promise<void>;
 }
+
+/** What `@chanx-js/server/testing` and the AsyncAPI handler reach into. */
+export const internals = new WeakMap<
+  Chanx,
+  {
+    layerOf(source: { options: { layer?: string } }): ChannelLayer;
+    logger: Logger;
+  }
+>();
 
 interface Route {
   definition: ConsumerDefinition;
@@ -116,7 +129,7 @@ export function createChanx(options: ChanxOptions): Chanx {
     return undefined;
   };
 
-  return {
+  const app: Chanx = {
     match: (path) => find(path) !== undefined,
     connect(request, transport) {
       const url = new URL(request.url, 'ws://localhost');
@@ -169,6 +182,8 @@ export function createChanx(options: ChanxOptions): Chanx {
       });
     },
   };
+  internals.set(app, { layerOf, logger: resolved.logger });
+  return app;
 }
 
 // Path params match one segment, unlike topic params, which stop at ':'.

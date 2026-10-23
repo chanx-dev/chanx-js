@@ -19,18 +19,22 @@ export interface ConnectRequest<Path extends string = string> {
   readonly params: PathParams<Path>;
 }
 
+/** One client connection, as handlers and hooks see it. */
 export interface Connection<
   Path extends string = string,
   User = unknown,
 > extends ConnectRequest<Path> {
+  /** Unique per connection. */
   readonly id: string;
   /** What `authenticate` returned; `undefined` on a consumer without one. */
   readonly user: User;
-  /** This connection's channel on the layer, as Python's `channel_name`: what `sendEvent()` targets. */
+  /** This connection's channel on the layer: what `sendEvent()` targets. */
   readonly channelName: string;
   /** Groups joined, from the `groups` option and `join()`. */
   readonly groups: readonly string[];
+  /** Join a group at any time, such as on a client's request; its broadcasts then reach this connection. */
   join(group: string): Promise<void>;
+  /** Leave a group joined from the options or with `join()`. */
   leave(group: string): Promise<void>;
   /** Send to this client as a server push, without a `ref`. */
   push(message: Message): Promise<void>;
@@ -39,16 +43,20 @@ export interface Connection<
   close(code?: number, reason?: string): void;
 }
 
+/** Where a broadcast goes, and whether it skips the sender. */
 export interface BroadcastOptions {
   /** Defaults to every group this connection joined. */
   groups?: readonly string[];
-  /** Skip this connection, as Python's `exclude_current`. */
+  /** Skip this connection. Defaults to `false`. */
   excludeCurrent?: boolean;
 }
 
+/** What a consumer's handlers and hooks get as `ctx`. */
 export interface Context<Path extends string, State, User, Emits extends Message> {
   readonly conn: Connection<Path, User>;
+  /** Params parsed from the route: `/ws/chat/{room}` gives `room`. */
   readonly params: PathParams<Path>;
+  /** Per-connection state, from the `state` option. */
   readonly state: State;
   /** The `ref` of the frame being handled, echoed on every reply. */
   readonly ref: string | undefined;
@@ -58,15 +66,21 @@ export interface Context<Path extends string, State, User, Emits extends Message
   send(message: Emits): Promise<void>;
   /** Send on this connection as a server push, without a `ref`. */
   push(message: Emits): Promise<void>;
-  /** Send to every connection in the groups, across processes, as Python's `broadcast_message`. */
+  /** Send to every connection in the groups, across processes. */
   broadcast(message: Emits, options?: BroadcastOptions): Promise<void>;
 }
 
+/** Options for `.on()`, `.event()`, `@On` and `@OnEvent`. */
 export interface HandlerOptions<Out> {
+  /** The AsyncAPI operation name. Defaults to `handle_<action>`. */
+  name?: string;
   /** What the handler returns: one message or a list. Documented, and checked in development. */
   output?: Out;
+  /** The AsyncAPI operation's summary. */
   summary?: string;
+  /** The AsyncAPI operation's description. */
   description?: string;
+  /** Tags on the AsyncAPI operation. */
   tags?: string[];
 }
 
@@ -78,7 +92,7 @@ type Outputs = AnyMessageDefinition | readonly AnyMessageDefinition[];
 
 /** Runtime form of one handler, whichever surface defined it. */
 export interface HandlerDefinition {
-  /** The AsyncAPI operation name, as a Python handler's method name. */
+  /** The AsyncAPI operation name. */
   readonly name?: string;
   readonly message: AnyMessageDefinition;
   readonly outputs: readonly AnyMessageDefinition[];
@@ -94,15 +108,18 @@ interface HandlerSetDefinition {
   readonly passthrough: readonly AnyMessageDefinition[];
 }
 
+/** Options for `consumer()`. */
 export interface ConsumerOptions<
   Path extends string,
   State,
   User,
   Emits extends AnyMessageDefinition,
 > extends ErrorHooks<Context<Path, State, User, MessageOf<Emits>>> {
-  /** The AsyncAPI channel name, as Python's `@channel(name=...)`. */
+  /** The AsyncAPI channel name, also naming the consumer in errors. */
   name: string;
+  /** The AsyncAPI channel's description. */
   description?: string;
+  /** Tags on the AsyncAPI channel. */
   tags?: string[];
   /** Messages pushed through `ctx` rather than returned by a handler. */
   emits?: readonly Emits[];
@@ -117,22 +134,20 @@ export interface ConsumerOptions<
   /**
    * Runs after the socket is accepted. Return the user, or `false` (or throw an
    * `AuthenticationError`) to reject; the client gets an `authentication` message either way.
+   * `request` is the connection it authenticates, the same object as `ctx.conn` later.
    */
   authenticate?: (
     request: ConnectRequest<Path>,
   ) => User | false | null | undefined | Promise<User | false | null | undefined>;
-  /** After authentication, as Python's `post_authentication`. */
+  /** Runs once authenticated and the groups are joined. */
   onConnect?: (ctx: Context<Path, State, User, MessageOf<Emits>>) => void | Promise<void>;
+  /** Runs when the socket closes, before the groups are left. */
   onDisconnect?: (
     ctx: Context<Path, State, User, MessageOf<Emits>>,
   ) => void | Promise<void>;
 }
 
-/**
- * Overrides for how failures reach the client, as chanx's `handle_validation_error`,
- * `handle_message_handler_error` and `handle_event_handler_error`. Each defaults to what
- * chanx does.
- */
+/** Overrides for how failures reach the client. Each defaults to what chanx does. */
 export interface ErrorHooks<Ctx> {
   /** A frame failed validation. Default: an `error` frame listing the issues. */
   onValidationError?: (issues: ValidationIssue[], ctx: Ctx) => void | Promise<void>;
@@ -147,19 +162,24 @@ export interface ConsumerDefinition extends HandlerSetDefinition {
   readonly path: string;
   readonly options: ConsumerOptions<string, unknown, unknown, AnyMessageDefinition>;
   readonly topics: readonly TopicLike[];
-  /** Subscribed on connect and implied by frames without a topic, as `Topic.as_consumer()`. */
+  /** Subscribed on connect, and implied by frames without a topic. */
   readonly defaultTopic?: TopicLike;
 }
 
 const DEFINITION = Symbol('chanx.definition');
 export const TOPIC = Symbol('chanx.topic');
 
+/** Anything carrying a consumer definition: a `consumer()` builder. */
+export interface ConsumerSource {
+  readonly [DEFINITION]: ConsumerDefinition;
+}
+
 /** Anything carrying a topic definition: a `topic()` builder. */
 export interface TopicSource {
   readonly [TOPIC]: TopicDefinition;
 }
 
-/** Event handlers including passthrough events; an explicit handler wins, as in chanx. */
+/** Event handlers including passthrough events; an explicit handler wins. */
 export function eventHandlersOf(
   definition: HandlerSetDefinition,
 ): Map<string, HandlerDefinition> {
@@ -177,6 +197,7 @@ export function eventHandlersOf(
   return handlers;
 }
 
+/** Handlers from `handlers()`, to mount on consumers with `.use()`. */
 export interface HandlerSet<Needs = unknown, Events extends Message = Message> {
   readonly [DEFINITION]: HandlerSetDefinition;
   /** Phantom: the consumer state this set's handlers rely on. */
@@ -213,10 +234,12 @@ interface HandlerMethods<
   Emits extends Message,
   Events extends Message,
 > {
+  /** Handle a client message. */
   on<D extends AnyMessageDefinition>(
     message: D,
     handler: Handler<MessageOf<D>, Context<Path, State, User, Emits>, void | Emits>,
   ): Next<Kind, Path, State, User, Emits, Events>;
+  /** Handle a client message; return a declared `output` to reply. */
   on<D extends AnyMessageDefinition, const O extends Outputs = never>(
     message: D,
     options: HandlerOptions<O>,
@@ -226,11 +249,12 @@ interface HandlerMethods<
       Returned<O>
     >,
   ): Next<Kind, Path, State, User, Emits, Events>;
-  /** A server-side event from the channel layer, as Python's `@event_handler`. */
+  /** Handle a server-side event from the channel layer. */
   event<D extends AnyMessageDefinition>(
     message: D,
     handler: Handler<MessageOf<D>, Context<Path, State, User, Emits>, void | Emits>,
   ): Next<Kind, Path, State, User, Emits, Events | MessageOf<D>>;
+  /** Handle a server-side event; return a declared `output` to send it to the client. */
   event<D extends AnyMessageDefinition, const O extends Outputs = never>(
     message: D,
     options: HandlerOptions<O>,
@@ -240,23 +264,24 @@ interface HandlerMethods<
       Returned<O>
     >,
   ): Next<Kind, Path, State, User, Emits, Events | MessageOf<D>>;
-  /** Events forwarded to the client unchanged, as Python's `passthrough_events`. */
+  /** Events forwarded to the client unchanged. */
   passthrough<const D extends readonly AnyMessageDefinition[]>(
     ...messages: D
   ): Next<Kind, Path, State, User, Emits, Events | MessageOf<D[number]>>;
 }
 
+/** What `consumer()` returns: chain handlers, then pass it to `createChanx()`. */
 export interface ConsumerBuilder<
   Path extends string,
   State,
   User,
   Emits extends Message,
   Events extends Message = never,
-> extends HandlerMethods<'consumer', Path, State, User, Emits, Events> {
-  readonly [DEFINITION]: ConsumerDefinition;
+>
+  extends HandlerMethods<'consumer', Path, State, User, Emits, Events>, ConsumerSource {
   readonly '~events'?: Events;
   /** Mount a reusable handler set; its required state must be part of this consumer's. */
-  use<S extends HandlerSet<any, any>>(
+  use<S extends HandlerSet<never, Message>>(
     set: S &
       ([State] extends [NeedsOf<S>]
         ? unknown
@@ -264,6 +289,7 @@ export interface ConsumerBuilder<
   ): ConsumerBuilder<Path, State, User, Emits, Events | EventsOf<S>>;
 }
 
+/** What `handlers()` returns: chain handlers, then mount it with `.use()`. */
 export interface HandlerSetBuilder<Needs, Events extends Message = never>
   extends
     HandlerSet<Needs, Events>,
@@ -295,7 +321,7 @@ export function handlers<Needs = Record<never, never>>(): HandlerSetBuilder<Need
 }
 
 /** The handlers, events and passthrough events a builder has collected. */
-export function handlerSetOf(source: HandlerSet<any, any>): HandlerSetDefinition {
+export function handlerSetOf(source: HandlerSet<never, Message>): HandlerSetDefinition {
   return source[DEFINITION];
 }
 
@@ -314,27 +340,34 @@ export function definitionOf(source: object): ConsumerDefinition {
 }
 
 type Definition = HandlerSetDefinition &
-  Partial<Omit<ConsumerDefinition, keyof HandlerSetDefinition>> & { owner?: string };
+  Partial<Omit<ConsumerDefinition, keyof HandlerSetDefinition>>;
+type Handle = HandlerDefinition['handle'];
+/** A handler, or options then a handler: the two forms of `.on()` and `.event()`. */
+export type HandlerArgs =
+  [handle: Handle] | [options: HandlerOptions<Outputs>, handle: Handle];
 
-/** The builder behind `consumer()`, `handlers()` and `topic()`. */
-export function build(definition: Definition) {
-  const owner =
-    definition.owner ??
-    (definition.options?.name ? `Consumer "${definition.options.name}"` : 'Handler set');
+/**
+ * The builder behind `consumer()`, `handlers()` and `topic()`. `errorLabel` names the
+ * builder in errors, defaulting to the consumer's name.
+ */
+export function build(
+  definition: Definition,
+  errorLabel = definition.options?.name
+    ? `Consumer "${definition.options.name}"`
+    : 'Handler set',
+) {
+  const next = (changed: Definition) => build(changed, errorLabel);
   const add = (
     kind: 'handlers' | 'events',
     message: AnyMessageDefinition,
-    optionsOrHandler: HandlerOptions<Outputs> | HandlerDefinition['handle'],
-    maybeHandler?: HandlerDefinition['handle'],
+    args: HandlerArgs,
   ) => {
-    const [options, handle] =
-      typeof optionsOrHandler === 'function'
-        ? [{} as HandlerOptions<Outputs>, optionsOrHandler]
-        : [optionsOrHandler, maybeHandler!];
+    const [options, handle] = args.length === 1 ? [{}, args[0]] : args;
     const outputs = options.output === undefined ? [] : [options.output].flat();
-    return build({
+    return next({
       ...definition,
-      [kind]: withUnique(definition[kind], owner, kind, {
+      [kind]: withUnique(definition[kind], errorLabel, kind, {
+        name: options.name,
         message,
         outputs,
         summary: options.summary,
@@ -347,12 +380,12 @@ export function build(definition: Definition) {
 
   return {
     [DEFINITION]: definition,
-    on: (message: AnyMessageDefinition, optionsOrHandler: never, handler?: never) =>
-      add('handlers', message, optionsOrHandler, handler),
-    event: (message: AnyMessageDefinition, optionsOrHandler: never, handler?: never) =>
-      add('events', message, optionsOrHandler, handler),
+    on: (message: AnyMessageDefinition, ...args: HandlerArgs) =>
+      add('handlers', message, args),
+    event: (message: AnyMessageDefinition, ...args: HandlerArgs) =>
+      add('events', message, args),
     passthrough: (...messages: AnyMessageDefinition[]) =>
-      build({ ...definition, passthrough: [...definition.passthrough, ...messages] }),
+      next({ ...definition, passthrough: [...definition.passthrough, ...messages] }),
     use: (set: HandlerSet) => {
       const added = set[DEFINITION];
       let merged: Definition = {
@@ -361,17 +394,20 @@ export function build(definition: Definition) {
       };
       for (const kind of ['handlers', 'events'] as const) {
         for (const handler of added[kind].values()) {
-          merged = { ...merged, [kind]: withUnique(merged[kind], owner, kind, handler) };
+          merged = {
+            ...merged,
+            [kind]: withUnique(merged[kind], errorLabel, kind, handler),
+          };
         }
       }
-      return build(merged);
+      return next(merged);
     },
   };
 }
 
 function withUnique(
   existing: ReadonlyMap<string, HandlerDefinition>,
-  owner: string,
+  errorLabel: string,
   kind: 'handlers' | 'events',
   handler: HandlerDefinition,
 ): ReadonlyMap<string, HandlerDefinition> {
@@ -379,7 +415,7 @@ function withUnique(
   if (existing.has(action)) {
     const what = kind === 'handlers' ? 'message' : 'event';
     throw new TypeError(
-      `${owner} has two ${what} handlers for action "${action}". Actions must be unique within a consumer.`,
+      `${errorLabel} has two ${what} handlers for action "${action}". Actions must be unique within a consumer.`,
     );
   }
   return new Map(existing).set(action, handler);

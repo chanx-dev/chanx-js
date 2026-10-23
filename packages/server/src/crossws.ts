@@ -28,7 +28,12 @@ export function chanxHooks(chanx: Chanx): Partial<Hooks> {
       sessions.set(peer, session);
     },
     message(peer, message) {
-      sessions.get(peer)?.receive(message.text());
+      // Text frames arrive as strings. uWebSockets is the exception: crossws drops its
+      // binary flag, so every frame there looks binary and is refused.
+      const { rawData } = message;
+      sessions
+        .get(peer)
+        ?.receive(typeof rawData === 'string' ? rawData : message.uint8Array());
     },
     close(peer) {
       void sessions.get(peer)?.closed();

@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import type { MessageOf } from '../src';
+import type { ClassContext, MessageOf, TopicClassContext } from '../src';
 import {
   PingMessage,
   PongMessage,
@@ -121,5 +121,21 @@ describe('builder types', () => {
     // @ts-expect-error: a payload-less message takes none
     PingMessage.create({});
     expect(true).toBe(true);
+  });
+});
+
+describe('class context types', () => {
+  it('types the user as the class declares it, unknown by default, never any', () => {
+    const check = (ctx: ClassContext, typed: ClassContext<{ name: string }>) => {
+      // @ts-expect-error: an undeclared user is unknown
+      void ctx.conn.user.name;
+      typed.conn.user.name satisfies string;
+      typed.state.conn.user.name satisfies string;
+    };
+    const checkTopic = (ctx: TopicClassContext) => {
+      // @ts-expect-error: an undeclared user is unknown
+      void ctx.conn.user.name;
+    };
+    expect([check, checkTopic]).toHaveLength(2);
   });
 });

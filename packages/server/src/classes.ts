@@ -15,12 +15,13 @@ import type { PublishOptions, TopicClassContext } from './topic';
 import type { ValidationIssue } from './validation';
 
 /**
- * Base class for consumers written as classes, as chanx's `AsyncJsonWebsocketConsumer`.
- * One instance serves one connection, so its fields are per-connection state.
+ * Base class for consumers written as classes. One instance serves one connection, so its
+ * fields are per-connection state.
  */
 export abstract class AsyncJsonWebsocketConsumer<User = unknown> {
   constructor(readonly conn: Connection<string, User>) {}
 
+  /** Params parsed from the route. */
   get params(): Readonly<Record<string, string>> {
     return this.conn.params;
   }
@@ -30,14 +31,15 @@ export abstract class AsyncJsonWebsocketConsumer<User = unknown> {
     return this.conn.push(message);
   }
 
-  /** Send to every connection in the groups, as Python's `broadcast_message`. */
+  /** Send to every connection in the groups, across processes. */
   broadcast(message: Message, options?: BroadcastOptions): Promise<void> {
     return this.conn.broadcast(message, options);
   }
 
-  /** After authentication, as Python's `post_authentication`. */
+  /** Runs once authenticated and the groups are joined. */
   onConnect(): void | Promise<void> {}
 
+  /** Runs when the socket closes, before the groups are left. */
   onDisconnect(): void | Promise<void> {}
 
   /** Override to change how a frame that failed validation is answered. */
@@ -71,12 +73,15 @@ export function classErrorHooks(prototype: object): ErrorHooks<{ state: unknown 
   );
 }
 
-type ConsumerClass = abstract new (
-  conn: Connection<string, any>,
-) => AsyncJsonWebsocketConsumer<any>;
+type ConsumerClass = abstract new (conn: never) => AsyncJsonWebsocketConsumer<unknown>;
 
 /** What a class consumer's handlers receive as their second argument. */
-export type ClassContext = Context<string, AsyncJsonWebsocketConsumer<any>, any, Message>;
+export type ClassContext<User = unknown> = Context<
+  string,
+  AsyncJsonWebsocketConsumer<User>,
+  User,
+  Message
+>;
 
 type OutputMessages<O> = [O] extends [never]
   ? never
@@ -129,7 +134,7 @@ function mark(
   };
 }
 
-/** Handle a client message, as Python's `@ws_handler`. Return a declared output to reply. */
+/** Handle a client message. Return a declared `output` to reply. */
 export function On<D extends AnyMessageDefinition, const O extends Outputs = never>(
   message: D,
   options: HandlerOptions<O> = {},
@@ -137,7 +142,7 @@ export function On<D extends AnyMessageDefinition, const O extends Outputs = nev
   return mark('handlers', message, options) as never;
 }
 
-/** Handle a server-side event from the channel layer, as Python's `@event_handler`. */
+/** Handle a server-side event from the channel layer. */
 export function OnEvent<D extends AnyMessageDefinition, const O extends Outputs = never>(
   message: D,
   options: HandlerOptions<O> = {},
@@ -145,11 +150,12 @@ export function OnEvent<D extends AnyMessageDefinition, const O extends Outputs 
   return mark('events', message, options) as never;
 }
 
+/** Options for `@Consumer`: `consumer()`'s, less what the class's methods provide. */
 export type ClassConsumerOptions = Omit<
   ConsumerOptions<string, unknown, unknown, AnyMessageDefinition>,
   'state' | 'onConnect' | 'onDisconnect'
 > & {
-  /** Events forwarded to the client unchanged, as Python's `passthrough_events`. */
+  /** Events forwarded to the client unchanged. */
   passthrough?: readonly AnyMessageDefinition[];
 };
 
@@ -183,14 +189,26 @@ function definitionFromClass(
   };
 }
 
-/** A class's `@On` and `@OnEvent` methods, walking its prototype chain as chanx walks the MRO. */
-export function handlersFromClass(target: abstract new (...args: never[]) => unknown) {
-  const handlers = new Map<string, HandlerDefinition>();
-  const events = new Map<string, HandlerDefinition>();
+/** One `@On` or `@OnEvent` method of a class. */
+export interface HandlerMethodInfo {
+  readonly name: string;
+  readonly kind: 'handlers' | 'events';
+  readonly message: AnyMessageDefinition;
+  readonly options: HandlerOptions<
+    AnyMessageDefinition | readonly AnyMessageDefinition[]
+  >;
+}
+
+/**
+ * A class's `@On` and `@OnEvent` methods, walking its prototype chain: an override, decorated or not, hides the method it overrides, and two methods
+ * handling one action are an error. For framework integrations such as NestJS.
+ */
+export function handlerMethods(
+  target: abstract new (...args: never[]) => unknown,
+): HandlerMethodInfo[] {
+  const methods: HandlerMethodInfo[] = [];
   const methodFor = new Map<string, string>();
   const seen = new Set<string>();
-
-  // Most derived first: an override, decorated or not, hides the method it overrides.
   for (
     let proto = target.prototype as object | null;
     proto && proto !== Object.prototype;
@@ -205,7 +223,6 @@ export function handlersFromClass(target: abstract new (...args: never[]) => unk
       const marked = typeof value === 'function' ? value[MARK] : undefined;
       if (!marked) continue;
 
-      const table = marked.kind === 'handlers' ? handlers : events;
       const key = `${marked.kind}:${marked.message.action}`;
       const existing = methodFor.get(key);
       if (existing) {
@@ -215,23 +232,35 @@ export function handlersFromClass(target: abstract new (...args: never[]) => unk
         );
       }
       methodFor.set(key, name);
-      const { output, summary, description, tags } = marked.options;
-      table.set(marked.message.action, {
-        name: decamelizeKey(name),
-        message: marked.message,
-        outputs: output === undefined ? [] : [output].flat(),
-        summary,
-        description,
-        tags,
-        handle: (message, ctx) =>
-          (ctx.state as Record<string, (...args: unknown[]) => unknown>)[name]!(
-            message,
-            ctx,
-          ),
-      });
+      methods.push({ name, ...marked });
     }
   }
-  return { handlers, events };
+  return methods;
+}
+
+/** A class's handlers, each calling its method on the instance serving the connection. */
+export function handlersFromClass(target: abstract new (...args: never[]) => unknown) {
+  const tables = {
+    handlers: new Map<string, HandlerDefinition>(),
+    events: new Map<string, HandlerDefinition>(),
+  };
+  for (const { name, kind, message, options } of handlerMethods(target)) {
+    const { output, summary, description, tags } = options;
+    tables[kind].set(message.action, {
+      name: decamelizeKey(name),
+      message,
+      outputs: output === undefined ? [] : [output].flat(),
+      summary,
+      description,
+      tags,
+      handle: (incoming, ctx) =>
+        (ctx.state as Record<string, (...args: unknown[]) => unknown>)[name]!(
+          incoming,
+          ctx,
+        ),
+    });
+  }
+  return tables;
 }
 
 /** What a class topic is built with: the subscription it serves. */
@@ -246,15 +275,17 @@ export interface Subscription<User = unknown> {
 }
 
 /**
- * Base class for topics written as classes, as chanx's `Topic`: set `static pattern`, and
- * the class name names its layer group, as in Python. One instance serves one subscription.
+ * Base class for topics written as classes: set `static pattern`; the class name names its
+ * layer group. One instance serves one subscription.
  */
 export abstract class Topic<User = unknown> {
+  /** The topic pattern, such as `room:{room_name}`. */
   static pattern: string;
+  /** The AsyncAPI channel's description. */
   static description?: string;
   /** The channel layer to publish on. Defaults to `default`. */
   static layer?: string;
-  /** Events forwarded to the client unchanged, as Python's `passthrough_events`. */
+  /** Events forwarded to the client unchanged. */
   static passthrough?: readonly AnyMessageDefinition[];
 
   constructor(protected readonly subscription: Subscription<User>) {}
@@ -276,7 +307,7 @@ export abstract class Topic<User = unknown> {
     return this.subscription.push(message);
   }
 
-  /** Publish an event to everyone subscribed to this topic, as Python's `Topic.broadcast`. */
+  /** Publish an event to everyone subscribed to this topic, across processes. */
   publish(event: Message, options?: PublishOptions): Promise<void> {
     return this.subscription.publish(event, options);
   }

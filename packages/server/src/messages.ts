@@ -8,24 +8,34 @@ export interface Message<A extends string = string, P = unknown> {
 
 type CreateArgs<P> = [P] extends [null] ? [] : [payload: P];
 
+/** A message type: its action, payload schema and AsyncAPI documentation. */
 export interface MessageDefinition<A extends string = string, P = unknown> {
+  /** The `action` discriminant on the wire. */
   readonly action: A;
   /** Validates the payload; `null` for a message that carries none. */
   readonly payload: StandardSchemaV1<unknown, P> | null;
   /** Its AsyncAPI component name. */
   readonly title: string;
+  /** Documented in AsyncAPI. */
   readonly description?: string;
+  /** Build a message of this type. The payload is typed, not validated. */
   create(...args: CreateArgs<P>): Message<A, P>;
 }
 
-export type AnyMessageDefinition = MessageDefinition<string, any>;
+/** Any message definition, whatever its action and payload. */
+export interface AnyMessageDefinition extends Omit<MessageDefinition, 'create'> {
+  create(...args: never): Message;
+}
 
+/** The message a definition creates: `MessageOf<typeof Chat>`. */
 export type MessageOf<D> =
   D extends MessageDefinition<infer A, infer P> ? Message<A, P> : never;
 
+/** Options for `defineMessage()`. */
 export interface MessageOptions {
+  /** The AsyncAPI component name. Defaults to `<Action>Message`, such as `ChatMessage`. */
   title?: string;
-  /** Documented in AsyncAPI, as a Python message's docstring is. */
+  /** Documented in AsyncAPI. */
   description?: string;
 }
 

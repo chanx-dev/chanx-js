@@ -59,7 +59,10 @@ export function envelopeIssues(frame: unknown): ValidationIssue[] {
 /** Validate a frame against a consumer's messages, as chanx's discriminated union does. */
 export function createValidator(messages: readonly AnyMessageDefinition[]) {
   const byAction = new Map(messages.map((message) => [message.action, message]));
-  const tags = messages.map((message) => `'${message.action}'`).join(', ');
+  const tags = messages
+    .map((message) => `'${message.action}'`)
+    .sort()
+    .join(', ');
 
   return async (frame: Frame): Promise<ValidationResult> => {
     if (!('action' in frame)) {
