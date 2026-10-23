@@ -57,9 +57,11 @@ jobs:
               echo "$pkg@$version is already on npm; skipping"
               continue
             fi
-            # npm does not rewrite pnpm's workspace: specifiers, and consumers never
-            # install devDependencies, so drop them rather than publish a private name.
-            (cd "packages/$dir" && npm pkg delete devDependencies && npm publish --provenance --access public)
+            # pnpm pack rewrites workspace: dependencies to real versions; npm publishes the
+            # tarball, for trusted publishing. devDependencies go first: consumers never
+            # install them, and the private protocol package has no version to rewrite to.
+            (cd "packages/$dir" && npm pkg delete devDependencies && pnpm pack --pack-destination "$RUNNER_TEMP/$dir")
+            npm publish "$RUNNER_TEMP/$dir"/*.tgz --provenance --access public
           done
 
   release:
