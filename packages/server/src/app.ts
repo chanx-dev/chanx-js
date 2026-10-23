@@ -1,6 +1,7 @@
 import type { ChannelLayer } from '@chanx-js/layers';
 import { InMemoryChannelLayer } from '@chanx-js/layers';
 
+import type { AsyncJsonWebsocketConsumer } from './classes';
 import type { ConsumerBuilder, ConsumerDefinition, EventsOf } from './consumer';
 import { definitionOf } from './consumer';
 import type { Session } from './session';
@@ -18,7 +19,7 @@ export interface Transport {
 }
 
 export interface ChanxOptions {
-  consumers: readonly ConsumerBuilder<any, any, any, any, any>[];
+  consumers: readonly ConsumerSource[];
   /** Channel layers by name, as Python's `CHANNEL_LAYERS`. Defaults to one in-memory layer. */
   layers?: Readonly<Record<string, ChannelLayer>>;
   /** Convert keys between snake_case on the server and camelCase on the wire. */
@@ -29,6 +30,11 @@ export interface ChanxOptions {
   /** Development checks, such as undeclared replies. Defaults to `NODE_ENV !== 'production'`. */
   dev?: boolean;
 }
+
+/** A `consumer()` builder, or a class decorated with `@Consumer`. */
+export type ConsumerSource =
+  | ConsumerBuilder<any, any, any, any, any>
+  | (abstract new (...args: any[]) => AsyncJsonWebsocketConsumer<any>);
 
 export interface ResolvedOptions {
   camelize: boolean;
@@ -49,13 +55,13 @@ export interface Chanx {
    * Send an event to a consumer's groups, from anywhere: a request handler, a worker,
    * another process. Python's `broadcast_event`. Groups default to the consumer's own.
    */
-  broadcastEvent<C extends ConsumerBuilder<any, any, any, any, any>>(
+  broadcastEvent<C extends ConsumerSource>(
     consumer: C,
     event: EventsOf<C>,
     groups?: readonly string[],
   ): Promise<void>;
   /** Send an event to one connection, by its `channelName`. Python's `send_event`. */
-  sendEvent<C extends ConsumerBuilder<any, any, any, any, any>>(
+  sendEvent<C extends ConsumerSource>(
     consumer: C,
     event: EventsOf<C>,
     channelName: string,

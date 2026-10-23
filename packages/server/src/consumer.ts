@@ -29,6 +29,10 @@ export interface Connection<
   readonly groups: readonly string[];
   join(group: string): Promise<void>;
   leave(group: string): Promise<void>;
+  /** Send to this client as a server push, without a `ref`. */
+  push(message: Message): Promise<void>;
+  /** Send to every connection in the groups, as `ctx.broadcast()` does. */
+  broadcast(message: Message, options?: BroadcastOptions): Promise<void>;
   close(code?: number, reason?: string): void;
 }
 
@@ -153,7 +157,11 @@ export interface HandlerSet<Needs = unknown, Events extends Message = Message> {
 type NeedsOf<S> = S extends { readonly needs?: (state: infer N) => void } ? N : never;
 
 /** The events a consumer or handler set accepts. */
-export type EventsOf<C> = C extends { readonly '~events'?: infer E } ? E : never;
+export type EventsOf<C> = C extends { readonly '~events'?: infer E }
+  ? unknown extends E
+    ? Message
+    : E
+  : Message;
 
 type Next<
   Kind,
@@ -254,8 +262,18 @@ export function handlers<Needs = Record<never, never>>(): HandlerSetBuilder<Need
   return build({ handlers: new Map(), events: new Map(), passthrough: [] }) as never;
 }
 
-export function definitionOf(source: HandlerSet<any>): ConsumerDefinition {
-  return source[DEFINITION] as ConsumerDefinition;
+/** Definitions of consumers declared as classes, filled in by `@Consumer`. */
+export const classDefinitions = new WeakMap<object, ConsumerDefinition>();
+
+export function definitionOf(source: object): ConsumerDefinition {
+  const definition =
+    classDefinitions.get(source) ?? (source as Partial<HandlerSet>)[DEFINITION];
+  if (!definition) {
+    throw new TypeError(
+      'Not a consumer: pass a consumer() builder or a class decorated with @Consumer',
+    );
+  }
+  return definition as ConsumerDefinition;
 }
 
 type Definition = HandlerSetDefinition &

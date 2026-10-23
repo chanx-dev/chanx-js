@@ -1,12 +1,16 @@
 export { createChanx } from './app';
-export type { Chanx, ChanxOptions, Logger, Transport } from './app';
+export type { Chanx, ChanxOptions, ConsumerSource, Logger, Transport } from './app';
+export { AsyncJsonWebsocketConsumer, Consumer, On, OnEvent } from './classes';
+export type { ClassConsumerOptions, ClassContext } from './classes';
 export { consumer, handlers } from './consumer';
 export type {
+  BroadcastOptions,
   ConnectRequest,
   Connection,
   ConsumerBuilder,
   ConsumerOptions,
   Context,
+  EventsOf,
   HandlerOptions,
   HandlerSet,
   HandlerSetBuilder,

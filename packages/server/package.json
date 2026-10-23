@@ -32,7 +32,7 @@
   },
   "scripts": {
     "build": "tsdown src/index.ts src/testing.ts src/node.ts --format esm --dts.eager --clean",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json && tsc -p tests/legacy/tsconfig.json"
   },
   "dependencies": {
     "@chanx-js/layers": "workspace:*"

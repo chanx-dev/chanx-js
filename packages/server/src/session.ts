@@ -4,6 +4,7 @@ import { ENVELOPE_VERSION, TopicErrorReason } from '@chanx-js/protocol';
 import type { ResolvedOptions, Transport } from './app';
 import { camelize, decamelize } from './case';
 import type {
+  BroadcastOptions,
   ConnectRequest,
   Connection,
   ConsumerDefinition,
@@ -87,12 +88,31 @@ export function openSession(
       groups.splice(index, 1);
       await layer.groupDiscard(group, requireChannel().name);
     },
+    push: async (message) => write(message, {}),
+    broadcast: (message, options) => broadcast(message, options),
     close(code, reason) {
       if (isClosed) return;
       isClosed = true;
       transport.close(code, reason);
     },
   };
+
+  async function broadcast(
+    message: Message,
+    { groups: targets = groups, excludeCurrent = false }: BroadcastOptions = {},
+  ) {
+    const from = requireChannel().name;
+    await Promise.all(
+      targets.map((group) =>
+        layer.groupSend(group, {
+          type: GROUP_MESSAGE,
+          message,
+          exclude_current: excludeCurrent,
+          from_channel: from,
+        }),
+      ),
+    );
+  }
 
   const write = (message: object, envelope: Envelope) => {
     if (isClosed) return;
@@ -115,19 +135,7 @@ export function openSession(
     signal: abort.signal,
     send: async (message) => write(message, envelope),
     push: async (message) => write(message, { topic: envelope.topic }),
-    async broadcast(message, { groups: targets = groups, excludeCurrent = false } = {}) {
-      const from = requireChannel().name;
-      await Promise.all(
-        targets.map((group) =>
-          layer.groupSend(group, {
-            type: GROUP_MESSAGE,
-            message,
-            exclude_current: excludeCurrent,
-            from_channel: from,
-          }),
-        ),
-      );
-    },
+    broadcast,
   });
 
   const ready = (async () => {

@@ -76,6 +76,32 @@ await chanx.broadcastEvent(room, UserJoined.create({ user: 'ann' }), ['room.lobb
 The layer messages are chanx's own (`handle_channel_event`, `handle_group_message`),
 so a Python worker's `broadcast_event` reaches Node connections, and back.
 
+## Classes
+
+The same consumer as a class, for shared logic, base classes and hooks to override. One
+instance serves one connection, so its fields are per-connection state:
+
+```ts
+import { AsyncJsonWebsocketConsumer, Consumer, On } from '@chanx-js/server';
+
+@Consumer('/ws/chat/{room}', { name: 'chat', emits: [Notice] })
+class ChatConsumer extends AsyncJsonWebsocketConsumer {
+  @On(PingMessage, { output: PongMessage })
+  ping() {
+    return PongMessage.create();
+  }
+
+  @On(Chat)
+  async chat(m: MessageOf<typeof Chat>, ctx: ClassContext) {
+    await ctx.send(Notice.create({ text: `${this.params.room}: ${m.payload.text}` }));
+  }
+}
+```
+
+The decorators work with standard decorators and with `experimentalDecorators` (as
+NestJS uses). As in chanx, a subclass method overrides the handler of the same name, and
+two methods handling one action are an error.
+
 Payloads are validated by any [Standard Schema](https://standardschema.dev) library:
 Zod, Valibot, ArkType and others. Validation errors reach the client in the shape
 chanx's pydantic errors have.
