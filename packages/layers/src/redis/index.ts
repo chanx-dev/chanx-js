@@ -1,3 +1,8 @@
+/**
+ * A Redis pub/sub layer, wire-compatible with Python's.
+ *
+ * @module redis
+ */
 import type { RedisClientOptions } from 'redis';
 import { createClient } from 'redis';
 

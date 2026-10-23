@@ -8,7 +8,7 @@ const repo = 'https://github.com/huynguyengl99/chanx-js';
 export default defineConfig({
   title: 'chanx-js',
   description:
-    'Type-safe WebSocket client for chanx AsyncAPI schemas, with topic multiplexing.',
+    'Type-safe WebSocket clients and a Node server for chanx, with topic multiplexing.',
   base: '/chanx-js/',
   cleanUrls: true,
   head: [['meta', { name: 'theme-color', content: '#3f51b5' }]],
@@ -16,6 +16,7 @@ export default defineConfig({
     nav: [
       { text: 'Guide', link: '/guide/getting-started', activeMatch: '/guide/' },
       { text: 'Frameworks', link: '/frameworks/react', activeMatch: '/frameworks/' },
+      { text: 'Server', link: '/server/', activeMatch: '/server/' },
       { text: 'API', link: '/api/', activeMatch: '/api/' },
       { text: 'Design', link: '/design' },
       {
@@ -49,6 +50,21 @@ export default defineConfig({
             { text: 'Svelte', link: '/frameworks/svelte' },
             { text: 'Solid', link: '/frameworks/solid' },
             { text: 'Plain JS and Node', link: '/frameworks/vanilla' },
+          ],
+        },
+      ],
+      '/server/': [
+        {
+          text: 'Server',
+          items: [
+            { text: 'Getting started', link: '/server/' },
+            { text: 'Consumers', link: '/server/consumers' },
+            { text: 'Topics', link: '/server/topics' },
+            { text: 'Serving', link: '/server/serving' },
+            { text: 'Channel layers', link: '/server/layers' },
+            { text: 'AsyncAPI', link: '/server/asyncapi' },
+            { text: 'Testing', link: '/server/testing' },
+            { text: 'NestJS', link: '/server/nestjs' },
           ],
         },
       ],

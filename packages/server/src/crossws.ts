@@ -1,3 +1,8 @@
+/**
+ * crossws hooks: Bun, Deno, Cloudflare Workers, h3, Nitro and Nuxt.
+ *
+ * @module crossws
+ */
 import type { Hooks, Peer } from 'crossws';
 
 import type { Chanx } from './app';

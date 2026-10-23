@@ -28,6 +28,30 @@ const chat = consumer('/ws/chat/{room}', { name: 'chat', emits: [Notice] })
 export const chanx = createChanx({ consumers: [chat] });
 ```
 
+Or as a class, for shared logic, base classes and hooks to override. One instance
+serves one connection, so its fields are per-connection state:
+
+```ts
+import { AsyncJsonWebsocketConsumer, Consumer, On } from '@chanx-js/server';
+
+@Consumer('/ws/chat/{room}', { name: 'chat', emits: [Notice] })
+class ChatConsumer extends AsyncJsonWebsocketConsumer {
+  @On(PingMessage, { output: PongMessage })
+  ping() {
+    return PongMessage.create();
+  }
+
+  @On(Chat)
+  async chat(m: MessageOf<typeof Chat>, ctx: ClassContext) {
+    await ctx.send(Notice.create({ text: `${this.params.room}: ${m.payload.text}` }));
+  }
+}
+```
+
+The decorators work with standard decorators and with `experimentalDecorators` (as
+NestJS uses). As in chanx, a subclass method overrides the handler of the same name, and
+two methods handling one action are an error.
+
 ## Serving it
 
 `@chanx-js/server/node` serves an app on any Node HTTP server, through
@@ -43,8 +67,8 @@ attachChanx(server, chanx);
 server.listen(8000);
 ```
 
-Only upgrades for paths a consumer serves are taken, so other WebSocket servers can
-share the HTTP server. Clients are pinged every 20 seconds and dropped when they stop
+Other WebSocket servers can share the HTTP server: those attached before chanx, Nest's
+gateways included, only see the paths a consumer does not serve. Clients are pinged every 20 seconds and dropped when they stop
 answering, as uvicorn does for Python's chanx.
 
 ### Other runtimes
@@ -68,7 +92,7 @@ crossws' uWebSockets adapter.
 
 ## Groups and events
 
-Connections join groups through a [channel layer](../layers): in-memory by default, or
+Connections join groups through a [channel layer](https://github.com/huynguyengl99/chanx-js/tree/main/packages/layers): in-memory by default, or
 Redis shared with other Node and Python processes.
 
 ```ts
@@ -170,7 +194,14 @@ same subscribers.
 `@chanx-js/codegen` turns it into a typed client exactly as it would a Python server's:
 
 ```ts
-app.get('/asyncapi.json', (_req, res) => res.json(chanx.asyncapi({ title: 'Chat API' })));
+import { asyncapiHandler } from '@chanx-js/server';
+import { asyncapiMiddleware } from '@chanx-js/server/node';
+
+// A docs page at /asyncapi, the document at /asyncapi.json and /asyncapi.yaml.
+const asyncapi = asyncapiHandler(chanx, { title: 'Chat API' }); // a Fetch handler
+honoApp.get('/asyncapi*', async (c, next) => (await asyncapi(c.req.raw)) ?? next());
+
+expressApp.use(asyncapiMiddleware(chanx, { title: 'Chat API' })); // or on Node
 ```
 
 Payload schemas come from [Standard JSON Schema](https://standardschema.dev/json-schema)
@@ -178,35 +209,13 @@ Payload schemas come from [Standard JSON Schema](https://standardschema.dev/json
 Zod's `.meta({ title: 'ChatPayload' })`, to have it documented as a named component, as
 pydantic models are.
 
-## Classes
-
-The same consumer as a class, for shared logic, base classes and hooks to override. One
-instance serves one connection, so its fields are per-connection state:
-
-```ts
-import { AsyncJsonWebsocketConsumer, Consumer, On } from '@chanx-js/server';
-
-@Consumer('/ws/chat/{room}', { name: 'chat', emits: [Notice] })
-class ChatConsumer extends AsyncJsonWebsocketConsumer {
-  @On(PingMessage, { output: PongMessage })
-  ping() {
-    return PongMessage.create();
-  }
-
-  @On(Chat)
-  async chat(m: MessageOf<typeof Chat>, ctx: ClassContext) {
-    await ctx.send(Notice.create({ text: `${this.params.room}: ${m.payload.text}` }));
-  }
-}
-```
-
-The decorators work with standard decorators and with `experimentalDecorators` (as
-NestJS uses). As in chanx, a subclass method overrides the handler of the same name, and
-two methods handling one action are an error.
+## Validation
 
 Payloads are validated by any [Standard Schema](https://standardschema.dev) library:
 Zod, Valibot, ArkType and others. Validation errors reach the client in the shape
 chanx's pydantic errors have.
+
+## Testing
 
 `@chanx-js/server/testing` connects to an app in-process, without a network:
 
@@ -240,3 +249,8 @@ expect(posts.captured).toEqual([
 ]);
 posts.restore();
 ```
+
+## NestJS
+
+[`@chanx-js/nestjs`](https://github.com/huynguyengl99/chanx-js/tree/main/packages/nestjs) serves these consumers and topics as injectable
+gateways, with Nest's guards, interceptors, pipes and exception filters.

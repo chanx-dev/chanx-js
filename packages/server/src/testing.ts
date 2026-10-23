@@ -1,3 +1,8 @@
+/**
+ * An in-process test client, and captures of what was broadcast.
+ *
+ * @module testing
+ */
 import type { ChannelMessage } from '@chanx-js/layers';
 
 import type { Chanx, ConsumerLike } from './app';

@@ -1,3 +1,8 @@
+/**
+ * Serve an app on a Node HTTP server, through `ws`.
+ *
+ * @module node
+ */
 import type {
   IncomingHttpHeaders,
   IncomingMessage,

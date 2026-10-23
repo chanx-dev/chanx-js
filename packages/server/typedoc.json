@@ -1,0 +1,30 @@
+{
+  "entryPoints": [
+    "src/index.ts",
+    "src/node.ts",
+    "src/crossws.ts",
+    "src/hono.ts",
+    "src/testing.ts"
+  ],
+  "tsconfig": "tsconfig.json",
+  "intentionallyNotExported": [
+    "ExtractParams",
+    "Ref",
+    "ConsumerDefinition",
+    "HandlerSetDefinition",
+    "TopicDefinition",
+    "ClassDecorator",
+    "MethodDecorator",
+    "HandlerMethod",
+    "InferOutput",
+    "PayloadOf",
+    "MessageSpecs",
+    "Outputs",
+    "Handler",
+    "OutputMessages",
+    "Returned",
+    "NeedsOf",
+    "CreateArgs",
+    "SchemaResult"
+  ]
+}

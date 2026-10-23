@@ -1,3 +1,8 @@
+/**
+ * Consumers, topics, messages and the app that serves them.
+ *
+ * @module core
+ */
 export { createChanx } from './app';
 export type { Chanx, ChanxOptions, ConsumerLike, Logger, Transport } from './app';
 export { asyncapiHandler } from './asyncapi-http';
@@ -72,5 +77,5 @@ export type {
   TopicLike,
   TopicOptions,
 } from './topic';
-export type { StandardSchemaV1 } from './standard-schema';
+export type { JsonSchema, StandardSchemaV1 } from './standard-schema';
 export type { ValidationIssue } from './validation';

@@ -2,7 +2,13 @@
   "$schema": "https://typedoc.org/schema.json",
   "name": "API reference",
   "entryPointStrategy": "packages",
-  "entryPoints": ["../packages/client", "../packages/codegen"],
+  "entryPoints": [
+    "../packages/client",
+    "../packages/codegen",
+    "../packages/server",
+    "../packages/layers",
+    "../packages/nestjs"
+  ],
   "plugin": ["typedoc-plugin-markdown", "typedoc-vitepress-theme"],
   "out": "./api",
   "docsRoot": ".",

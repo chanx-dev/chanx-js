@@ -3,12 +3,15 @@ layout: home
 
 hero:
   name: chanx-js
-  text: Typed WebSocket clients for chanx
-  tagline: Generate a client from your chanx AsyncAPI schema, then use it from React, Vue, Svelte, Solid or plain JavaScript, topics included.
+  text: Typed WebSockets for chanx
+  tagline: Generate a client from your chanx AsyncAPI schema and use it from React, Vue, Svelte, Solid or plain JavaScript. Serve the same protocol from Node, NestJS included.
   actions:
     - theme: brand
       text: Get started
       link: /guide/getting-started
+    - theme: alt
+      text: Node server
+      link: /server/
     - theme: alt
       text: API reference
       link: /api/
@@ -27,6 +30,8 @@ features:
     details: 'React, Vue, Svelte and Solid bindings are thin adapters over one shared controller, so buffering and batching behave identically everywhere.'
   - title: Plain JavaScript and Node
     details: 'No framework required. Await a connection, await one message, or iterate with for await. Node 22 works out of the box.'
+  - title: A Node server too
+    details: '@chanx-js/server speaks the same protocol as Python chanx, with typed consumers, topics, AsyncAPI and NestJS gateways. Its Redis layer is shared with Python processes.'
   - title: Zero runtime dependencies
     details: 'The runtime ships no dependencies. Validation with zod is opt-in and only loaded when you ask for it; types-only builds carry none of it.'
 ---

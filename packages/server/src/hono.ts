@@ -1,3 +1,8 @@
+/**
+ * Hono middleware, on any runtime.
+ *
+ * @module hono
+ */
 import type { MiddlewareHandler } from 'hono';
 import type { UpgradeWebSocket } from 'hono/ws';
 

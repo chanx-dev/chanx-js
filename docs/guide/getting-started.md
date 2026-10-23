@@ -1,11 +1,11 @@
 # Getting started
 
-chanx-js is the JavaScript side of [chanx](https://github.com/huynguyengl99/chanx). It has two packages:
+chanx-js is the JavaScript side of [chanx](https://github.com/huynguyengl99/chanx). On the client, it has two packages:
 
 - **`@chanx-js/client`**: the runtime. Zero dependencies and framework-agnostic, with optional bindings on `@chanx-js/client/react`, `@chanx-js/client/vue`, `@chanx-js/client/svelte` and `@chanx-js/client/solid`.
 - **`@chanx-js/codegen`**: a CLI that turns a chanx AsyncAPI 3 schema into typed channel descriptors.
 
-The server stays in Python: chanx-js only talks to it.
+The client talks to Python's chanx or to the Node server, [`@chanx-js/server`](../server/), alike.
 
 ## Install
 

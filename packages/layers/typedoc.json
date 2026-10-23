@@ -1,0 +1,4 @@
+{
+  "entryPoints": ["src/index.ts", "src/redis/index.ts"],
+  "tsconfig": "tsconfig.json"
+}
