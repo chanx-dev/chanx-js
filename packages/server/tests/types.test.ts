@@ -10,6 +10,7 @@ import {
   createChanx,
   defineMessage,
   handlers,
+  topic,
 } from '../src';
 
 class RoomService {
@@ -84,6 +85,33 @@ describe('builder types', () => {
     const wrongPayload = { action: 'alert' as const, payload: { level: 1 } };
     // @ts-expect-error: wrong payload for a handled event
     await chanx.sendEvent(room, wrongPayload, 'asgispecific.x');
+  });
+
+  it('types topic params, replies and what may be published', async () => {
+    const Posted = defineMessage('posted', z.object({ body: z.string() }));
+    const room = topic('room:{room_name}', {
+      authorize: ({ params }) => params.room_name !== 'secret',
+    })
+      .on(Chat, { output: Posted }, (m, ctx) => {
+        ctx.params.room_name satisfies string;
+        // @ts-expect-error: not a param of the pattern
+        void ctx.params.room;
+        return Posted.create({ body: m.payload.text });
+      })
+      .passthrough(Joined);
+    const chanx = createChanx({
+      consumers: [consumer('/ws', { name: 'hub', topics: [room] })],
+    });
+
+    await chanx.publish(
+      room,
+      room.with({ room_name: 'lobby' }),
+      Joined.create({ user: 1 }),
+    );
+    // @ts-expect-error: the topic handles no such event
+    await chanx.publish(room, 'room:lobby', PongMessage.create());
+    // @ts-expect-error: a missing param
+    expect(() => room.with({})).toThrow('Missing parameter');
   });
 
   it('types created messages from their schemas', () => {

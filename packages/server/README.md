@@ -76,6 +76,38 @@ await chanx.broadcastEvent(room, UserJoined.create({ user: 'ann' }), ['room.lobb
 The layer messages are chanx's own (`handle_channel_event`, `handle_group_message`),
 so a Python worker's `broadcast_event` reaches Node connections, and back.
 
+## Topics
+
+One connection, many streams: clients subscribe to topics by name, each with its own
+handlers and authorization, as in chanx.
+
+```ts
+import { topic } from '@chanx-js/server';
+
+const roomTopic = topic('room:{room_name}', {
+  authorize: ({ params, conn }) => canJoin(conn.user, params.room_name),
+  onSubscribe: (ctx) => ctx.send(History.create(await history(ctx.params.room_name))),
+})
+  .on(Post, { output: Posted }, async (m, ctx) => {
+    await ctx.publish(RoomEvent.create(m.payload));
+    return Posted.create(m.payload);
+  })
+  .passthrough(RoomEvent);
+
+const hub = consumer('/ws/hub', { name: 'hub', topics: [roomTopic] });
+
+// From anywhere; `seq` is caller-assigned, for gap detection:
+await chanx.publish(roomTopic, roomTopic.with({ room_name: 'lobby' }), event, {
+  seq: 42,
+});
+
+// The same topic alone on a route, subscribed from the URL:
+const room = roomTopic.asConsumer('/ws/room/{room_name}');
+```
+
+Group names follow chanx (`RoomTopic.room-lobby`), so Python and Node publish to the
+same subscribers.
+
 ## Classes
 
 The same consumer as a class, for shared logic, base classes and hooks to override. One

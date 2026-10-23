@@ -15,6 +15,7 @@ export type {
   HandlerSet,
   HandlerSetBuilder,
   PathParams,
+  TopicSource,
 } from './consumer';
 export { AuthenticationError } from './errors';
 export {
@@ -37,5 +38,7 @@ export type {
   MessageOptions,
 } from './messages';
 export type { Session } from './session';
+export { topic } from './topic';
+export type { PublishOptions, TopicBuilder, TopicContext, TopicOptions } from './topic';
 export type { StandardSchemaV1 } from './standard-schema';
 export type { ValidationIssue } from './validation';

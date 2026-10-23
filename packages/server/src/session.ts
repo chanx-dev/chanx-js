@@ -1,5 +1,10 @@
 import type { ChannelLayer, ChannelMessage, LayerChannel } from '@chanx-js/layers';
-import { ENVELOPE_VERSION, TopicErrorReason } from '@chanx-js/protocol';
+import {
+  ENVELOPE_VERSION,
+  TopicErrorReason,
+  formatPattern,
+  safeGroupName,
+} from '@chanx-js/protocol';
 
 import type { ResolvedOptions, Transport } from './app';
 import { camelize, decamelize } from './case';
@@ -8,7 +13,6 @@ import type {
   ConnectRequest,
   Connection,
   ConsumerDefinition,
-  Context,
   HandlerDefinition,
 } from './consumer';
 import { eventHandlersOf } from './consumer';
@@ -21,6 +25,8 @@ import {
   EventCompleteMessage,
   GroupCompleteMessage,
 } from './messages';
+import type { PublishOptions, TopicDefinition } from './topic';
+import type { ValidationResult } from './validation';
 import { createValidator, envelopeIssues, isObject } from './validation';
 
 /** One accepted socket, as an adapter drives it. */
@@ -36,8 +42,49 @@ export interface Session {
 // The layer message types chanx consumers dispatch on, so Python and Node share them.
 export const CHANNEL_EVENT = 'handle_channel_event';
 export const GROUP_MESSAGE = 'handle_group_message';
+export const TOPIC_EVENT = 'handle_topic_event';
 
-type Envelope = { topic?: string; ref?: string };
+/** The channel layer group a topic's subscribers join, as chanx's `Topic.group_name`. */
+export function topicGroup(topic: TopicDefinition, value: string): string {
+  return safeGroupName([value], { namespace: topic.name });
+}
+
+type Envelope = { topic?: string; ref?: string; seq?: number };
+
+/** Handlers and what they run with: the consumer itself, or one topic subscription. */
+interface Scope {
+  readonly handlers: ReadonlyMap<string, HandlerDefinition>;
+  readonly events: ReadonlyMap<string, HandlerDefinition>;
+  validate(frame: Record<string, unknown>): Promise<ValidationResult>;
+  validateEvent(frame: Record<string, unknown>): Promise<ValidationResult>;
+  context(envelope: Envelope): object;
+}
+
+interface Subscription {
+  readonly topic: TopicDefinition;
+  readonly group: string;
+  readonly scope: Scope;
+}
+
+const scopes = new WeakMap<
+  object,
+  Pick<Scope, 'handlers' | 'events' | 'validate' | 'validateEvent'>
+>();
+
+function handlersOf(definition: ConsumerDefinition | TopicDefinition) {
+  let found = scopes.get(definition);
+  if (!found) {
+    const events = eventHandlersOf(definition);
+    found = {
+      handlers: definition.handlers,
+      events,
+      validate: createValidator([...definition.handlers.values()].map((h) => h.message)),
+      validateEvent: createValidator([...events.values()].map((h) => h.message)),
+    };
+    scopes.set(definition, found);
+  }
+  return found;
+}
 
 export function openSession(
   definition: ConsumerDefinition,
@@ -48,16 +95,11 @@ export function openSession(
   const { logger, layer } = options;
   const consumer = definition.options;
   const abort = new AbortController();
-  const validate = createValidator(
-    [...definition.handlers.values()].map((h) => h.message),
-  );
-  const eventHandlers = eventHandlersOf(definition);
-  const validateEvent = createValidator(
-    [...eventHandlers.values()].map((h) => h.message),
-  );
   const warned = new Set<string>();
   const groups: string[] = [];
+  const subscriptions = new Map<string, Subscription>();
   let channel: LayerChannel | undefined;
+  let defaultTopic: string | undefined;
   let isClosed = false;
   let connected = false;
   let state: unknown;
@@ -97,6 +139,19 @@ export function openSession(
     },
   };
 
+  const write = (message: object, envelope: Envelope) => {
+    if (isClosed) return;
+    const content = options.camelize ? (camelize(message) as object) : message;
+    // A plain frame without a ref gets no envelope at all, as chanx sends it.
+    const stamped =
+      envelope.topic !== undefined
+        ? { ...content, version: ENVELOPE_VERSION, ...envelope }
+        : envelope.ref !== undefined
+          ? { ...content, version: ENVELOPE_VERSION, ref: envelope.ref }
+          : content;
+    transport.send(JSON.stringify(stamped));
+  };
+
   async function broadcast(
     message: Message,
     { groups: targets = groups, excludeCurrent = false }: BroadcastOptions = {},
@@ -114,29 +169,46 @@ export function openSession(
     );
   }
 
-  const write = (message: object, envelope: Envelope) => {
-    if (isClosed) return;
-    const content = options.camelize ? (camelize(message) as object) : message;
-    // A plain frame without a ref gets no envelope at all, as chanx sends it.
-    const stamped =
-      envelope.topic !== undefined
-        ? { ...content, version: ENVELOPE_VERSION, ...envelope }
-        : envelope.ref !== undefined
-          ? { ...content, version: ENVELOPE_VERSION, ref: envelope.ref }
-          : content;
-    transport.send(JSON.stringify(stamped));
+  const consumerScope: Scope = {
+    ...handlersOf(definition),
+    context: (envelope) => ({
+      conn,
+      params: request.params,
+      state,
+      ref: envelope.ref,
+      signal: abort.signal,
+      send: async (message: Message) => write(message, envelope),
+      push: async (message: Message) => write(message, {}),
+      broadcast,
+    }),
   };
 
-  const context = (envelope: Envelope): Context<string, unknown, unknown, Message> => ({
-    conn,
-    params: request.params,
-    state,
-    ref: envelope.ref,
-    signal: abort.signal,
-    send: async (message) => write(message, envelope),
-    push: async (message) => write(message, { topic: envelope.topic }),
-    broadcast,
-  });
+  function topicScope(
+    topic: TopicDefinition,
+    value: string,
+    params: Record<string, string>,
+  ): Scope {
+    const group = topicGroup(topic, value);
+    return {
+      ...handlersOf(topic),
+      context: (envelope) => ({
+        conn,
+        params,
+        topic: value,
+        ref: envelope.ref,
+        signal: abort.signal,
+        send: async (message: Message) => write(message, envelope),
+        push: async (message: Message) => write(message, { topic: value }),
+        publish: (event: Message, { seq }: PublishOptions = {}) =>
+          layer.groupSend(group, {
+            type: TOPIC_EVENT,
+            topic: value,
+            seq: seq ?? null,
+            event_data: event,
+          }),
+      }),
+    };
+  }
 
   const ready = (async () => {
     if (consumer.authenticate && !(await authenticate())) {
@@ -153,7 +225,12 @@ export function openSession(
       typeof consumer.groups === 'function' ? consumer.groups(conn) : consumer.groups;
     for (const group of initial ?? []) await conn.join(group);
     connected = true;
-    await consumer.onConnect?.(context({}) as never);
+    await consumer.onConnect?.(consumerScope.context({}) as never);
+    if (definition.defaultTopic) {
+      // A route dedicated to one topic subscribes it from the URL, as chanx's default topic.
+      defaultTopic = formatPattern(definition.defaultTopic.pattern, request.params);
+      await subscribe(defaultTopic, { topic: defaultTopic });
+    }
     return true;
   })().catch((error: unknown) => {
     logger.error('chanx: connecting failed', error);
@@ -203,34 +280,55 @@ export function openSession(
     const { version, topic, ref, seq, ...rest } = content as Record<string, unknown>;
     const envelope: Envelope = {
       ref: (ref as string | null) ?? undefined,
-      topic: (topic as string | null) ?? undefined,
+      topic: (topic as string | null) ?? defaultTopic,
     };
     const message = (options.camelize ? decamelize(rest) : rest) as Record<
       string,
       unknown
     >;
 
-    if (envelope.topic !== undefined) return handleTopicFrame(message, envelope);
+    if (envelope.topic === undefined) return runMessage(consumerScope, message, envelope);
+    if (message.action === 'subscribe') return subscribe(envelope.topic, envelope);
+    if (message.action === 'unsubscribe') return unsubscribe(envelope.topic, envelope);
+    const subscription = subscriptions.get(envelope.topic);
+    if (!subscription) {
+      return topicError(
+        TopicErrorReason.NOT_SUBSCRIBED,
+        `Not subscribed to '${envelope.topic}'`,
+        envelope,
+      );
+    }
+    await runMessage(subscription.scope, message, envelope);
+  }
 
-    await handleMessage(message, envelope);
+  async function runMessage(
+    scope: Scope,
+    frame: Record<string, unknown>,
+    envelope: Envelope,
+  ) {
+    await handleMessage(scope, frame, envelope);
     if (options.sendCompletion) write(CompleteMessage.create(), envelope);
   }
 
-  async function handleMessage(frame: Record<string, unknown>, envelope: Envelope) {
-    if (definition.handlers.size === 0) {
+  async function handleMessage(
+    scope: Scope,
+    frame: Record<string, unknown>,
+    envelope: Envelope,
+  ) {
+    if (scope.handlers.size === 0) {
       logger.error(`chanx: consumer "${consumer.name}" has no message handlers`);
       return write(
         ErrorMessage.create({ detail: 'Failed to process message' }),
         envelope,
       );
     }
-    const result = await validate(frame);
+    const result = await scope.validate(frame);
     if ('issues' in result) return write(ErrorMessage.create(result.issues), envelope);
 
     const { message } = result;
-    const handler = definition.handlers.get(message.action)!;
+    const handler = scope.handlers.get(message.action)!;
     try {
-      const reply = await handler.handle(message, context(envelope));
+      const reply = await handler.handle(message, scope.context(envelope) as never);
       if (reply !== undefined) {
         checkDeclared(handler, reply);
         write(reply as object, envelope);
@@ -246,17 +344,57 @@ export function openSession(
     }
   }
 
-  // Topics are not mounted yet, so a topic frame gets chanx's answer for an unknown one.
-  async function handleTopicFrame(frame: Record<string, unknown>, envelope: Envelope) {
-    const topic = envelope.topic!;
-    if (frame.action === 'unsubscribe')
-      return write({ action: 'unsubscribed', payload: null }, envelope);
-    const [reason, detail] =
-      frame.action === 'subscribe'
-        ? [TopicErrorReason.UNKNOWN_TOPIC, `Unknown topic '${topic}'`]
-        : [TopicErrorReason.NOT_SUBSCRIBED, `Not subscribed to '${topic}'`];
-    logger.warn('chanx: topic error', { topic, reason, detail });
+  function topicError(reason: TopicErrorReason, detail: string, envelope: Envelope) {
+    logger.warn('chanx: topic error', { topic: envelope.topic, reason, detail });
     write(ErrorMessage.create({ reason, detail }), envelope);
+  }
+
+  async function subscribe(value: string, envelope: Envelope) {
+    const subscribed = { action: 'subscribed', payload: null };
+    if (subscriptions.has(value)) return write(subscribed, envelope);
+
+    const found = definition.topics
+      .map((topic) => ({ topic, params: topic.match(value) }))
+      .find(({ params }) => params !== null);
+    if (!found)
+      return topicError(
+        TopicErrorReason.UNKNOWN_TOPIC,
+        `Unknown topic '${value}'`,
+        envelope,
+      );
+    const { topic } = found;
+    const params = found.params!;
+    const authorized =
+      (await topic.options.authorize?.({ params, conn, topic: value })) ?? true;
+    if (!authorized) {
+      return topicError(
+        TopicErrorReason.UNAUTHORIZED,
+        `Not allowed to subscribe to '${value}'`,
+        envelope,
+      );
+    }
+
+    const scope = topicScope(topic, value, params);
+    const group = topicGroup(topic, value);
+    await layer.groupAdd(group, requireChannel().name);
+    groups.push(group);
+    subscriptions.set(value, { topic, group, scope });
+    write(subscribed, envelope);
+    // What the topic pushes now is state, not a reply to the subscribe.
+    await topic.options.onSubscribe?.(scope.context({ topic: value }) as never);
+  }
+
+  async function unsubscribe(value: string, envelope: Envelope) {
+    const subscription = subscriptions.get(value);
+    if (subscription) await leaveTopic(value, subscription);
+    write({ action: 'unsubscribed', payload: null }, envelope);
+  }
+
+  async function leaveTopic(value: string, { topic, group, scope }: Subscription) {
+    subscriptions.delete(value);
+    await topic.options.onUnsubscribe?.(scope.context({ topic: value }) as never);
+    groups.splice(groups.indexOf(group), 1);
+    if (channel) await layer.groupDiscard(group, channel.name);
   }
 
   // Layer messages wait for the connection to be ready, as chanx queues them behind connect.
@@ -264,7 +402,15 @@ export function openSession(
     void (async () => {
       if (!(await ready) || isClosed) return;
       if (message.type === GROUP_MESSAGE) return handleGroupMessage(message);
-      if (message.type === CHANNEL_EVENT) return handleEvent(message.event_data);
+      if (message.type === CHANNEL_EVENT)
+        return handleEvent(consumerScope, message.event_data, {});
+      if (message.type === TOPIC_EVENT) {
+        const value = String(message.topic);
+        const subscription = subscriptions.get(value);
+        if (!subscription) return;
+        const seq = typeof message.seq === 'number' ? message.seq : undefined;
+        return handleEvent(subscription.scope, message.event_data, { topic: value, seq });
+      }
       logger.warn(`chanx: ignored a layer message of type "${String(message.type)}"`);
     })().catch((error: unknown) => logger.error('chanx: layer message failed', error));
   }
@@ -278,28 +424,28 @@ export function openSession(
     if (options.sendCompletion) write(GroupCompleteMessage.create(), {});
   }
 
-  async function handleEvent(data: unknown) {
-    if (eventHandlers.size === 0) {
+  async function handleEvent(scope: Scope, data: unknown, envelope: Envelope) {
+    if (scope.events.size === 0) {
       return logger.error(`chanx: consumer "${consumer.name}" has no event handlers`);
     }
     if (!isObject(data)) return logger.error('chanx: channel event is not a dict', data);
-    const result = await validateEvent(data);
+    const result = await scope.validateEvent(data);
     if ('issues' in result) {
       return logger.error('chanx: channel event failed validation', result.issues);
     }
 
     const { message } = result;
-    const handler = eventHandlers.get(message.action)!;
+    const handler = scope.events.get(message.action)!;
     try {
-      const reply = await handler.handle(message, context({}));
+      const reply = await handler.handle(message, scope.context(envelope) as never);
       if (reply !== undefined) {
         checkDeclared(handler, reply);
-        write(reply as object, {});
+        write(reply as object, envelope);
       }
     } catch (error) {
       logger.error(`chanx: event handler for "${message.action}" failed`, error);
     }
-    if (options.sendCompletion) write(EventCompleteMessage.create(), {});
+    if (options.sendCompletion) write(EventCompleteMessage.create(), envelope);
   }
 
   function checkDeclared(handler: HandlerDefinition, reply: unknown) {
@@ -326,9 +472,11 @@ export function openSession(
       if (abort.signal.aborted) return teardown;
       isClosed = true;
       abort.abort();
-      // The hook runs first, as chanx's teardown runs before the groups are left.
+      // Topics leave first, then the hook runs, then the groups go: chanx's order.
       teardown = (async () => {
-        if (connected) await consumer.onDisconnect?.(context({}) as never);
+        for (const [value, subscription] of [...subscriptions])
+          await leaveTopic(value, subscription);
+        if (connected) await consumer.onDisconnect?.(consumerScope.context({}) as never);
         await channel?.close();
       })().catch((error: unknown) => logger.error('chanx: disconnecting failed', error));
       return teardown;

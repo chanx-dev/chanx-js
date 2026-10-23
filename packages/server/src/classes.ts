@@ -7,7 +7,7 @@ import type {
   HandlerDefinition,
   HandlerOptions,
 } from './consumer';
-import { classDefinitions } from './consumer';
+import { TOPIC, classDefinitions } from './consumer';
 import type { AnyMessageDefinition, Message, MessageOf } from './messages';
 
 /**
@@ -190,5 +190,6 @@ function definitionFromClass(
     handlers,
     events,
     passthrough,
+    topics: (options.topics ?? []).map((source) => source[TOPIC]),
   };
 }

@@ -1,13 +1,25 @@
 import type { AddressInfo } from 'node:net';
 import { createServer } from 'node:http';
 
-import { ChanxRequestError, createClient, defineChannel } from '@chanx-js/client';
+import {
+  ChanxRequestError,
+  createClient,
+  defineChannel,
+  defineTopic,
+} from '@chanx-js/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WebSocket, WebSocketServer } from 'ws';
 import { z } from 'zod';
 
 import type { Chanx } from '../src';
-import { PingMessage, PongMessage, consumer, createChanx, defineMessage } from '../src';
+import {
+  PingMessage,
+  PongMessage,
+  consumer,
+  createChanx,
+  defineMessage,
+  topic,
+} from '../src';
 import type { Attachment } from '../src/node';
 import { attachChanx } from '../src/node';
 
@@ -181,6 +193,52 @@ describe('attachChanx', () => {
 
     await client.next(2);
     expect(client.frames[1]).toEqual({ action: 'pong', payload: null });
+  });
+});
+
+describe('topics with @chanx-js/client', () => {
+  const Post = defineMessage('post', z.object({ body: z.string() }));
+  const Posted = defineMessage('posted', z.object({ body: z.string() }));
+  const RoomEvent = defineMessage('room_event', z.object({ body: z.string() }));
+  const serverTopic = topic('room:{room_name}')
+    .on(Post, { output: Posted }, async (m, ctx) => {
+      await ctx.publish(RoomEvent.create(m.payload), { seq: 1 });
+      return Posted.create(m.payload);
+    })
+    .passthrough(RoomEvent);
+  const hub = consumer('/ws/hub', { name: 'hub', topics: [serverTopic] });
+
+  type Out = { action: 'post'; payload: { body: string } };
+  type In = { action: 'posted' | 'room_event'; payload: { body: string } };
+  const roomTopic = defineTopic<Out, In>()({
+    name: 'room_topic',
+    pattern: 'room:{room_name}',
+  });
+  const channel = defineChannel<never, never>()({
+    name: 'hub',
+    address: '/ws/hub',
+    topics: { roomTopic },
+  });
+
+  it('subscribes, requests on a topic and receives its events with their seq', async () => {
+    const { url } = await serve(createChanx({ consumers: [hub] }));
+    const client = createClient({
+      baseUrl: url,
+      socketFactory: (address) => new WebSocket(address) as never,
+    });
+    cleanups.push(() => client.closeAll());
+    const handle = client.connect(channel).topic(roomTopic.with({ room_name: 'lobby' }));
+    const events: unknown[] = [];
+    handle.on('room_event', (message, envelope) => events.push([message, envelope.seq]));
+
+    await handle.subscribe();
+    expect(await handle.request({ action: 'post', payload: { body: 'hi' } })).toEqual({
+      action: 'posted',
+      payload: { body: 'hi' },
+    });
+    await vi.waitFor(() =>
+      expect(events).toEqual([[{ action: 'room_event', payload: { body: 'hi' } }, 1]]),
+    );
   });
 });
 

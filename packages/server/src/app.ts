@@ -2,10 +2,16 @@ import type { ChannelLayer } from '@chanx-js/layers';
 import { InMemoryChannelLayer } from '@chanx-js/layers';
 
 import type { AsyncJsonWebsocketConsumer } from './classes';
-import type { ConsumerBuilder, ConsumerDefinition, EventsOf } from './consumer';
-import { definitionOf } from './consumer';
+import type {
+  ConsumerBuilder,
+  ConsumerDefinition,
+  EventsOf,
+  TopicSource,
+} from './consumer';
+import { TOPIC, definitionOf } from './consumer';
+import type { PublishOptions } from './topic';
 import type { Session } from './session';
-import { CHANNEL_EVENT, openSession } from './session';
+import { CHANNEL_EVENT, TOPIC_EVENT, openSession, topicGroup } from './session';
 
 export interface Logger {
   error(...data: unknown[]): void;
@@ -60,6 +66,16 @@ export interface Chanx {
     event: EventsOf<C>,
     groups?: readonly string[],
   ): Promise<void>;
+  /**
+   * Publish an event to everyone subscribed to a topic, from anywhere, as Python's
+   * `Topic.broadcast`. `seq` is caller-assigned, for gap detection only.
+   */
+  publish<T extends TopicSource>(
+    topic: T,
+    value: string,
+    event: EventsOf<T>,
+    options?: PublishOptions,
+  ): Promise<void>;
   /** Send an event to one connection, by its `channelName`. Python's `send_event`. */
   sendEvent<C extends ConsumerSource>(
     consumer: C,
@@ -81,8 +97,8 @@ export function createChanx(options: ChanxOptions): Chanx {
     dev: options.dev ?? globalThis.process?.env?.NODE_ENV !== 'production',
   };
   const layers = options.layers ?? { default: new InMemoryChannelLayer() };
-  const layerOf = (definition: ConsumerDefinition) => {
-    const name = definition.options.layer ?? 'default';
+  const layerOf = ({ options }: { options: { layer?: string } }) => {
+    const name = options.layer ?? 'default';
     const layer = layers[name];
     if (!layer)
       throw new Error(`No channel layer named "${name}" in createChanx({ layers })`);
@@ -127,6 +143,18 @@ export function createChanx(options: ChanxOptions): Chanx {
           layer.groupSend(group, { type: CHANNEL_EVENT, event_data: event }),
         ),
       );
+    },
+    async publish(source, value, event, { seq } = {}) {
+      const topic = source[TOPIC];
+      if (!topic.match(value)) {
+        throw new Error(`"${value}" is not a topic of pattern "${topic.pattern}"`);
+      }
+      await layerOf(topic).groupSend(topicGroup(topic, value), {
+        type: TOPIC_EVENT,
+        topic: value,
+        seq: seq ?? null,
+        event_data: event,
+      });
     },
     async sendEvent(consumer, event, channelName) {
       await layerOf(definitionOf(consumer)).send(channelName, {

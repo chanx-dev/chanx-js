@@ -1,4 +1,5 @@
 import type { AnyMessageDefinition, Message, MessageOf } from './messages';
+import type { TopicDefinition } from './topic';
 
 type ExtractParams<S extends string> = S extends `${string}{${infer P}}${infer Rest}`
   ? P | ExtractParams<Rest>
@@ -101,6 +102,8 @@ export interface ConsumerOptions<
   tags?: string[];
   /** Messages pushed through `ctx` rather than returned by a handler. */
   emits?: readonly Emits[];
+  /** Topics clients can subscribe to on this connection. */
+  topics?: readonly TopicSource[];
   /** The channel layer to use, by its name in `createChanx({ layers })`. Defaults to `default`. */
   layer?: string;
   /** Groups to join once connected. */
@@ -125,9 +128,18 @@ export interface ConsumerOptions<
 export interface ConsumerDefinition extends HandlerSetDefinition {
   readonly path: string;
   readonly options: ConsumerOptions<string, unknown, unknown, AnyMessageDefinition>;
+  readonly topics: readonly TopicDefinition[];
+  /** Subscribed on connect and implied by frames without a topic, as `Topic.as_consumer()`. */
+  readonly defaultTopic?: TopicDefinition;
 }
 
 const DEFINITION = Symbol('chanx.definition');
+export const TOPIC = Symbol('chanx.topic');
+
+/** Anything carrying a topic definition: a `topic()` builder. */
+export interface TopicSource {
+  readonly [TOPIC]: TopicDefinition;
+}
 
 /** Event handlers including passthrough events; an explicit handler wins, as in chanx. */
 export function eventHandlersOf(
@@ -254,12 +266,18 @@ export function consumer<
     handlers: new Map(),
     events: new Map(),
     passthrough: [],
+    topics: (options.topics ?? []).map((source) => source[TOPIC]),
   }) as never;
 }
 
 /** Handlers to mount on several consumers with `.use()`, stating the state they need. */
 export function handlers<Needs = Record<never, never>>(): HandlerSetBuilder<Needs> {
   return build({ handlers: new Map(), events: new Map(), passthrough: [] }) as never;
+}
+
+/** The handlers, events and passthrough events a builder has collected. */
+export function handlerSetOf(source: HandlerSet<any, any>): HandlerSetDefinition {
+  return source[DEFINITION];
 }
 
 /** Definitions of consumers declared as classes, filled in by `@Consumer`. */
@@ -277,12 +295,13 @@ export function definitionOf(source: object): ConsumerDefinition {
 }
 
 type Definition = HandlerSetDefinition &
-  Partial<Omit<ConsumerDefinition, keyof HandlerSetDefinition>>;
+  Partial<Omit<ConsumerDefinition, keyof HandlerSetDefinition>> & { owner?: string };
 
-function build(definition: Definition) {
-  const owner = definition.options?.name
-    ? `Consumer "${definition.options.name}"`
-    : 'Handler set';
+/** The builder behind `consumer()`, `handlers()` and `topic()`. */
+export function build(definition: Definition) {
+  const owner =
+    definition.owner ??
+    (definition.options?.name ? `Consumer "${definition.options.name}"` : 'Handler set');
   const add = (
     kind: 'handlers' | 'events',
     message: AnyMessageDefinition,
