@@ -14,6 +14,7 @@ export interface MessageDefinition<A extends string = string, P = unknown> {
   readonly payload: StandardSchemaV1<unknown, P> | null;
   /** Its AsyncAPI component name. */
   readonly title: string;
+  readonly description?: string;
   create(...args: CreateArgs<P>): Message<A, P>;
 }
 
@@ -24,6 +25,8 @@ export type MessageOf<D> =
 
 export interface MessageOptions {
   title?: string;
+  /** Documented in AsyncAPI, as a Python message's docstring is. */
+  description?: string;
 }
 
 type PayloadSpec = StandardSchemaV1 | null;
@@ -46,13 +49,16 @@ export function defineMessage(
   options: MessageOptions = {},
 ): AnyMessageDefinition {
   const payload = isSchema(payloadOrOptions) ? payloadOrOptions : null;
-  const { title = `${pascalCase(action)}Message` } = isSchema(payloadOrOptions)
+  const { title = `${pascalCase(action)}Message`, description } = isSchema(
+    payloadOrOptions,
+  )
     ? options
     : (payloadOrOptions ?? {});
   return Object.freeze({
     action,
     payload,
     title,
+    ...(description !== undefined && { description }),
     create: (...args: unknown[]) => ({ action, payload: args.length ? args[0] : null }),
   });
 }
@@ -109,8 +115,12 @@ function anything<T>(): StandardSchemaV1<T, T> {
   };
 }
 
-export const PingMessage = defineMessage('ping');
-export const PongMessage = defineMessage('pong');
+export const PingMessage = defineMessage('ping', {
+  description: 'Simple ping message to check WebSocket connection status.',
+});
+export const PongMessage = defineMessage('pong', {
+  description: 'Simple pong message response to ping requests.',
+});
 export const ErrorMessage = defineMessage('error', anything<unknown>());
 export const CompleteMessage = defineMessage('complete');
 export const GroupCompleteMessage = defineMessage('group_complete');

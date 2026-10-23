@@ -175,6 +175,9 @@ importers:
       '@chanx-js/client':
         specifier: workspace:*
         version: link:../client
+      '@chanx-js/codegen':
+        specifier: workspace:*
+        version: link:../codegen
       '@chanx-js/protocol':
         specifier: workspace:*
         version: link:../protocol

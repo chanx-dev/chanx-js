@@ -1,4 +1,5 @@
 import type { AnyMessageDefinition, Message, MessageOf } from './messages';
+import { decamelizeKey } from './case';
 import type { TopicDefinition } from './topic';
 
 type ExtractParams<S extends string> = S extends `${string}{${infer P}}${infer Rest}`
@@ -76,6 +77,8 @@ type Outputs = AnyMessageDefinition | readonly AnyMessageDefinition[];
 
 /** Runtime form of one handler, whichever surface defined it. */
 export interface HandlerDefinition {
+  /** The AsyncAPI operation name, as a Python handler's method name. */
+  readonly name?: string;
   readonly message: AnyMessageDefinition;
   readonly outputs: readonly AnyMessageDefinition[];
   readonly summary?: string;
@@ -151,6 +154,7 @@ export function eventHandlersOf(
     handlers.set(message.action, {
       message,
       outputs: [message],
+      name: `handle_passthrough_${decamelizeKey(message.title)}`,
       description: `Passthrough handler for ${message.title}`,
       handle: (event) => event,
     });

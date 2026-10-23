@@ -9,8 +9,15 @@ export interface StandardSchemaV1<Input = unknown, Output = Input> {
       value: unknown,
     ) => SchemaResult<Output> | Promise<SchemaResult<Output>>;
     readonly types?: { readonly input: Input; readonly output: Output } | undefined;
+    /** Standard JSON Schema (https://standardschema.dev/json-schema), where the library has it. */
+    readonly jsonSchema?: {
+      readonly input: (options: { readonly target: string }) => JsonSchema;
+      readonly output: (options: { readonly target: string }) => JsonSchema;
+    };
   };
 }
+
+export type JsonSchema = Record<string, unknown>;
 
 export type SchemaResult<Output> =
   | { readonly value: Output; readonly issues?: undefined }

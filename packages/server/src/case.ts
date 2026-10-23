@@ -46,4 +46,5 @@ function convertKeys(value: unknown, convert: (key: string) => string): unknown 
 }
 
 export const camelize = (value: unknown) => convertKeys(value, camelizeKey);
+export { camelizeKey, decamelizeKey };
 export const decamelize = (value: unknown) => convertKeys(value, decamelizeKey);

@@ -108,6 +108,20 @@ const room = roomTopic.asConsumer('/ws/room/{room_name}');
 Group names follow chanx (`RoomTopic.room-lobby`), so Python and Node publish to the
 same subscribers.
 
+## AsyncAPI
+
+`chanx.asyncapi()` documents every consumer and topic as chanx's generator does, so
+`@chanx-js/codegen` turns it into a typed client exactly as it would a Python server's:
+
+```ts
+app.get('/asyncapi.json', (_req, res) => res.json(chanx.asyncapi({ title: 'Chat API' })));
+```
+
+Payload schemas come from [Standard JSON Schema](https://standardschema.dev/json-schema)
+(Zod 4, ArkType, Valibot through `toStandardJsonSchema`). Give a payload a title, such as
+Zod's `.meta({ title: 'ChatPayload' })`, to have it documented as a named component, as
+pydantic models are.
+
 ## Classes
 
 The same consumer as a class, for shared logic, base classes and hooks to override. One

@@ -1,5 +1,6 @@
 export { createChanx } from './app';
 export type { Chanx, ChanxOptions, ConsumerSource, Logger, Transport } from './app';
+export type { AsyncAPIDocument, AsyncAPIOptions } from './asyncapi';
 export { AsyncJsonWebsocketConsumer, Consumer, On, OnEvent } from './classes';
 export type { ClassConsumerOptions, ClassContext } from './classes';
 export { consumer, handlers } from './consumer';

@@ -7,6 +7,7 @@ import type {
   HandlerDefinition,
   HandlerOptions,
 } from './consumer';
+import { decamelizeKey } from './case';
 import { TOPIC, classDefinitions } from './consumer';
 import type { AnyMessageDefinition, Message, MessageOf } from './messages';
 
@@ -162,6 +163,7 @@ function definitionFromClass(
       methodFor.set(key, name);
       const { output, summary, description, tags } = marked.options;
       table.set(marked.message.action, {
+        name: decamelizeKey(name),
         message: marked.message,
         outputs: output === undefined ? [] : [output].flat(),
         summary,

@@ -1,6 +1,8 @@
 import type { ChannelLayer } from '@chanx-js/layers';
 import { InMemoryChannelLayer } from '@chanx-js/layers';
 
+import type { AsyncAPIDocument, AsyncAPIOptions } from './asyncapi';
+import { generateAsyncAPI } from './asyncapi';
 import type { AsyncJsonWebsocketConsumer } from './classes';
 import type {
   ConsumerBuilder,
@@ -76,6 +78,8 @@ export interface Chanx {
     event: EventsOf<T>,
     options?: PublishOptions,
   ): Promise<void>;
+  /** The AsyncAPI 3 document for these consumers, for docs and `@chanx-js/codegen`. */
+  asyncapi(options?: AsyncAPIOptions): AsyncAPIDocument;
   /** Send an event to one connection, by its `channelName`. Python's `send_event`. */
   sendEvent<C extends ConsumerSource>(
     consumer: C,
@@ -156,6 +160,12 @@ export function createChanx(options: ChanxOptions): Chanx {
         event_data: event,
       });
     },
+    asyncapi: (asyncapiOptions) =>
+      generateAsyncAPI(
+        routes.map((route) => route.definition),
+        asyncapiOptions,
+        { camelize: resolved.camelize },
+      ),
     async sendEvent(consumer, event, channelName) {
       await layerOf(definitionOf(consumer)).send(channelName, {
         type: CHANNEL_EVENT,
