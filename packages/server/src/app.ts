@@ -1,0 +1,104 @@
+import type { ConsumerBuilder, ConsumerDefinition } from './consumer';
+import { definitionOf } from './consumer';
+import type { Session } from './session';
+import { openSession } from './session';
+
+export interface Logger {
+  error(...data: unknown[]): void;
+  warn(...data: unknown[]): void;
+}
+
+/** How a server adapter hands chanx an accepted socket. */
+export interface Transport {
+  send(data: string): void;
+  close(code?: number, reason?: string): void;
+}
+
+export interface ChanxOptions {
+  consumers: readonly ConsumerBuilder<any, any, any, any>[];
+  /** Convert keys between snake_case on the server and camelCase on the wire. */
+  camelize?: boolean;
+  /** Send `complete` after each handled frame, as chanx's `send_completion`. */
+  sendCompletion?: boolean;
+  logger?: Logger;
+  /** Development checks, such as undeclared replies. Defaults to `NODE_ENV !== 'production'`. */
+  dev?: boolean;
+}
+
+export interface ResolvedOptions {
+  camelize: boolean;
+  sendCompletion: boolean;
+  logger: Logger;
+  dev: boolean;
+}
+
+export interface Chanx {
+  /** Whether a path belongs to a consumer, so an adapter can leave other upgrades alone. */
+  match(path: string): boolean;
+  /** Serve an accepted socket. Returns `undefined` when no consumer serves the URL. */
+  connect(
+    request: { url: string | URL; headers?: HeadersInit },
+    transport: Transport,
+  ): Session | undefined;
+}
+
+interface Route {
+  definition: ConsumerDefinition;
+  match(path: string): Record<string, string> | null;
+}
+
+export function createChanx(options: ChanxOptions): Chanx {
+  const resolved: ResolvedOptions = {
+    camelize: options.camelize ?? false,
+    sendCompletion: options.sendCompletion ?? false,
+    logger: options.logger ?? console,
+    dev: options.dev ?? globalThis.process?.env?.NODE_ENV !== 'production',
+  };
+  const routes: Route[] = options.consumers.map((builder) => {
+    const definition = definitionOf(builder);
+    return { definition, match: compilePath(definition.path) };
+  });
+  const find = (path: string) => {
+    for (const route of routes) {
+      const params = route.match(path);
+      if (params) return { route, params };
+    }
+    return undefined;
+  };
+
+  return {
+    match: (path) => find(path) !== undefined,
+    connect(request, transport) {
+      const url = new URL(request.url, 'ws://localhost');
+      const found = find(url.pathname);
+      if (!found) return undefined;
+      return openSession(
+        found.route.definition,
+        { url, headers: new Headers(request.headers), params: found.params },
+        transport,
+        resolved,
+      );
+    },
+  };
+}
+
+// Path params match one segment, unlike topic params, which stop at ':'.
+function compilePath(pattern: string): Route['match'] {
+  const names: string[] = [];
+  const source = pattern
+    .split(/\{(\w+)\}/)
+    .map((part, index) => {
+      if (index % 2 === 0) return part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      names.push(part);
+      return '([^/]+)';
+    })
+    .join('');
+  const regex = new RegExp(`^${source}$`);
+  return (path) => {
+    const match = regex.exec(path);
+    if (!match) return null;
+    return Object.fromEntries(
+      names.map((name, index) => [name, decodeURIComponent(match[index + 1]!)]),
+    );
+  };
+}

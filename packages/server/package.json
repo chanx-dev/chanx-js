@@ -1,0 +1,46 @@
+{
+  "name": "@chanx-js/server",
+  "version": "0.1.2",
+  "private": true,
+  "description": "chanx for Node: typed WebSocket consumers with topics and groups, speaking the same protocol as Python's chanx.",
+  "license": "MIT",
+  "author": "Huy Nguyen",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/huynguyengl99/chanx-js.git",
+    "directory": "packages/server"
+  },
+  "bugs": "https://github.com/huynguyengl99/chanx-js/issues",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.mts",
+      "default": "./dist/testing.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown src/index.ts src/testing.ts --format esm --dts.eager --clean",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@chanx-js/protocol": "workspace:*",
+    "zod": "^4.6.7"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "websocket",
+    "asyncapi",
+    "chanx",
+    "typescript"
+  ]
+}
