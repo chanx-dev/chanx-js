@@ -12,12 +12,35 @@ Group names are shared with Python through the channel layer, so `safeGroupName`
 
 ## Channel layers
 
-`@chanx-js/layers` reproduces the Redis format of Python's `RedisPubSubChannelLayer` (channel names, msgpack or JSON, Fernet encryption, the CRC-32 shard ring) so Python and Node processes share one Redis. Its wire tests check Node against bytes and names captured from `channels_redis`, with a raw Redis client standing in for the Python process. A Node-to-Node test cannot catch a change made to both ends of our own layer at once; these can.
+`@chanx-js/layers` reproduces the Redis format of Python's `RedisPubSubChannelLayer` (channel names, msgpack or JSON, Fernet encryption, the CRC-32 shard ring) so Python and Node processes share one Redis. Its wire-format tests pin those bytes and names, with a raw Redis client that shares no code with the layer: a Node-to-Node test cannot catch a change made to both ends of our own layer at once. Testing against Python processes belongs outside this repo.
 
 Two Node-specific choices:
 
 - **A handler per channel instead of `await receive()`.** A Node process holds its sockets in memory, so there is no consumer loop to feed, and no polling task per connection.
 - **Decoding is chained**, because Fernet decryption on Web Crypto is async: without the chain, two messages could reach a handler out of the order Redis delivered them.
+
+## The Node server
+
+`@chanx-js/server` is a second chanx server: same frames, same layer messages, same
+AsyncAPI. Its tests hold it to chanx with values captured from running chanx: a frame
+transcript for topics, pydantic's validation errors, the layer messages' exact bytes,
+and the generated client, which must come out of `@chanx-js/codegen` byte for byte the
+same as from the Python sandbox's schema.
+
+- **An explicit context instead of context variables.** chanx stamps replies with the
+  frame's `ref` through a `ContextVar`. Node's equivalent, `AsyncLocalStorage`, is not on
+  every runtime, so handlers get a `ctx` whose `send()` carries the `ref` and whose
+  `push()` does not.
+- **Outputs are values.** Python reads a handler's return annotation; TypeScript types
+  are erased, so the AsyncAPI generator could not see them. A handler declares
+  `{ output }` once and TypeScript checks every return against it.
+- **Two surfaces, one definition.** The `consumer()` builder and `@Consumer` classes both
+  produce the same definition object; dispatch and AsyncAPI only read that. Decorators
+  record their message on the method itself, so they work as standard decorators and as
+  `experimentalDecorators`, and follow chanx's override rule along the class chain.
+- **Validation errors keep pydantic's shape** (`type`, `loc`, `msg`), so a client branching
+  on them works against either server. Locations match exactly; a schema library's
+  wording cannot.
 
 ## Why a separate repo from chanx
 
