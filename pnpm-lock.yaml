@@ -112,6 +112,9 @@ importers:
 
   packages/client:
     devDependencies:
+      '@chanx-js/protocol':
+        specifier: workspace:*
+        version: link:../protocol
       '@types/react':
         specifier: ^19.1.8
         version: 19.3.0
@@ -146,6 +149,12 @@ importers:
       zod:
         specifier: ^3.25.76
         version: 3.25.76
+
+  packages/protocol:
+    dependencies:
+      '@noble/hashes':
+        specifier: ^2.4.0
+        version: 2.4.0
 
 packages:
 
@@ -721,6 +730,10 @@ packages:
     engines: {node: ^22.20 || ^24.12 || >=25}
     cpu: [x64]
     os: [linux]
+
+  '@noble/hashes@2.4.0':
+    resolution: {integrity: sha512-X5XaVWZIBCT7HHZGm5I7ZQXDwLG+bGXuSrMQAW+7Zvl87h1kmc1ZB1VSRJcpUfoUrGQp4Fkoxm5kZ+Ms+aW+eA==}
+    engines: {node: '>= 20.19.0'}
 
   '@nodable/entities@3.0.0':
     resolution: {integrity: sha512-8L9xFeTYKhm49xfIypoe2W5wV1m/3Z58kT+7kR9A8OyFxcPduI4VmxaUMQyKYrRjUoLLSXv6EKKID5Tvj9cUVw==}
@@ -3266,6 +3279,8 @@ snapshots:
 
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     optional: true
+
+  '@noble/hashes@2.4.0': {}
 
   '@nodable/entities@3.0.0': {}
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
+import type { ChanxMessage } from '@chanx-js/protocol';
 
 import type { RequestOptions } from '../core/connection';
 import type { TopicControllerOptions, TopicSnapshot } from '../core/controller';
@@ -11,7 +12,6 @@ import type {
   TopicRef,
   TopicRefOf,
 } from '../core/descriptor';
-import type { ChanxMessage } from '../core/protocol';
 import type { TopicHandle } from '../core/topic';
 import { useChanxClient } from './context';
 

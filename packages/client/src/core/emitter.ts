@@ -1,4 +1,5 @@
-import type { ChanxMessage, Envelope } from './protocol';
+import type { ChanxMessage, Envelope } from '@chanx-js/protocol';
+
 import { safely } from './report';
 
 type Handler<T> = (message: T, envelope: Envelope) => void;

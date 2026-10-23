@@ -1,4 +1,4 @@
-import type { ChanxMessage, Envelope } from '../core/protocol';
+import type { ChanxMessage, Envelope } from '@chanx-js/protocol';
 
 /** A handler, or a handler that receives frames coalesced over a window. */
 export type ActionHandler<M> =

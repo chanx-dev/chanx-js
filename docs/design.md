@@ -4,9 +4,11 @@ Why chanx-js is built the way it is. For how to use it, see the [guide](./guide/
 
 ## Scope
 
-This repo is the JavaScript home for [chanx](https://github.com/huynguyengl99/chanx), not only a client: today `@chanx-js/client` (runtime) and `@chanx-js/codegen` (CLI), and a server-side implementation of the same protocol (a NestJS adapter, say) would belong here too.
+This repo is the JavaScript home for [chanx](https://github.com/huynguyengl99/chanx), not only a client: `@chanx-js/client` (runtime) and `@chanx-js/codegen` (CLI) today, with a Node.js server (`@chanx-js/server`) and a channel layer (`@chanx-js/layers`) in development, all speaking the same protocol as the Python server.
 
-`core/protocol.ts` is the only file encoding the wire format: envelope v1, the reserved keys, the framework actions and pattern filling. It depends on nothing else and is exported from the package root, so a server package could use it as-is. That file is the natural seam for a shared `chanx-protocol` package, worth extracting once a second consumer exists and not before.
+The wire format lives in one private workspace package, `@chanx-js/protocol`: envelope v1, the reserved keys, the framework actions, topic patterns and group naming. It is never published. Each package that needs it lists it as a dev dependency, so the build bundles the parts it uses: the client stays a single, zero-dependency install, and what only a server needs (group naming and its hash) is tree-shaken out of it. The client's public API re-exports the protocol values it always has.
+
+Group names are shared with Python through the channel layer, so `safeGroupName` must match chanx byte for byte, digest included. Its expected test values come from running chanx, not from reading its source.
 
 ## Why a separate repo from chanx
 

@@ -1,9 +1,7 @@
 import type { AddressInfo } from 'node:net';
-
 import type { WebSocket } from 'ws';
 import { WebSocketServer } from 'ws';
-
-import { ENVELOPE_VERSION } from '../src/core/protocol';
+import { ENVELOPE_VERSION } from '@chanx-js/protocol';
 
 interface Frame extends Record<string, unknown> {
   action?: string;

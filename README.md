@@ -1,7 +1,8 @@
 # chanx-js
 
 Type-safe WebSocket client for [chanx](https://github.com/huynguyengl99/chanx) AsyncAPI
-schemas, with topic multiplexing. Client only: the server stays in Python.
+schemas, with topic multiplexing. A Node.js server and channel layer speaking the same
+protocol are in development; until then, the server is Python's chanx.
 
 **[Documentation](https://huynguyengl99.github.io/chanx-js/)** ·
 [Getting started](https://huynguyengl99.github.io/chanx-js/guide/getting-started) ·

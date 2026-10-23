@@ -1,9 +1,3 @@
-/**
- * The chanx wire protocol, mirrored from chanx/constants.py and chanx/core/envelope.py.
- * Generated clients cannot import chanx, so these values are duplicated by design;
- * the conformance tests pin them to the server's own schema.
- */
-
 export const ENVELOPE_VERSION = 1;
 
 /** Reserved frame keys that carry routing rather than message content. */
@@ -16,6 +10,15 @@ export const COMPLETE_ACTIONS = ['complete', 'event_complete', 'group_complete']
 export const SUBSCRIPTION_ACTIONS = ['subscribed', 'unsubscribed'] as const;
 
 export const ERROR_ACTION = 'error';
+
+/** Why a topic-addressed frame could not be served, sent as `payload.reason`. */
+export const TopicErrorReason = {
+  UNKNOWN_TOPIC: 'unknown_topic',
+  UNAUTHORIZED: 'unauthorized',
+  NOT_SUBSCRIBED: 'not_subscribed',
+} as const;
+
+export type TopicErrorReason = (typeof TopicErrorReason)[keyof typeof TopicErrorReason];
 
 const ABSORBED = new Set<string>([
   ...COMPLETE_ACTIONS,
@@ -62,7 +65,7 @@ export function envelopeOf(frame: RawFrame): Envelope {
 
 export function withEnvelope(
   message: object,
-  envelope: { topic?: string; ref?: string },
+  envelope: { topic?: string; ref?: string; seq?: number },
 ): Record<string, unknown> {
   // Only the runtime sets envelope keys, so a stray one on the message cannot misroute.
   const frame: Record<string, unknown> = {
@@ -71,6 +74,7 @@ export function withEnvelope(
   };
   if (envelope.topic !== undefined) frame.topic = envelope.topic;
   if (envelope.ref !== undefined) frame.ref = envelope.ref;
+  if (envelope.seq !== undefined) frame.seq = envelope.seq;
   return frame;
 }
 
@@ -80,24 +84,4 @@ export interface ChanxErrorFrame {
   payload: unknown;
   topic?: string;
   ref?: string;
-}
-
-/**
- * Fill `{name}` placeholders in an address or topic pattern.
- *
- * Pass `encode` for a URL, so a value cannot add path segments or a query. Topic strings
- * are compared verbatim with the server's, so they are filled raw.
- */
-export function formatPattern(
-  pattern: string,
-  params: Record<string, string | number> = {},
-  encode: (value: string) => string = (value) => value,
-): string {
-  return pattern.replace(/\{(\w+)\}/g, (_match, name: string) => {
-    const value = params[name];
-    if (value === undefined) {
-      throw new Error(`Missing parameter "${name}" for pattern "${pattern}"`);
-    }
-    return encode(String(value));
-  });
 }

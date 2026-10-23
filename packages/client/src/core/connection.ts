@@ -1,6 +1,9 @@
-import type { ChannelDescriptor, TopicRef, Validator } from './descriptor';
-import { ActionEmitter } from './emitter';
-import type { ChanxErrorFrame, ChanxMessage, Envelope, RawFrame } from './protocol';
+import type {
+  ChanxErrorFrame,
+  ChanxMessage,
+  Envelope,
+  RawFrame,
+} from '@chanx-js/protocol';
 import {
   COMPLETE_ACTIONS,
   envelopeOf,
@@ -8,7 +11,10 @@ import {
   isFrameworkAction,
   stripEnvelope,
   withEnvelope,
-} from './protocol';
+} from '@chanx-js/protocol';
+
+import type { ChannelDescriptor, TopicRef, Validator } from './descriptor';
+import { ActionEmitter } from './emitter';
 import type { SharedSocket, SocketStatus } from './socket';
 import type { MessageStream, StreamOptions } from './stream';
 import { firstMessage, trackStream } from './stream';

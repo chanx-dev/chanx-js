@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ENVELOPE_VERSION } from '@chanx-js/protocol';
 
 import type { ClientOptions } from '../src/core/client';
 import { createClient } from '../src/core/client';
 import { ChanxRequestError } from '../src/core/connection';
 import { defineChannel, defineTopic } from '../src/core/descriptor';
-import { ENVELOPE_VERSION } from '../src/core/protocol';
 import { resetSockets, terminateAllSockets } from '../src/core/socket';
 import { FakeSocket, fakeFactory } from './fake-socket';
 

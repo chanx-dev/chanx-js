@@ -1,7 +1,8 @@
+import type { ChanxMessage, Envelope, RawFrame } from '@chanx-js/protocol';
+import { envelopeOf, isFrameworkAction, stripEnvelope } from '@chanx-js/protocol';
+
 import type { TopicDescriptor, TopicRef, Validator } from './descriptor';
 import { ActionEmitter } from './emitter';
-import type { ChanxMessage, Envelope, RawFrame } from './protocol';
-import { envelopeOf, isFrameworkAction, stripEnvelope } from './protocol';
 import type { MessageStream, StreamOptions } from './stream';
 import { firstMessage, trackStream } from './stream';
 import { reportError, safely } from './report';

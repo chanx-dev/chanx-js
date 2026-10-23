@@ -1,3 +1,5 @@
+import type { ChanxErrorFrame, ChanxMessage, Envelope } from '@chanx-js/protocol';
+
 import type { ActionHandler, HandlerMap } from './batch';
 import { BatchQueue } from './batch';
 import type { ChanxClient, ConnectOptions } from './client';
@@ -11,7 +13,6 @@ import type {
   TopicRef,
   TopicRefOf,
 } from './descriptor';
-import type { ChanxErrorFrame, ChanxMessage, Envelope } from './protocol';
 import type { SocketStatus } from './socket';
 import type { TopicHandle } from './topic';
 

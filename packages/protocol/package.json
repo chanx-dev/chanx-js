@@ -1,0 +1,20 @@
+{
+  "name": "@chanx-js/protocol",
+  "private": true,
+  "description": "The chanx wire protocol, shared by @chanx-js/client and the server packages. Not published: bundled into each package that uses it.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@noble/hashes": "^2.4.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

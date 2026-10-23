@@ -6,6 +6,7 @@
 import type { Accessor } from 'solid-js';
 import { createMemo, createSignal, getOwner, onCleanup } from 'solid-js';
 import { isServer } from 'solid-js/web';
+import type { ChanxMessage } from '@chanx-js/protocol';
 
 import type { ChanxClient, ClientOptions } from '../core/client';
 import { createClient } from '../core/client';
@@ -31,7 +32,6 @@ import type {
   TopicRef,
   TopicRefOf,
 } from '../core/descriptor';
-import type { ChanxMessage } from '../core/protocol';
 import type { SocketStatus } from '../core/socket';
 import type { TopicHandle } from '../core/topic';
 

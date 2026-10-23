@@ -57,7 +57,9 @@ jobs:
               echo "$pkg@$version is already on npm; skipping"
               continue
             fi
-            (cd "packages/$dir" && npm publish --provenance --access public)
+            # npm does not rewrite pnpm's workspace: specifiers, and consumers never
+            # install devDependencies, so drop them rather than publish a private name.
+            (cd "packages/$dir" && npm pkg delete devDependencies && npm publish --provenance --access public)
           done
 
   release:

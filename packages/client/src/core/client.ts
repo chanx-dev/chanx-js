@@ -1,3 +1,5 @@
+import { formatPattern } from '@chanx-js/protocol';
+
 import type { ValidateConfig } from './connection';
 import { ChannelConnection } from './connection';
 import type {
@@ -7,7 +9,6 @@ import type {
   ToClientOf,
   ToServerOf,
 } from './descriptor';
-import { formatPattern } from './protocol';
 import type { SharedSocket, SocketOptions } from './socket';
 import { acquireSocket } from './socket';
 

@@ -6,6 +6,7 @@
 import { onDestroy, onMount } from 'svelte';
 import type { Readable } from 'svelte/store';
 import { writable } from 'svelte/store';
+import type { ChanxMessage } from '@chanx-js/protocol';
 
 import type { ChanxClient, ClientOptions } from '../core/client';
 import { createClient } from '../core/client';
@@ -31,7 +32,6 @@ import type {
   TopicRef,
   TopicRefOf,
 } from '../core/descriptor';
-import type { ChanxMessage } from '../core/protocol';
 import type { TopicHandle } from '../core/topic';
 
 export type { BufferMode } from '../core/controller';

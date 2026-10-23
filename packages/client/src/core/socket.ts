@@ -1,5 +1,6 @@
-import type { RawFrame } from './protocol';
-import { ENVELOPE_VERSION } from './protocol';
+import type { RawFrame } from '@chanx-js/protocol';
+import { ENVELOPE_VERSION } from '@chanx-js/protocol';
+
 import { safely } from './report';
 
 export type SocketStatus = 'connecting' | 'open' | 'reconnecting' | 'closed';

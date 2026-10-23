@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
+import type { ChanxMessage } from '@chanx-js/protocol';
 
 import type { ChannelConnection, RequestOptions } from '../core/connection';
 import type { ControllerOptions } from '../core/controller';
@@ -9,7 +10,6 @@ import type {
   ToClientOf,
   ToServerOf,
 } from '../core/descriptor';
-import type { ChanxMessage } from '../core/protocol';
 import type { SocketStatus } from '../core/socket';
 import { useChanxClient } from './context';
 

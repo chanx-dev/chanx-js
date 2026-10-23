@@ -73,5 +73,10 @@ export {
   isFrameworkAction,
   stripEnvelope,
   withEnvelope,
-} from './core/protocol';
-export type { ChanxErrorFrame, ChanxMessage, Envelope, RawFrame } from './core/protocol';
+} from '@chanx-js/protocol';
+export type {
+  ChanxErrorFrame,
+  ChanxMessage,
+  Envelope,
+  RawFrame,
+} from '@chanx-js/protocol';

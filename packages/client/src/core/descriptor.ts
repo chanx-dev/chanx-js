@@ -1,5 +1,5 @@
-import type { ChanxMessage } from './protocol';
-import { formatPattern } from './protocol';
+import type { ChanxMessage } from '@chanx-js/protocol';
+import { formatPattern } from '@chanx-js/protocol';
 
 /** Names of the `{placeholder}` segments in an address or topic pattern. */
 export type ExtractParams<S extends string> =

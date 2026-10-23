@@ -39,7 +39,7 @@
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts src/react/index.ts src/vue/index.ts src/svelte/index.ts src/solid/index.ts --format esm --dts --clean --external react --external vue --external svelte --external svelte/store --external solid-js --external solid-js/web",
+    "build": "tsdown src/index.ts src/react/index.ts src/vue/index.ts src/svelte/index.ts src/solid/index.ts --format esm --dts.eager --clean --external react --external vue --external svelte --external svelte/store --external solid-js --external solid-js/web",
     "typecheck": "tsc -p tsconfig.json"
   },
   "peerDependencies": {
@@ -63,6 +63,7 @@
     }
   },
   "devDependencies": {
+    "@chanx-js/protocol": "workspace:*",
     "@types/react": "^19.1.8",
     "react": "^19.1.0",
     "solid-js": "^1.9.3",
