@@ -84,6 +84,23 @@ describe('url resolution', () => {
   });
 });
 
+describe('relative addresses', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('resolves against the page location, upgrading http to ws', () => {
+    vi.stubGlobal('location', { href: 'https://app.example/chat/' });
+    makeClient({ baseUrl: undefined }).connect(chat, { params: { room: 'lobby' } });
+
+    expect(FakeSocket.last.url).toBe('wss://app.example/ws/chat/lobby/');
+  });
+
+  it('fails clearly with neither a baseUrl nor a location', () => {
+    expect(() =>
+      makeClient({ baseUrl: undefined }).connect(chat, { params: { room: 'lobby' } }),
+    ).toThrow('No `baseUrl` and no `location`');
+  });
+});
+
 describe('sending', () => {
   it('stamps the envelope version', () => {
     const connection = makeClient().connect(hub);
@@ -756,6 +773,69 @@ describe('inbound validation', () => {
     expect(reported).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'not a pong' }),
     );
+  });
+});
+
+describe('malformed frames', () => {
+  it('keeps non-JSON and binary frames from handlers, and keeps delivering', () => {
+    const connection = makeClient().connect(chat, { params: { room: 'lobby' } });
+    FakeSocket.last.accept();
+    const seen = vi.fn();
+    connection.onAny(seen);
+
+    FakeSocket.last.onmessage?.({ data: 'not json' });
+    // Node's ws delivers binary frames as Buffers, which JSON.parse would accept.
+    FakeSocket.last.onmessage?.({
+      data: Buffer.from(JSON.stringify({ action: 'pong', payload: null })),
+    });
+    FakeSocket.last.receive({ version: 1, action: 'pong', payload: null });
+
+    expect(seen).toHaveBeenCalledOnce();
+    expect(seen).toHaveBeenCalledWith({ action: 'pong', payload: null }, { version: 1 });
+  });
+});
+
+describe('socket factory failure', () => {
+  it('retries instead of throwing out of connect', async () => {
+    let calls = 0;
+    const flaky: ClientOptions['socketFactory'] = (url) => {
+      calls += 1;
+      if (calls === 1) throw new Error('refused');
+      return fakeFactory(url);
+    };
+    const connection = makeClient({ socketFactory: flaky, reconnectInterval: 5 }).connect(
+      chat,
+      { params: { room: 'lobby' } },
+    );
+
+    expect(connection.status).toBe('reconnecting');
+    await wait(30);
+    expect(calls).toBe(2);
+    expect(FakeSocket.instances).toHaveLength(1);
+  });
+});
+
+describe('aborting a wait', () => {
+  it('rejects and stops listening at once', async () => {
+    const connection = makeClient().connect(chat, { params: { room: 'lobby' } });
+    const handlers = (
+      connection as unknown as { emitter: { byAction: Map<string, unknown> } }
+    ).emitter.byAction;
+    const controller = new AbortController();
+
+    const pong = connection.once('pong', { signal: controller.signal });
+    controller.abort();
+
+    await expect(pong).rejects.toThrow('Aborted while waiting for action "pong"');
+    expect(handlers.has('pong')).toBe(false);
+  });
+
+  it('rejects at once for a signal already aborted', async () => {
+    const connection = makeClient().connect(chat, { params: { room: 'lobby' } });
+
+    await expect(
+      connection.once('pong', { signal: AbortSignal.abort() }),
+    ).rejects.toThrow('Aborted');
   });
 });
 

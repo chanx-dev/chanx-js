@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createClient } from '../src/core/client';
 import { defineChannel, defineTopic } from '../src/core/descriptor';
@@ -279,5 +279,50 @@ describe('sequence numbers', () => {
     for (const seq of [1, 2, 2, 3, undefined]) FakeSocket.last.receive(frame(seq));
 
     expect(seqs).toEqual([1, 2, 2, 3, undefined]);
+  });
+});
+
+describe('inbound validation', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('reports and drops a topic message that fails validation', () => {
+    const reported = vi.fn();
+    vi.stubGlobal('reportError', reported);
+    const validatedTopic = defineTopic<Post, Posted>()({
+      name: 'validated_topic',
+      pattern: 'room:{room_name}',
+      validators: {
+        toClient: (value) => {
+          if ((value as Posted).action !== 'posted') throw new Error('not posted');
+          return value as Posted;
+        },
+      },
+    });
+    const validatedHub = defineChannel<Ping, Pong>()({
+      name: 'validated_hub',
+      address: '/ws/topics',
+      topics: { validatedTopic },
+    });
+    const connection = createClient({
+      baseUrl: 'ws://test.local',
+      socketFactory: fakeFactory,
+      heartbeat: false,
+      validate: { inbound: true },
+    }).connect(validatedHub);
+    FakeSocket.last.accept();
+    const seen = vi.fn();
+    connection.topic(validatedTopic.with({ room_name: 'lobby' })).onAny(seen);
+
+    FakeSocket.last.receive({
+      version: 1,
+      topic: 'room:lobby',
+      action: 'bogus',
+      payload: 1,
+    });
+
+    expect(seen).not.toHaveBeenCalled();
+    expect(reported).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'not posted' }),
+    );
   });
 });

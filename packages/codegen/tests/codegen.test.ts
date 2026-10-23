@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { Project } from 'ts-morph';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { analyze } from '../src/analyze';
 import { declareType, tsType } from '../src/emit-types';
@@ -14,6 +14,48 @@ import { camelCase, pascalCase } from '../src/naming';
 import type { AsyncAPIDocument } from '../src/schema';
 
 const fixtures = fileURLToPath(new URL('./__fixtures__/', import.meta.url));
+
+describe('loadSchema', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  const serve = (body: string, init?: ResponseInit) =>
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(body, init)),
+    );
+
+  it('fetches a schema from a URL', async () => {
+    serve(JSON.stringify({ asyncapi: '3.0.0', channels: {} }));
+
+    await expect(loadSchema('https://api.example/asyncapi.json')).resolves.toMatchObject({
+      asyncapi: '3.0.0',
+    });
+  });
+
+  it('reports a failed fetch with its status', async () => {
+    serve('missing', { status: 404, statusText: 'Not Found' });
+
+    await expect(loadSchema('https://api.example/asyncapi.json')).rejects.toThrow(
+      '404 Not Found',
+    );
+  });
+
+  it.each([
+    ['not an object', '"just a string"', 'did not parse to an object'],
+    ['no channels', JSON.stringify({ asyncapi: '3.0.0' }), 'has no `channels`'],
+    [
+      'AsyncAPI 2',
+      JSON.stringify({ asyncapi: '2.6.0', channels: {} }),
+      'Expected an AsyncAPI 3 document',
+    ],
+  ])('rejects a document with %s', async (_case, body, message) => {
+    serve(body);
+
+    await expect(loadSchema('https://api.example/asyncapi.json')).rejects.toThrow(
+      message,
+    );
+  });
+});
 
 describe('naming', () => {
   it('preserves casing inside an already-PascalCase name', () => {
