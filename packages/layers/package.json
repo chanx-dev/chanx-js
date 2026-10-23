@@ -1,0 +1,57 @@
+{
+  "name": "@chanx-js/layers",
+  "version": "0.1.2",
+  "private": true,
+  "description": "Channel layers for Node: groups and cross-process messaging, wire-compatible with Python's channels_redis and fast-channels.",
+  "license": "MIT",
+  "author": "Huy Nguyen",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/huynguyengl99/chanx-js.git",
+    "directory": "packages/layers"
+  },
+  "bugs": "https://github.com/huynguyengl99/chanx-js/issues",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./redis": {
+      "types": "./dist/redis/index.d.mts",
+      "default": "./dist/redis/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown src/index.ts src/redis/index.ts --format esm --dts --clean",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@msgpack/msgpack": "^3.1.3"
+  },
+  "peerDependencies": {
+    "redis": ">=6"
+  },
+  "peerDependenciesMeta": {
+    "redis": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "redis": "^6.3.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "channel-layer",
+    "redis",
+    "pubsub",
+    "channels",
+    "websocket"
+  ]
+}

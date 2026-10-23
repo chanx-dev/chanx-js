@@ -13,6 +13,7 @@ implementation of its protocol held in line by tests.
 | `packages/protocol` | Private wire protocol (envelope, patterns, group names). Bundled, never published. |
 | `packages/client`   | `@chanx-js/client`: runtime plus React, Vue, Svelte and Solid bindings.            |
 | `packages/codegen`  | `@chanx-js/codegen`: AsyncAPI 3 schema to typed channel descriptors.               |
+| `packages/layers`   | `@chanx-js/layers`: channel layers; Redis pub/sub compatible with Python's.        |
 | `conformance*`      | Generated TS and JS clients from chanx's sandbox schema, type-checked.             |
 | `docs`              | VitePress site, guide and TypeDoc API reference.                                   |
 
@@ -24,6 +25,13 @@ pnpm build              # every package
 pnpm check:conformance  # regenerate conformance clients; fails on any diff
 pnpm docs:build         # TypeDoc warnings and dead links fail it
 pnpm test <path>        # one test file or directory
+```
+
+Redis tests run only with `REDIS_URL` set:
+
+```bash
+docker compose up -d
+REDIS_URL=redis://localhost:6389 REDIS_URL_2=redis://localhost:6390 pnpm test packages/layers
 ```
 
 ## Code that speaks for itself

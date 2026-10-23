@@ -10,6 +10,15 @@ The wire format lives in one private workspace package, `@chanx-js/protocol`: en
 
 Group names are shared with Python through the channel layer, so `safeGroupName` must match chanx byte for byte, digest included. Its expected test values come from running chanx, not from reading its source.
 
+## Channel layers
+
+`@chanx-js/layers` reproduces the Redis format of Python's `RedisPubSubChannelLayer` (channel names, msgpack or JSON, Fernet encryption, the CRC-32 shard ring) so Python and Node processes share one Redis. Its wire tests check Node against bytes and names captured from `channels_redis`, with a raw Redis client standing in for the Python process. A Node-to-Node test cannot catch a change made to both ends of our own layer at once; these can.
+
+Two Node-specific choices:
+
+- **A handler per channel instead of `await receive()`.** A Node process holds its sockets in memory, so there is no consumer loop to feed, and no polling task per connection.
+- **Decoding is chained**, because Fernet decryption on Web Crypto is async: without the chain, two messages could reach a handler out of the order Redis delivered them.
+
 ## Why a separate repo from chanx
 
 - **The valuable half is a runtime library**, which needs semver and `npm install`, so it cannot live in a PyPI package. It is the same split as zodios (runtime) and openapi-zod-client (generator).
