@@ -76,27 +76,45 @@ describe('a consumer with several handlers', () => {
   });
 });
 
-describe('a consumer with one handler, which pydantic validates as a single model', () => {
+// chanx wraps even one message in a discriminated union, so one handler behaves as many.
+describe('a consumer with one handler', () => {
   const validate = createValidator([Chat]);
 
-  it('reports a wrong action as a literal error, alongside payload issues', async () => {
-    expect(await validate({ action: 'nope' })).toEqual({
-      issues: [
-        { type: 'literal_error', loc: ['action'], msg: "Input should be 'chat'" },
-        { type: 'missing', loc: ['payload'], msg: 'Field required' },
+  it.each([
+    [
+      'an unknown action',
+      { action: 'nope' },
+      [
+        {
+          type: 'union_tag_invalid',
+          loc: [],
+          msg: "Input tag 'nope' found using 'action' does not match any of the expected tags: 'chat'",
+        },
       ],
-    });
+    ],
+    [
+      'no action',
+      { payload: { message: 'x' } },
+      [
+        {
+          type: 'union_tag_not_found',
+          loc: [],
+          msg: "Unable to extract tag using discriminator 'action'",
+        },
+      ],
+    ],
+    [
+      'no payload',
+      { action: 'chat' },
+      [{ type: 'missing', loc: ['chat', 'payload'], msg: 'Field required' }],
+    ],
+  ])('rejects %s as chanx does', async (_case, frame, issues) => {
+    expect(await validate(frame)).toEqual({ issues });
   });
 
-  it('locates payload issues without the action prefix', async () => {
+  it('locates payload issues under the action', async () => {
     const result = await validate({ action: 'chat', payload: { message: 5 } });
-    expect(result).toMatchObject({ issues: [{ loc: ['payload', 'message'] }] });
-  });
-
-  it('takes a missing action as the default, as the model does', async () => {
-    expect(await validate({ payload: { message: 'hi' } })).toEqual({
-      message: { action: 'chat', payload: { message: 'hi' } },
-    });
+    expect(result).toMatchObject({ issues: [{ loc: ['chat', 'payload', 'message'] }] });
   });
 });
 

@@ -56,32 +56,12 @@ export function envelopeIssues(frame: unknown): ValidationIssue[] {
   return issues;
 }
 
-/**
- * Validate a frame against a consumer's messages, as chanx's discriminated union does.
- * With a single message pydantic validates that model directly, so tag errors and
- * locations differ; both shapes are kept so clients see what Python sends.
- */
+/** Validate a frame against a consumer's messages, as chanx's discriminated union does. */
 export function createValidator(messages: readonly AnyMessageDefinition[]) {
   const byAction = new Map(messages.map((message) => [message.action, message]));
   const tags = messages.map((message) => `'${message.action}'`).join(', ');
-  const single = messages.length === 1 ? messages[0] : undefined;
 
   return async (frame: Frame): Promise<ValidationResult> => {
-    if (single) {
-      const issues: ValidationIssue[] = [];
-      if ('action' in frame && frame.action !== single.action) {
-        issues.push({
-          type: 'literal_error',
-          loc: ['action'],
-          msg: `Input should be '${single.action}'`,
-        });
-      }
-      const payload = await validatePayload(single, frame, []);
-      if ('issues' in payload) issues.push(...payload.issues);
-      if (issues.length || 'issues' in payload) return { issues };
-      return { message: { action: single.action, payload: payload.value } };
-    }
-
     if (!('action' in frame)) {
       return {
         issues: [
