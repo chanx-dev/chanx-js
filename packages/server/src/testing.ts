@@ -7,6 +7,8 @@ export type Frame = Record<string, unknown> & {
 };
 
 export interface TestClient {
+  /** Resolves once the server has connected this client: authenticated, groups joined. */
+  readonly ready: Promise<boolean>;
   /** Frames received and not yet consumed by `receive()`. */
   readonly pending: readonly Frame[];
   /** Send a raw frame. */
@@ -20,7 +22,8 @@ export interface TestClient {
   ): Promise<Frame>;
   /** Collect frames until one with this action arrives (included), as chanx's `receive_all_messages`. */
   receiveUntil(action?: string, options?: { timeout?: number }): Promise<Frame[]>;
-  close(): void;
+  /** Close from the client side; resolves once the server has torn the connection down. */
+  close(): Promise<void>;
   /** Resolves when the server closes the socket. */
   readonly closed: Promise<{ code?: number; reason?: string }>;
 }
@@ -53,7 +56,7 @@ export function connect(
       },
       close(code, reason) {
         onClose({ code, reason });
-        session?.closed();
+        void session?.closed();
       },
     },
   );
@@ -76,6 +79,7 @@ export function connect(
   };
 
   return {
+    ready: session.ready,
     pending: frames,
     send: (frame) => session.receive(JSON.stringify(frame)),
     receive,
@@ -98,8 +102,8 @@ export function connect(
       }
     },
     close() {
-      session.closed();
       onClose({ code: 1000 });
+      return session.closed();
     },
     closed,
   };

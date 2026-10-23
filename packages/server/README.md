@@ -28,6 +28,35 @@ const chat = consumer('/ws/chat/{room}', { name: 'chat', emits: [Notice] })
 export const chanx = createChanx({ consumers: [chat] });
 ```
 
+## Groups and events
+
+Connections join groups through a [channel layer](../layers): in-memory by default, or
+Redis shared with other Node and Python processes.
+
+```ts
+import { RedisPubSubChannelLayer } from '@chanx-js/layers/redis';
+
+const room = consumer('/ws/room/{name}', {
+  name: 'room',
+  emits: [Said],
+  groups: (conn) => [`room.${conn.params.name}`],
+})
+  .on(Say, (m, ctx) => ctx.broadcast(Said.create(m.payload), { excludeCurrent: true }))
+  .event(UserJoined, { output: JoinedNotice }, (e) => JoinedNotice.create(e.payload))
+  .passthrough(Alert);
+
+const chanx = createChanx({
+  consumers: [room],
+  layers: { default: new RedisPubSubChannelLayer({ hosts: [process.env.REDIS_URL!] }) },
+});
+
+// From anywhere, typed against the events `room` handles:
+await chanx.broadcastEvent(room, UserJoined.create({ user: 'ann' }), ['room.lobby']);
+```
+
+The layer messages are chanx's own (`handle_channel_event`, `handle_group_message`),
+so a Python worker's `broadcast_event` reaches Node connections, and back.
+
 Payloads are validated by any [Standard Schema](https://standardschema.dev) library:
 Zod, Valibot, ArkType and others. Validation errors reach the client in the shape
 chanx's pydantic errors have.

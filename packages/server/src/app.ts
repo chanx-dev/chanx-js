@@ -1,7 +1,10 @@
-import type { ConsumerBuilder, ConsumerDefinition } from './consumer';
+import type { ChannelLayer } from '@chanx-js/layers';
+import { InMemoryChannelLayer } from '@chanx-js/layers';
+
+import type { ConsumerBuilder, ConsumerDefinition, EventsOf } from './consumer';
 import { definitionOf } from './consumer';
 import type { Session } from './session';
-import { openSession } from './session';
+import { CHANNEL_EVENT, openSession } from './session';
 
 export interface Logger {
   error(...data: unknown[]): void;
@@ -15,7 +18,9 @@ export interface Transport {
 }
 
 export interface ChanxOptions {
-  consumers: readonly ConsumerBuilder<any, any, any, any>[];
+  consumers: readonly ConsumerBuilder<any, any, any, any, any>[];
+  /** Channel layers by name, as Python's `CHANNEL_LAYERS`. Defaults to one in-memory layer. */
+  layers?: Readonly<Record<string, ChannelLayer>>;
   /** Convert keys between snake_case on the server and camelCase on the wire. */
   camelize?: boolean;
   /** Send `complete` after each handled frame, as chanx's `send_completion`. */
@@ -40,6 +45,21 @@ export interface Chanx {
     request: { url: string | URL; headers?: HeadersInit },
     transport: Transport,
   ): Session | undefined;
+  /**
+   * Send an event to a consumer's groups, from anywhere: a request handler, a worker,
+   * another process. Python's `broadcast_event`. Groups default to the consumer's own.
+   */
+  broadcastEvent<C extends ConsumerBuilder<any, any, any, any, any>>(
+    consumer: C,
+    event: EventsOf<C>,
+    groups?: readonly string[],
+  ): Promise<void>;
+  /** Send an event to one connection, by its `channelName`. Python's `send_event`. */
+  sendEvent<C extends ConsumerBuilder<any, any, any, any, any>>(
+    consumer: C,
+    event: EventsOf<C>,
+    channelName: string,
+  ): Promise<void>;
 }
 
 interface Route {
@@ -53,6 +73,14 @@ export function createChanx(options: ChanxOptions): Chanx {
     sendCompletion: options.sendCompletion ?? false,
     logger: options.logger ?? console,
     dev: options.dev ?? globalThis.process?.env?.NODE_ENV !== 'production',
+  };
+  const layers = options.layers ?? { default: new InMemoryChannelLayer() };
+  const layerOf = (definition: ConsumerDefinition) => {
+    const name = definition.options.layer ?? 'default';
+    const layer = layers[name];
+    if (!layer)
+      throw new Error(`No channel layer named "${name}" in createChanx({ layers })`);
+    return layer;
   };
   const routes: Route[] = options.consumers.map((builder) => {
     const definition = definitionOf(builder);
@@ -76,8 +104,29 @@ export function createChanx(options: ChanxOptions): Chanx {
         found.route.definition,
         { url, headers: new Headers(request.headers), params: found.params },
         transport,
-        resolved,
+        { ...resolved, layer: layerOf(found.route.definition) },
       );
+    },
+    async broadcastEvent(consumer, event, groups) {
+      const definition = definitionOf(consumer);
+      const targets = groups ?? definition.options.groups;
+      if (!Array.isArray(targets)) {
+        throw new Error(
+          `broadcastEvent() needs groups: consumer "${definition.options.name}" has no fixed ones`,
+        );
+      }
+      const layer = layerOf(definition);
+      await Promise.all(
+        (targets as readonly string[]).map((group) =>
+          layer.groupSend(group, { type: CHANNEL_EVENT, event_data: event }),
+        ),
+      );
+    },
+    async sendEvent(consumer, event, channelName) {
+      await layerOf(definitionOf(consumer)).send(channelName, {
+        type: CHANNEL_EVENT,
+        event_data: event,
+      });
     },
   };
 }

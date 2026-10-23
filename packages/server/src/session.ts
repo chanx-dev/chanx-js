@@ -1,3 +1,4 @@
+import type { ChannelLayer, ChannelMessage, LayerChannel } from '@chanx-js/layers';
 import { ENVELOPE_VERSION, TopicErrorReason } from '@chanx-js/protocol';
 
 import type { ResolvedOptions, Transport } from './app';
@@ -9,18 +10,31 @@ import type {
   Context,
   HandlerDefinition,
 } from './consumer';
+import { eventHandlersOf } from './consumer';
 import { AuthenticationError } from './errors';
 import type { Message } from './messages';
-import { AuthenticationMessage, CompleteMessage, ErrorMessage } from './messages';
+import {
+  AuthenticationMessage,
+  CompleteMessage,
+  ErrorMessage,
+  EventCompleteMessage,
+  GroupCompleteMessage,
+} from './messages';
 import { createValidator, envelopeIssues, isObject } from './validation';
 
 /** One accepted socket, as an adapter drives it. */
 export interface Session {
+  /** Resolves once connected (authenticated, groups joined, `onConnect` run), or false if not. */
+  readonly ready: Promise<boolean>;
   /** A text frame from the client. */
   receive(data: string): void;
-  /** The socket closed, by either side. */
-  closed(): void;
+  /** The socket closed, by either side. Resolves once `onDisconnect` ran and groups are left. */
+  closed(): Promise<void>;
 }
+
+// The layer message types chanx consumers dispatch on, so Python and Node share them.
+export const CHANNEL_EVENT = 'handle_channel_event';
+export const GROUP_MESSAGE = 'handle_group_message';
 
 type Envelope = { topic?: string; ref?: string };
 
@@ -28,23 +42,51 @@ export function openSession(
   definition: ConsumerDefinition,
   request: ConnectRequest,
   transport: Transport,
-  options: ResolvedOptions,
+  options: ResolvedOptions & { layer: ChannelLayer },
 ): Session {
-  const { logger } = options;
+  const { logger, layer } = options;
   const consumer = definition.options;
   const abort = new AbortController();
   const validate = createValidator(
-    [...definition.handlers.values()].map((handler) => handler.message),
+    [...definition.handlers.values()].map((h) => h.message),
+  );
+  const eventHandlers = eventHandlersOf(definition);
+  const validateEvent = createValidator(
+    [...eventHandlers.values()].map((h) => h.message),
   );
   const warned = new Set<string>();
+  const groups: string[] = [];
+  let channel: LayerChannel | undefined;
   let isClosed = false;
   let connected = false;
   let state: unknown;
+  let teardown = Promise.resolve();
+
+  const requireChannel = () => {
+    if (!channel)
+      throw new Error('The connection has no layer channel until it is authenticated');
+    return channel;
+  };
 
   const conn: Connection<string, unknown> = {
     ...request,
     id: crypto.randomUUID(),
     user: undefined,
+    get channelName() {
+      return requireChannel().name;
+    },
+    groups,
+    async join(group) {
+      if (isClosed || groups.includes(group)) return;
+      await layer.groupAdd(group, requireChannel().name);
+      groups.push(group);
+    },
+    async leave(group) {
+      const index = groups.indexOf(group);
+      if (index === -1) return;
+      groups.splice(index, 1);
+      await layer.groupDiscard(group, requireChannel().name);
+    },
     close(code, reason) {
       if (isClosed) return;
       isClosed = true;
@@ -73,6 +115,19 @@ export function openSession(
     signal: abort.signal,
     send: async (message) => write(message, envelope),
     push: async (message) => write(message, { topic: envelope.topic }),
+    async broadcast(message, { groups: targets = groups, excludeCurrent = false } = {}) {
+      const from = requireChannel().name;
+      await Promise.all(
+        targets.map((group) =>
+          layer.groupSend(group, {
+            type: GROUP_MESSAGE,
+            message,
+            exclude_current: excludeCurrent,
+            from_channel: from,
+          }),
+        ),
+      );
+    },
   });
 
   const ready = (async () => {
@@ -80,7 +135,15 @@ export function openSession(
       conn.close();
       return false;
     }
+    channel = await layer.newChannel(onLayerMessage);
+    if (abort.signal.aborted) {
+      await channel.close();
+      return false;
+    }
     state = consumer.state?.(conn);
+    const initial =
+      typeof consumer.groups === 'function' ? consumer.groups(conn) : consumer.groups;
+    for (const group of initial ?? []) await conn.join(group);
     connected = true;
     await consumer.onConnect?.(context({}) as never);
     return true;
@@ -188,6 +251,49 @@ export function openSession(
     write(ErrorMessage.create({ reason, detail }), envelope);
   }
 
+  // Layer messages wait for the connection to be ready, as chanx queues them behind connect.
+  function onLayerMessage(message: ChannelMessage) {
+    void (async () => {
+      if (!(await ready) || isClosed) return;
+      if (message.type === GROUP_MESSAGE) return handleGroupMessage(message);
+      if (message.type === CHANNEL_EVENT) return handleEvent(message.event_data);
+      logger.warn(`chanx: ignored a layer message of type "${String(message.type)}"`);
+    })().catch((error: unknown) => logger.error('chanx: layer message failed', error));
+  }
+
+  function handleGroupMessage(message: ChannelMessage) {
+    if (message.exclude_current && message.from_channel === channel?.name) return;
+    if (!isObject(message.message)) {
+      return logger.error('chanx: group message carries no message', message);
+    }
+    write(message.message, {});
+    if (options.sendCompletion) write(GroupCompleteMessage.create(), {});
+  }
+
+  async function handleEvent(data: unknown) {
+    if (eventHandlers.size === 0) {
+      return logger.error(`chanx: consumer "${consumer.name}" has no event handlers`);
+    }
+    if (!isObject(data)) return logger.error('chanx: channel event is not a dict', data);
+    const result = await validateEvent(data);
+    if ('issues' in result) {
+      return logger.error('chanx: channel event failed validation', result.issues);
+    }
+
+    const { message } = result;
+    const handler = eventHandlers.get(message.action)!;
+    try {
+      const reply = await handler.handle(message, context({}));
+      if (reply !== undefined) {
+        checkDeclared(handler, reply);
+        write(reply as object, {});
+      }
+    } catch (error) {
+      logger.error(`chanx: event handler for "${message.action}" failed`, error);
+    }
+    if (options.sendCompletion) write(EventCompleteMessage.create(), {});
+  }
+
   function checkDeclared(handler: HandlerDefinition, reply: unknown) {
     if (!options.dev || !isObject(reply)) return;
     const action = String(reply.action);
@@ -201,6 +307,7 @@ export function openSession(
   }
 
   return {
+    ready,
     receive(data) {
       // Each frame runs on its own, as chanx runs each in a task: a slow one blocks none.
       void handleFrame(data).catch((error: unknown) =>
@@ -208,13 +315,15 @@ export function openSession(
       );
     },
     closed() {
-      if (abort.signal.aborted) return;
+      if (abort.signal.aborted) return teardown;
       isClosed = true;
       abort.abort();
-      if (!connected) return;
-      void Promise.resolve(consumer.onDisconnect?.(context({}) as never)).catch(
-        (error: unknown) => logger.error('chanx: onDisconnect failed', error),
-      );
+      // The hook runs first, as chanx's teardown runs before the groups are left.
+      teardown = (async () => {
+        if (connected) await consumer.onDisconnect?.(context({}) as never);
+        await channel?.close();
+      })().catch((error: unknown) => logger.error('chanx: disconnecting failed', error));
+      return teardown;
     },
   };
 }

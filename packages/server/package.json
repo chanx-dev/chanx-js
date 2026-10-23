@@ -30,8 +30,13 @@
     "build": "tsdown src/index.ts src/testing.ts --format esm --dts.eager --clean",
     "typecheck": "tsc -p tsconfig.json"
   },
+  "dependencies": {
+    "@chanx-js/layers": "workspace:*"
+  },
   "devDependencies": {
     "@chanx-js/protocol": "workspace:*",
+    "@msgpack/msgpack": "^3.1.3",
+    "redis": "^6.3.0",
     "zod": "^4.6.7"
   },
   "engines": {

@@ -3,7 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import type { MessageOf } from '../src';
-import { PingMessage, PongMessage, consumer, defineMessage, handlers } from '../src';
+import {
+  PingMessage,
+  PongMessage,
+  consumer,
+  createChanx,
+  defineMessage,
+  handlers,
+} from '../src';
 
 class RoomService {
   constructor(readonly name: string) {}
@@ -60,6 +67,23 @@ describe('builder types', () => {
     // @ts-expect-error: this consumer has no `room` in its state
     consumer('/ws', { name: 'x' }).use(needsRoom);
     expect(true).toBe(true);
+  });
+
+  it('accepts only the events a consumer handles, its sets included', async () => {
+    const Alert = defineMessage('alert', z.object({ level: z.string() }));
+    const set = handlers().passthrough(Alert);
+    const room = consumer('/ws', { name: 'room', groups: ['all'] })
+      .event(Joined, (e) => void e.payload.user)
+      .use(set);
+    const chanx = createChanx({ consumers: [room] });
+
+    await chanx.broadcastEvent(room, Joined.create({ user: 1 }));
+    await chanx.broadcastEvent(room, Alert.create({ level: 'high' }));
+    // @ts-expect-error: the consumer handles no such event
+    await chanx.broadcastEvent(room, PingMessage.create());
+    const wrongPayload = { action: 'alert' as const, payload: { level: 1 } };
+    // @ts-expect-error: wrong payload for a handled event
+    await chanx.sendEvent(room, wrongPayload, 'asgispecific.x');
   });
 
   it('types created messages from their schemas', () => {

@@ -32,7 +32,7 @@ Redis tests run only with `REDIS_URL` set:
 
 ```bash
 docker compose up -d
-REDIS_URL=redis://localhost:6389 REDIS_URL_2=redis://localhost:6390 pnpm test packages/layers
+REDIS_URL=redis://localhost:6389 REDIS_URL_2=redis://localhost:6390 pnpm test packages/layers packages/server
 ```
 
 ## Code that speaks for itself

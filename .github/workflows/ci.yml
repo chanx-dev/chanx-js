@@ -50,7 +50,7 @@ jobs:
       - run: pnpm check:conformance
 
   layers:
-    name: Layers on Redis
+    name: Layers and server on Redis
     runs-on: ubuntu-latest
     services:
       redis:
@@ -76,7 +76,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test packages/layers
+      - run: pnpm test packages/layers packages/server
 
   docs:
     name: Docs build

@@ -23,7 +23,20 @@ export interface Connection<
   readonly id: string;
   /** What `authenticate` returned; `undefined` on a consumer without one. */
   readonly user: User;
+  /** This connection's channel on the layer, as Python's `channel_name`: what `sendEvent()` targets. */
+  readonly channelName: string;
+  /** Groups joined, from the `groups` option and `join()`. */
+  readonly groups: readonly string[];
+  join(group: string): Promise<void>;
+  leave(group: string): Promise<void>;
   close(code?: number, reason?: string): void;
+}
+
+export interface BroadcastOptions {
+  /** Defaults to every group this connection joined. */
+  groups?: readonly string[];
+  /** Skip this connection, as Python's `exclude_current`. */
+  excludeCurrent?: boolean;
 }
 
 export interface Context<Path extends string, State, User, Emits extends Message> {
@@ -38,6 +51,8 @@ export interface Context<Path extends string, State, User, Emits extends Message
   send(message: Emits): Promise<void>;
   /** Send on this connection as a server push, without a `ref`. */
   push(message: Emits): Promise<void>;
+  /** Send to every connection in the groups, across processes, as Python's `broadcast_message`. */
+  broadcast(message: Emits, options?: BroadcastOptions): Promise<void>;
 }
 
 export interface HandlerOptions<Out> {
@@ -82,6 +97,8 @@ export interface ConsumerOptions<
   tags?: string[];
   /** Messages pushed through `ctx` rather than returned by a handler. */
   emits?: readonly Emits[];
+  /** The channel layer to use, by its name in `createChanx({ layers })`. Defaults to `default`. */
+  layer?: string;
   /** Groups to join once connected. */
   groups?: readonly string[] | ((conn: Connection<Path, User>) => readonly string[]);
   /** Per-connection state, available as `ctx.state`. */
@@ -108,17 +125,59 @@ export interface ConsumerDefinition extends HandlerSetDefinition {
 
 const DEFINITION = Symbol('chanx.definition');
 
-export interface HandlerSet<Needs = unknown> {
+/** Event handlers including passthrough events; an explicit handler wins, as in chanx. */
+export function eventHandlersOf(
+  definition: HandlerSetDefinition,
+): Map<string, HandlerDefinition> {
+  const handlers = new Map(definition.events);
+  for (const message of definition.passthrough) {
+    if (handlers.has(message.action)) continue;
+    handlers.set(message.action, {
+      message,
+      outputs: [message],
+      description: `Passthrough handler for ${message.title}`,
+      handle: (event) => event,
+    });
+  }
+  return handlers;
+}
+
+export interface HandlerSet<Needs = unknown, Events extends Message = Message> {
   readonly [DEFINITION]: HandlerSetDefinition;
   /** Phantom: the consumer state this set's handlers rely on. */
   readonly needs?: (state: Needs) => void;
+  /** Phantom: the events these handlers accept, for typed `broadcastEvent()`. */
+  readonly '~events'?: Events;
 }
 
-interface HandlerMethods<Self, Path extends string, State, User, Emits extends Message> {
+type NeedsOf<S> = S extends { readonly needs?: (state: infer N) => void } ? N : never;
+
+/** The events a consumer or handler set accepts. */
+export type EventsOf<C> = C extends { readonly '~events'?: infer E } ? E : never;
+
+type Next<
+  Kind,
+  Path extends string,
+  State,
+  User,
+  Emits extends Message,
+  Events extends Message,
+> = Kind extends 'consumer'
+  ? ConsumerBuilder<Path, State, User, Emits, Events>
+  : HandlerSetBuilder<State, Events>;
+
+interface HandlerMethods<
+  Kind,
+  Path extends string,
+  State,
+  User,
+  Emits extends Message,
+  Events extends Message,
+> {
   on<D extends AnyMessageDefinition>(
     message: D,
     handler: Handler<MessageOf<D>, Context<Path, State, User, Emits>, void | Emits>,
-  ): Self;
+  ): Next<Kind, Path, State, User, Emits, Events>;
   on<D extends AnyMessageDefinition, const O extends Outputs = never>(
     message: D,
     options: HandlerOptions<O>,
@@ -127,12 +186,12 @@ interface HandlerMethods<Self, Path extends string, State, User, Emits extends M
       Context<Path, State, User, Emits | OutputMessages<O>>,
       Returned<O>
     >,
-  ): Self;
+  ): Next<Kind, Path, State, User, Emits, Events>;
   /** A server-side event from the channel layer, as Python's `@event_handler`. */
   event<D extends AnyMessageDefinition>(
     message: D,
     handler: Handler<MessageOf<D>, Context<Path, State, User, Emits>, void | Emits>,
-  ): Self;
+  ): Next<Kind, Path, State, User, Emits, Events | MessageOf<D>>;
   event<D extends AnyMessageDefinition, const O extends Outputs = never>(
     message: D,
     options: HandlerOptions<O>,
@@ -141,9 +200,11 @@ interface HandlerMethods<Self, Path extends string, State, User, Emits extends M
       Context<Path, State, User, Emits | OutputMessages<O>>,
       Returned<O>
     >,
-  ): Self;
+  ): Next<Kind, Path, State, User, Emits, Events | MessageOf<D>>;
   /** Events forwarded to the client unchanged, as Python's `passthrough_events`. */
-  passthrough(...messages: AnyMessageDefinition[]): Self;
+  passthrough<const D extends readonly AnyMessageDefinition[]>(
+    ...messages: D
+  ): Next<Kind, Path, State, User, Emits, Events | MessageOf<D[number]>>;
 }
 
 export interface ConsumerBuilder<
@@ -151,27 +212,23 @@ export interface ConsumerBuilder<
   State,
   User,
   Emits extends Message,
-> extends HandlerMethods<
-  ConsumerBuilder<Path, State, User, Emits>,
-  Path,
-  State,
-  User,
-  Emits
-> {
+  Events extends Message = never,
+> extends HandlerMethods<'consumer', Path, State, User, Emits, Events> {
   readonly [DEFINITION]: ConsumerDefinition;
+  readonly '~events'?: Events;
   /** Mount a reusable handler set; its required state must be part of this consumer's. */
-  use<Needs>(
-    set: HandlerSet<Needs> &
-      ([State] extends [Needs]
+  use<S extends HandlerSet<any, any>>(
+    set: S &
+      ([State] extends [NeedsOf<S>]
         ? unknown
         : { error: "this consumer's state lacks what the set needs" }),
-  ): ConsumerBuilder<Path, State, User, Emits>;
+  ): ConsumerBuilder<Path, State, User, Emits, Events | EventsOf<S>>;
 }
 
-export interface HandlerSetBuilder<Needs>
+export interface HandlerSetBuilder<Needs, Events extends Message = never>
   extends
-    HandlerSet<Needs>,
-    HandlerMethods<HandlerSetBuilder<Needs>, string, Needs, unknown, Message> {}
+    HandlerSet<Needs, Events>,
+    HandlerMethods<'set', string, Needs, unknown, Message, Events> {}
 
 /** Declare a consumer: a route and the messages it handles. */
 export function consumer<
