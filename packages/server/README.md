@@ -76,6 +76,23 @@ await chanx.broadcastEvent(room, UserJoined.create({ user: 'ann' }), ['room.lobb
 The layer messages are chanx's own (`handle_channel_event`, `handle_group_message`),
 so a Python worker's `broadcast_event` reaches Node connections, and back.
 
+## Errors
+
+Failures reach the client as chanx sends them; override any of them per consumer or
+topic, as Python's `handle_validation_error`, `handle_message_handler_error` and
+`handle_event_handler_error`:
+
+```ts
+consumer('/ws/chat', {
+  name: 'chat',
+  onValidationError: (issues, ctx) => ctx.send(Problem.create({ issues })),
+  onHandlerError: (error, message, ctx) => report(error),
+  onEventError: (error, event, ctx) => report(error),
+});
+```
+
+Classes override the methods of the same names.
+
 ## Topics
 
 One connection, many streams: clients subscribe to topics by name, each with its own

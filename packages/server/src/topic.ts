@@ -1,12 +1,13 @@
 import { formatPattern, parsePattern } from '@chanx-js/protocol';
 
 import type { Subscription } from './classes';
-import { Topic, handlersFromClass } from './classes';
+import { Topic, classErrorHooks, handlersFromClass } from './classes';
 import type {
   Connection,
   ConsumerBuilder,
   ConsumerDefinition,
   ConsumerOptions,
+  ErrorHooks,
   HandlerDefinition,
   HandlerOptions,
   HandlerSet,
@@ -52,7 +53,7 @@ export interface TopicOptions<
   Pattern extends string,
   User,
   State = Record<never, never>,
-> {
+> extends ErrorHooks<TopicContext<Pattern, User, Message, State>> {
   /**
    * Name of the topic's channel layer group namespace, as the Python class name: two
    * servers sharing a layer must agree on it. Defaults to `RoomTopic` for `room:{...}`.
@@ -265,6 +266,7 @@ function topicFromClass(
       authorize: ({ state }) => (state as Topic).authorize(),
       onSubscribe: (ctx) => (ctx.state as Topic).onSubscribe(),
       onUnsubscribe: (ctx) => (ctx.state as Topic).onUnsubscribe(),
+      ...classErrorHooks(target.prototype),
     },
     ...handlersFromClass(target),
     passthrough: target.passthrough ?? [],

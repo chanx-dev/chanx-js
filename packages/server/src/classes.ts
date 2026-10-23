@@ -4,13 +4,15 @@ import type {
   ConsumerDefinition,
   ConsumerOptions,
   Context,
+  ErrorHooks,
   HandlerDefinition,
   HandlerOptions,
 } from './consumer';
 import { decamelizeKey } from './case';
 import { classDefinitions } from './consumer';
 import type { AnyMessageDefinition, Message, MessageOf } from './messages';
-import type { PublishOptions } from './topic';
+import type { PublishOptions, TopicClassContext } from './topic';
+import type { ValidationIssue } from './validation';
 
 /**
  * Base class for consumers written as classes, as chanx's `AsyncJsonWebsocketConsumer`.
@@ -37,6 +39,36 @@ export abstract class AsyncJsonWebsocketConsumer<User = unknown> {
   onConnect(): void | Promise<void> {}
 
   onDisconnect(): void | Promise<void> {}
+
+  /** Override to change how a frame that failed validation is answered. */
+  onValidationError?(issues: ValidationIssue[], ctx: ClassContext): void | Promise<void>;
+  /** Override to change how a failing message handler is reported. */
+  onHandlerError?(
+    error: unknown,
+    message: Message,
+    ctx: ClassContext,
+  ): void | Promise<void>;
+  /** Override to change how a failing event handler is reported. */
+  onEventError?(error: unknown, event: Message, ctx: ClassContext): void | Promise<void>;
+}
+
+const HOOKS = ['onValidationError', 'onHandlerError', 'onEventError'] as const;
+
+/** Error hooks a class overrides, called on the instance serving the connection or subscription. */
+export function classErrorHooks(prototype: object): ErrorHooks<{ state: unknown }> {
+  return Object.fromEntries(
+    HOOKS.filter(
+      (hook) => typeof (prototype as Record<string, unknown>)[hook] === 'function',
+    ).map((hook) => [
+      hook,
+      (...args: unknown[]) => {
+        const ctx = args.at(-1) as {
+          state: Record<string, (...a: unknown[]) => unknown>;
+        };
+        return ctx.state[hook]!(...args);
+      },
+    ]),
+  );
 }
 
 type ConsumerClass = abstract new (
@@ -143,6 +175,7 @@ function definitionFromClass(
         ),
       onConnect: (ctx) => (ctx.state as AsyncJsonWebsocketConsumer).onConnect(),
       onDisconnect: (ctx) => (ctx.state as AsyncJsonWebsocketConsumer).onDisconnect(),
+      ...classErrorHooks(target.prototype),
     },
     ...handlersFromClass(target),
     passthrough,
@@ -258,4 +291,22 @@ export abstract class Topic<User = unknown> {
 
   /** Before leaving, on unsubscribe and on disconnect. */
   onUnsubscribe(): void | Promise<void> {}
+
+  /** Override to change how a frame that failed validation is answered. */
+  onValidationError?(
+    issues: ValidationIssue[],
+    ctx: TopicClassContext,
+  ): void | Promise<void>;
+  /** Override to change how a failing message handler is reported. */
+  onHandlerError?(
+    error: unknown,
+    message: Message,
+    ctx: TopicClassContext,
+  ): void | Promise<void>;
+  /** Override to change how a failing event handler is reported. */
+  onEventError?(
+    error: unknown,
+    event: Message,
+    ctx: TopicClassContext,
+  ): void | Promise<void>;
 }

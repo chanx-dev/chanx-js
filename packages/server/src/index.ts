@@ -11,6 +11,7 @@ export type {
   ConsumerBuilder,
   ConsumerOptions,
   Context,
+  ErrorHooks,
   EventsOf,
   HandlerOptions,
   HandlerSet,

@@ -1,4 +1,5 @@
 import type { AnyMessageDefinition, Message, MessageOf } from './messages';
+import type { ValidationIssue } from './validation';
 import { decamelizeKey } from './case';
 import type { TopicDefinition, TopicLike } from './topic';
 
@@ -98,7 +99,7 @@ export interface ConsumerOptions<
   State,
   User,
   Emits extends AnyMessageDefinition,
-> {
+> extends ErrorHooks<Context<Path, State, User, MessageOf<Emits>>> {
   /** The AsyncAPI channel name, as Python's `@channel(name=...)`. */
   name: string;
   description?: string;
@@ -125,6 +126,20 @@ export interface ConsumerOptions<
   onDisconnect?: (
     ctx: Context<Path, State, User, MessageOf<Emits>>,
   ) => void | Promise<void>;
+}
+
+/**
+ * Overrides for how failures reach the client, as chanx's `handle_validation_error`,
+ * `handle_message_handler_error` and `handle_event_handler_error`. Each defaults to what
+ * chanx does.
+ */
+export interface ErrorHooks<Ctx> {
+  /** A frame failed validation. Default: an `error` frame listing the issues. */
+  onValidationError?: (issues: ValidationIssue[], ctx: Ctx) => void | Promise<void>;
+  /** A message handler threw. Default: log it, and an `error` frame naming the action. */
+  onHandlerError?: (error: unknown, message: Message, ctx: Ctx) => void | Promise<void>;
+  /** An event handler threw. Default: log it; the client is told nothing. */
+  onEventError?: (error: unknown, event: Message, ctx: Ctx) => void | Promise<void>;
 }
 
 /** Runtime form of a consumer: what dispatch and AsyncAPI read. */

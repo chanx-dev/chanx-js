@@ -13,6 +13,7 @@ import type {
   ConnectRequest,
   Connection,
   ConsumerDefinition,
+  ErrorHooks,
   HandlerDefinition,
 } from './consumer';
 import { eventHandlersOf } from './consumer';
@@ -54,6 +55,7 @@ type Envelope = { topic?: string; ref?: string; seq?: number };
 
 /** Handlers and what they run with: the consumer itself, or one topic subscription. */
 interface Scope {
+  readonly hooks: ErrorHooks<never>;
   readonly handlers: ReadonlyMap<string, HandlerDefinition>;
   readonly events: ReadonlyMap<string, HandlerDefinition>;
   validate(frame: Record<string, unknown>): Promise<ValidationResult>;
@@ -172,6 +174,7 @@ export function openSession(
   }
 
   const consumerScope: Scope = {
+    hooks: consumer,
     ...handlersOf(definition),
     context: (envelope) => ({
       conn,
@@ -204,6 +207,7 @@ export function openSession(
     publish: ReturnType<typeof publisher>,
   ): Scope {
     return {
+      hooks: topic.options,
       ...handlersOf(topic),
       context: (envelope) => ({
         conn,
@@ -332,25 +336,36 @@ export function openSession(
         envelope,
       );
     }
+    const ctx = scope.context(envelope) as never;
     const result = await scope.validate(frame);
-    if ('issues' in result) return write(ErrorMessage.create(result.issues), envelope);
+    if ('issues' in result) {
+      const {
+        onValidationError = () => write(ErrorMessage.create(result.issues), envelope),
+      } = scope.hooks;
+      return hook(() => onValidationError(result.issues, ctx));
+    }
 
     const { message } = result;
     const handler = scope.handlers.get(message.action)!;
     try {
-      const reply = await handler.handle(message, scope.context(envelope) as never);
+      const reply = await handler.handle(message, ctx);
       if (reply !== undefined) {
         checkDeclared(handler, reply);
         write(reply as object, envelope);
       }
     } catch (error) {
-      logger.error(`chanx: handler for "${message.action}" failed`, error);
-      write(
-        ErrorMessage.create({
-          detail: `Failed to process message for ${message.action}`,
-        }),
-        envelope,
-      );
+      const {
+        onHandlerError = () => {
+          logger.error(`chanx: handler for "${message.action}" failed`, error);
+          write(
+            ErrorMessage.create({
+              detail: `Failed to process message for ${message.action}`,
+            }),
+            envelope,
+          );
+        },
+      } = scope.hooks;
+      await hook(() => onHandlerError(error, message, ctx));
     }
   }
 
@@ -454,16 +469,30 @@ export function openSession(
 
     const { message } = result;
     const handler = scope.events.get(message.action)!;
+    const ctx = scope.context(envelope) as never;
     try {
-      const reply = await handler.handle(message, scope.context(envelope) as never);
+      const reply = await handler.handle(message, ctx);
       if (reply !== undefined) {
         checkDeclared(handler, reply);
         write(reply as object, envelope);
       }
     } catch (error) {
-      logger.error(`chanx: event handler for "${message.action}" failed`, error);
+      const {
+        onEventError = () =>
+          logger.error(`chanx: event handler for "${message.action}" failed`, error),
+      } = scope.hooks;
+      await hook(() => onEventError(error, message, ctx));
     }
     if (options.sendCompletion) write(EventCompleteMessage.create(), envelope);
+  }
+
+  /** Run a user's error hook; one that throws is logged, never left to escape. */
+  async function hook(run: () => void | Promise<void>) {
+    try {
+      await run();
+    } catch (error) {
+      logger.error('chanx: error hook failed', error);
+    }
   }
 
   function checkDeclared(handler: HandlerDefinition, reply: unknown) {
