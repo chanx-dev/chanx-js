@@ -18,22 +18,27 @@
   ],
   "exports": {
     ".": {
+      "@chanx-js/source": "./src/index.ts",
       "types": "./dist/index.d.mts",
       "default": "./dist/index.mjs"
     },
     "./testing": {
+      "@chanx-js/source": "./src/testing.ts",
       "types": "./dist/testing.d.mts",
       "default": "./dist/testing.mjs"
     },
     "./node": {
+      "@chanx-js/source": "./src/node.ts",
       "types": "./dist/node.d.mts",
       "default": "./dist/node.mjs"
     },
     "./crossws": {
+      "@chanx-js/source": "./src/crossws.ts",
       "types": "./dist/crossws.d.mts",
       "default": "./dist/crossws.mjs"
     },
     "./hono": {
+      "@chanx-js/source": "./src/hono.ts",
       "types": "./dist/hono.d.mts",
       "default": "./dist/hono.mjs"
     }

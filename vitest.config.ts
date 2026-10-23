@@ -1,5 +1,9 @@
 import { defineConfig } from 'vitest/config';
 
+// Workspace packages resolve to their TypeScript source, so tests need no build first.
+const source = '@chanx-js/source';
+const nodeConditions = [source, 'module', 'node', 'development|production'];
+
 /**
  * Solid needs the `solid` and `browser` conditions: under plain Node resolution
  * `solid-js` loads its server build, where every signal is an inert stub and the
@@ -8,7 +12,7 @@ import { defineConfig } from 'vitest/config';
  * Those conditions cannot be global, because `browser` also sends `ws` to its browser
  * stub and breaks the Node end-to-end test. Hence one project each.
  */
-const solidConditions = ['solid', 'browser', 'import', 'module', 'default'];
+const solidConditions = [source, 'solid', 'browser', 'import', 'module', 'default'];
 
 const solidTests = 'packages/client/tests/solid.test.ts';
 
@@ -26,6 +30,8 @@ export default defineConfig({
         },
       },
       {
+        resolve: { conditions: nodeConditions },
+        ssr: { resolve: { conditions: nodeConditions } },
         test: {
           name: 'default',
           environment: 'node',

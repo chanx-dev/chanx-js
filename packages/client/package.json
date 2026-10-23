@@ -18,22 +18,27 @@
   ],
   "exports": {
     ".": {
+      "@chanx-js/source": "./src/index.ts",
       "types": "./dist/index.d.mts",
       "default": "./dist/index.mjs"
     },
     "./react": {
+      "@chanx-js/source": "./src/react/index.ts",
       "types": "./dist/react/index.d.mts",
       "default": "./dist/react/index.mjs"
     },
     "./vue": {
+      "@chanx-js/source": "./src/vue/index.ts",
       "types": "./dist/vue/index.d.mts",
       "default": "./dist/vue/index.mjs"
     },
     "./svelte": {
+      "@chanx-js/source": "./src/svelte/index.ts",
       "types": "./dist/svelte/index.d.mts",
       "default": "./dist/svelte/index.mjs"
     },
     "./solid": {
+      "@chanx-js/source": "./src/solid/index.ts",
       "types": "./dist/solid/index.d.mts",
       "default": "./dist/solid/index.mjs"
     }
