@@ -26,6 +26,7 @@ import {
   GroupCompleteMessage,
 } from './messages';
 import type { PublishOptions, TopicDefinition } from './topic';
+import { topicDefinitionOf, topicsOf } from './topic';
 import type { ValidationResult } from './validation';
 import { createValidator, envelopeIssues, isObject } from './validation';
 
@@ -98,6 +99,7 @@ export function openSession(
   const warned = new Set<string>();
   const groups: string[] = [];
   const subscriptions = new Map<string, Subscription>();
+  const topics = topicsOf(definition);
   let channel: LayerChannel | undefined;
   let defaultTopic: string | undefined;
   let isClosed = false;
@@ -183,29 +185,36 @@ export function openSession(
     }),
   };
 
+  function publisher(topic: TopicDefinition, value: string) {
+    const group = topicGroup(topic, value);
+    return (event: Message, { seq }: PublishOptions = {}) =>
+      layer.groupSend(group, {
+        type: TOPIC_EVENT,
+        topic: value,
+        seq: seq ?? null,
+        event_data: event,
+      });
+  }
+
   function topicScope(
     topic: TopicDefinition,
     value: string,
     params: Record<string, string>,
+    state: unknown,
+    publish: ReturnType<typeof publisher>,
   ): Scope {
-    const group = topicGroup(topic, value);
     return {
       ...handlersOf(topic),
       context: (envelope) => ({
         conn,
         params,
         topic: value,
+        state,
         ref: envelope.ref,
         signal: abort.signal,
         send: async (message: Message) => write(message, envelope),
         push: async (message: Message) => write(message, { topic: value }),
-        publish: (event: Message, { seq }: PublishOptions = {}) =>
-          layer.groupSend(group, {
-            type: TOPIC_EVENT,
-            topic: value,
-            seq: seq ?? null,
-            event_data: event,
-          }),
+        publish,
       }),
     };
   }
@@ -228,7 +237,8 @@ export function openSession(
     await consumer.onConnect?.(consumerScope.context({}) as never);
     if (definition.defaultTopic) {
       // A route dedicated to one topic subscribes it from the URL, as chanx's default topic.
-      defaultTopic = formatPattern(definition.defaultTopic.pattern, request.params);
+      const { pattern } = topicDefinitionOf(definition.defaultTopic);
+      defaultTopic = formatPattern(pattern, request.params);
       await subscribe(defaultTopic, { topic: defaultTopic });
     }
     return true;
@@ -353,7 +363,7 @@ export function openSession(
     const subscribed = { action: 'subscribed', payload: null };
     if (subscriptions.has(value)) return write(subscribed, envelope);
 
-    const found = definition.topics
+    const found = topics
       .map((topic) => ({ topic, params: topic.match(value) }))
       .find(({ params }) => params !== null);
     if (!found)
@@ -364,8 +374,16 @@ export function openSession(
       );
     const { topic } = found;
     const params = found.params!;
+    const publish = publisher(topic, value);
+    const state = topic.options.state?.({
+      conn,
+      params,
+      topic: value,
+      push: async (message) => write(message, { topic: value }),
+      publish,
+    });
     const authorized =
-      (await topic.options.authorize?.({ params, conn, topic: value })) ?? true;
+      (await topic.options.authorize?.({ params, conn, topic: value, state })) ?? true;
     if (!authorized) {
       return topicError(
         TopicErrorReason.UNAUTHORIZED,
@@ -374,7 +392,7 @@ export function openSession(
       );
     }
 
-    const scope = topicScope(topic, value, params);
+    const scope = topicScope(topic, value, params, state, publish);
     const group = topicGroup(topic, value);
     await layer.groupAdd(group, requireChannel().name);
     groups.push(group);

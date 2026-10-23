@@ -8,8 +8,9 @@ import type {
   HandlerOptions,
 } from './consumer';
 import { decamelizeKey } from './case';
-import { TOPIC, classDefinitions } from './consumer';
+import { classDefinitions } from './consumer';
 import type { AnyMessageDefinition, Message, MessageOf } from './messages';
+import type { PublishOptions } from './topic';
 
 /**
  * Base class for consumers written as classes, as chanx's `AsyncJsonWebsocketConsumer`.
@@ -51,9 +52,10 @@ type OutputMessages<O> = [O] extends [never]
 type Returned<O> = [O] extends [never] ? void | Message : OutputMessages<O>;
 type Outputs = AnyMessageDefinition | readonly AnyMessageDefinition[];
 
+// `never` accepts any context annotation: a consumer's or a topic's.
 type HandlerMethod<D, O> = (
   message: MessageOf<D>,
-  ctx: ClassContext,
+  ctx: never,
 ) => Returned<O> | Promise<Returned<O>>;
 
 /** Works as a standard decorator and as a legacy one (`experimentalDecorators`, as Nest uses). */
@@ -129,8 +131,27 @@ export function Consumer(path: string, options: ClassConsumerOptions): ClassDeco
 function definitionFromClass(
   target: ConsumerClass,
   path: string,
-  { passthrough = [], ...options }: ClassConsumerOptions,
+  { passthrough = [], topics = [], ...options }: ClassConsumerOptions,
 ): ConsumerDefinition {
+  return {
+    path,
+    options: {
+      ...options,
+      state: (conn) =>
+        new (target as unknown as new (conn: Connection) => AsyncJsonWebsocketConsumer)(
+          conn,
+        ),
+      onConnect: (ctx) => (ctx.state as AsyncJsonWebsocketConsumer).onConnect(),
+      onDisconnect: (ctx) => (ctx.state as AsyncJsonWebsocketConsumer).onDisconnect(),
+    },
+    ...handlersFromClass(target),
+    passthrough,
+    topics,
+  };
+}
+
+/** A class's `@On` and `@OnEvent` methods, walking its prototype chain as chanx walks the MRO. */
+export function handlersFromClass(target: abstract new (...args: never[]) => unknown) {
   const handlers = new Map<string, HandlerDefinition>();
   const events = new Map<string, HandlerDefinition>();
   const methodFor = new Map<string, string>();
@@ -138,9 +159,9 @@ function definitionFromClass(
 
   // Most derived first: an override, decorated or not, hides the method it overrides.
   for (
-    let proto = target.prototype;
+    let proto = target.prototype as object | null;
     proto && proto !== Object.prototype;
-    proto = Object.getPrototypeOf(proto)
+    proto = Object.getPrototypeOf(proto) as object | null
   ) {
     for (const name of Object.getOwnPropertyNames(proto)) {
       if (seen.has(name)) continue;
@@ -177,21 +198,64 @@ function definitionFromClass(
       });
     }
   }
+  return { handlers, events };
+}
 
-  return {
-    path,
-    options: {
-      ...options,
-      state: (conn) =>
-        new (target as unknown as new (conn: Connection) => AsyncJsonWebsocketConsumer)(
-          conn,
-        ),
-      onConnect: (ctx) => (ctx.state as AsyncJsonWebsocketConsumer).onConnect(),
-      onDisconnect: (ctx) => (ctx.state as AsyncJsonWebsocketConsumer).onDisconnect(),
-    },
-    handlers,
-    events,
-    passthrough,
-    topics: (options.topics ?? []).map((source) => source[TOPIC]),
-  };
+/** What a class topic is built with: the subscription it serves. */
+export interface Subscription<User = unknown> {
+  readonly conn: Connection<string, User>;
+  /** Params parsed from the topic: `room:{room_name}` subscribed as `room:lobby` gives `lobby`. */
+  readonly params: Readonly<Record<string, string>>;
+  /** The topic string, such as `room:lobby`. */
+  readonly topic: string;
+  push(message: Message): Promise<void>;
+  publish(event: Message, options?: PublishOptions): Promise<void>;
+}
+
+/**
+ * Base class for topics written as classes, as chanx's `Topic`: set `static pattern`, and
+ * the class name names its layer group, as in Python. One instance serves one subscription.
+ */
+export abstract class Topic<User = unknown> {
+  static pattern: string;
+  static description?: string;
+  /** The channel layer to publish on. Defaults to `default`. */
+  static layer?: string;
+  /** Events forwarded to the client unchanged, as Python's `passthrough_events`. */
+  static passthrough?: readonly AnyMessageDefinition[];
+
+  constructor(protected readonly subscription: Subscription<User>) {}
+
+  get conn(): Connection<string, User> {
+    return this.subscription.conn;
+  }
+
+  get params(): Readonly<Record<string, string>> {
+    return this.subscription.params;
+  }
+
+  get topic(): string {
+    return this.subscription.topic;
+  }
+
+  /** Send on this topic as a server push, without a `ref`. */
+  push(message: Message): Promise<void> {
+    return this.subscription.push(message);
+  }
+
+  /** Publish an event to everyone subscribed to this topic, as Python's `Topic.broadcast`. */
+  publish(event: Message, options?: PublishOptions): Promise<void> {
+    return this.subscription.publish(event, options);
+  }
+
+  /** Decide whether this connection may subscribe. */
+  authorize(): boolean | Promise<boolean> {
+    return true;
+  }
+
+  /** Once subscribed; what it sends is state, not a reply. */
+  onSubscribe(): void | Promise<void> {}
+
+  /** Before leaving, on unsubscribe and on disconnect. */
+  onUnsubscribe(): void | Promise<void> {}
 }

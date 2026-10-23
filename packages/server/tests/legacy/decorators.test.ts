@@ -9,6 +9,8 @@ import {
   OnEvent,
   PingMessage,
   PongMessage,
+  Topic,
+  consumer,
   createChanx,
   defineMessage,
 } from '../../src';
@@ -80,5 +82,29 @@ describe('legacy decorators', () => {
       action: 'alert',
       payload: { level: 'HIGH' },
     });
+  });
+});
+
+describe('legacy decorators on Topic classes', () => {
+  it('declare topic handlers', async () => {
+    class CountTopic extends Topic {
+      static override pattern = 'count:{id}';
+      private n = 0;
+
+      @On(Count, { output: Counted })
+      count() {
+        return Counted.create({ n: ++this.n });
+      }
+    }
+    const client = connect(
+      createChanx({ consumers: [consumer('/ws', { name: 'c', topics: [CountTopic] })] }),
+      '/ws',
+    );
+    await client.ready;
+    await client.request({ action: 'subscribe' }, { topic: 'count:1' });
+
+    expect(
+      (await client.request({ action: 'count' }, { topic: 'count:1' })).payload,
+    ).toEqual({ n: 1 });
   });
 });

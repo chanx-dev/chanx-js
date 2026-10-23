@@ -1,6 +1,6 @@
 import type { AnyMessageDefinition, Message, MessageOf } from './messages';
 import { decamelizeKey } from './case';
-import type { TopicDefinition } from './topic';
+import type { TopicDefinition, TopicLike } from './topic';
 
 type ExtractParams<S extends string> = S extends `${string}{${infer P}}${infer Rest}`
   ? P | ExtractParams<Rest>
@@ -105,8 +105,8 @@ export interface ConsumerOptions<
   tags?: string[];
   /** Messages pushed through `ctx` rather than returned by a handler. */
   emits?: readonly Emits[];
-  /** Topics clients can subscribe to on this connection. */
-  topics?: readonly TopicSource[];
+  /** Topics clients can subscribe to on this connection: `topic()` builders or `Topic` classes. */
+  topics?: readonly TopicLike[];
   /** The channel layer to use, by its name in `createChanx({ layers })`. Defaults to `default`. */
   layer?: string;
   /** Groups to join once connected. */
@@ -131,9 +131,9 @@ export interface ConsumerOptions<
 export interface ConsumerDefinition extends HandlerSetDefinition {
   readonly path: string;
   readonly options: ConsumerOptions<string, unknown, unknown, AnyMessageDefinition>;
-  readonly topics: readonly TopicDefinition[];
+  readonly topics: readonly TopicLike[];
   /** Subscribed on connect and implied by frames without a topic, as `Topic.as_consumer()`. */
-  readonly defaultTopic?: TopicDefinition;
+  readonly defaultTopic?: TopicLike;
 }
 
 const DEFINITION = Symbol('chanx.definition');
@@ -270,7 +270,7 @@ export function consumer<
     handlers: new Map(),
     events: new Map(),
     passthrough: [],
-    topics: (options.topics ?? []).map((source) => source[TOPIC]),
+    topics: options.topics ?? [],
   }) as never;
 }
 

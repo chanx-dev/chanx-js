@@ -6,6 +6,7 @@ import { eventHandlersOf } from './consumer';
 import type { AnyMessageDefinition } from './messages';
 import type { JsonSchema, StandardSchemaV1 } from './standard-schema';
 import type { TopicDefinition } from './topic';
+import { topicDefinitionOf, topicsOf } from './topic';
 
 export interface AsyncAPIOptions {
   title?: string;
@@ -175,9 +176,10 @@ function entriesOf(definition: ConsumerDefinition): Entry[] {
 
   // A route dedicated to one topic is that topic, not a host for it.
   if (definition.defaultTopic) {
-    return [topicEntry(definition.defaultTopic, snakeName(definition.defaultTopic.name))];
+    const topic = topicDefinitionOf(definition.defaultTopic);
+    return [topicEntry(topic, snakeName(topic.name))];
   }
-  const hosted = definition.topics.map((topic) =>
+  const hosted = topicsOf(definition).map((topic) =>
     topicEntry(topic, `${options.name}_${snakeName(topic.name)}`),
   );
   const ownHandlers = definition.handlers.size > 0 || definition.topics.length === 0;

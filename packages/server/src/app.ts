@@ -4,14 +4,10 @@ import { InMemoryChannelLayer } from '@chanx-js/layers';
 import type { AsyncAPIDocument, AsyncAPIOptions } from './asyncapi';
 import { generateAsyncAPI } from './asyncapi';
 import type { AsyncJsonWebsocketConsumer } from './classes';
-import type {
-  ConsumerBuilder,
-  ConsumerDefinition,
-  EventsOf,
-  TopicSource,
-} from './consumer';
-import { TOPIC, definitionOf } from './consumer';
-import type { PublishOptions } from './topic';
+import type { ConsumerBuilder, ConsumerDefinition, EventsOf } from './consumer';
+import { definitionOf } from './consumer';
+import type { PublishOptions, TopicLike } from './topic';
+import { topicDefinitionOf } from './topic';
 import type { Session } from './session';
 import { CHANNEL_EVENT, TOPIC_EVENT, openSession, topicGroup } from './session';
 
@@ -72,7 +68,7 @@ export interface Chanx {
    * Publish an event to everyone subscribed to a topic, from anywhere, as Python's
    * `Topic.broadcast`. `seq` is caller-assigned, for gap detection only.
    */
-  publish<T extends TopicSource>(
+  publish<T extends TopicLike>(
     topic: T,
     value: string,
     event: EventsOf<T>,
@@ -149,7 +145,7 @@ export function createChanx(options: ChanxOptions): Chanx {
       );
     },
     async publish(source, value, event, { seq } = {}) {
-      const topic = source[TOPIC];
+      const topic = topicDefinitionOf(source);
       if (!topic.match(value)) {
         throw new Error(`"${value}" is not a topic of pattern "${topic.pattern}"`);
       }

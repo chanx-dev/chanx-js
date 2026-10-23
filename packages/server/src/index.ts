@@ -1,8 +1,8 @@
 export { createChanx } from './app';
 export type { Chanx, ChanxOptions, ConsumerSource, Logger, Transport } from './app';
 export type { AsyncAPIDocument, AsyncAPIOptions } from './asyncapi';
-export { AsyncJsonWebsocketConsumer, Consumer, On, OnEvent } from './classes';
-export type { ClassConsumerOptions, ClassContext } from './classes';
+export { AsyncJsonWebsocketConsumer, Consumer, On, OnEvent, Topic } from './classes';
+export type { ClassConsumerOptions, ClassContext, Subscription } from './classes';
 export { consumer, handlers } from './consumer';
 export type {
   BroadcastOptions,
@@ -39,7 +39,14 @@ export type {
   MessageOptions,
 } from './messages';
 export type { Session } from './session';
-export { topic } from './topic';
-export type { PublishOptions, TopicBuilder, TopicContext, TopicOptions } from './topic';
+export { topic, topicConsumer } from './topic';
+export type {
+  PublishOptions,
+  TopicBuilder,
+  TopicClassContext,
+  TopicContext,
+  TopicLike,
+  TopicOptions,
+} from './topic';
 export type { StandardSchemaV1 } from './standard-schema';
 export type { ValidationIssue } from './validation';

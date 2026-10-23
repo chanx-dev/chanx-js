@@ -105,6 +105,26 @@ await chanx.publish(roomTopic, roomTopic.with({ room_name: 'lobby' }), event, {
 const room = roomTopic.asConsumer('/ws/room/{room_name}');
 ```
 
+Or as a class, as chanx's sandbox writes topics. One instance serves one subscription,
+and the class name names the layer group:
+
+```ts
+class RoomTopic extends Topic {
+  static override pattern = 'room:{room_name}';
+  static override passthrough = [RoomEvent];
+
+  override authorize() {
+    return this.params.room_name !== 'secret';
+  }
+
+  @On(Post, { output: Posted })
+  async handle_post(m: MessageOf<typeof Post>) {
+    await this.publish(RoomEvent.create(m.payload));
+    return Posted.create(m.payload);
+  }
+}
+```
+
 Group names follow chanx (`RoomTopic.room-lobby`), so Python and Node publish to the
 same subscribers.
 

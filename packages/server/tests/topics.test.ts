@@ -2,13 +2,17 @@ import { InMemoryChannelLayer } from '@chanx-js/layers';
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
+import type { MessageOf, TopicClassContext } from '../src';
 import {
+  On,
   PingMessage,
   PongMessage,
+  Topic,
   consumer,
   createChanx,
   defineMessage,
   topic,
+  topicConsumer,
 } from '../src';
 import type { Frame, TestClient } from '../src/testing';
 import { connect } from '../src/testing';
@@ -38,6 +42,32 @@ const hub = consumer('/ws/hub', { name: 'hub', topics: [roomTopic] }).on(
 
 const app = () => createChanx({ consumers: [hub], logger: { error() {}, warn() {} } });
 
+// The same topic as chanx's sandbox writes it: a class with a pattern and handler methods.
+class RoomTopic extends Topic {
+  static override pattern = 'room:{room_name}';
+  static override passthrough = [RoomEvent];
+
+  override authorize() {
+    return this.params.room_name !== 'secret';
+  }
+
+  override async onSubscribe() {
+    await this.push(Posted.create({ body: 'welcome' }));
+  }
+
+  @On(Post, { output: Posted })
+  async handle_post(m: MessageOf<typeof Post>) {
+    await this.publish(RoomEvent.create(m.payload), { seq: 5 });
+    return Posted.create(m.payload);
+  }
+}
+
+const classHub = consumer('/ws/hub', { name: 'hub', topics: [RoomTopic] }).on(
+  PingMessage,
+  { output: PongMessage },
+  () => PongMessage.create(),
+);
+
 /** Everything the server sends until it goes quiet, as chanx's communicator collects it. */
 async function drain(client: TestClient) {
   const frames: Frame[] = [];
@@ -50,9 +80,15 @@ async function drain(client: TestClient) {
   }
 }
 
-describe('topics, against a chanx transcript', () => {
+describe.each([
+  ['a topic() builder', () => app()],
+  [
+    'a Topic class',
+    () => createChanx({ consumers: [classHub], logger: { error() {}, warn() {} } }),
+  ],
+])('topics as %s, against a chanx transcript', (_surface, makeApp) => {
   it('answers every frame as chanx 2.11.7 does', async () => {
-    const client = connect(app(), '/ws/hub');
+    const client = connect(makeApp(), '/ws/hub');
     await client.ready;
     const sent = [
       { version: 1, topic: 'room:lobby', ref: '1', action: 'subscribe' },
@@ -277,5 +313,139 @@ describe('topics', () => {
       ),
     );
     expect(client.pending).toEqual([]);
+  });
+});
+
+describe('Topic classes', () => {
+  it('get an instance per subscription, so fields are per-subscription state', async () => {
+    const Bump = defineMessage('bump');
+    const Count = defineMessage('count', z.object({ n: z.number(), topic: z.string() }));
+    class CounterTopic extends Topic {
+      static override pattern = 'counter:{id}';
+      private n = 0;
+
+      @On(Bump, { output: Count })
+      bump(_m: unknown, ctx: TopicClassContext) {
+        return Count.create({ n: ++this.n, topic: ctx.topic });
+      }
+    }
+    const chanx = createChanx({
+      consumers: [consumer('/ws', { name: 'c', topics: [CounterTopic] })],
+    });
+    const client = connect(chanx, '/ws');
+    await client.ready;
+    for (const value of ['counter:a', 'counter:b']) {
+      await client.request({ action: 'subscribe' }, { topic: value });
+    }
+
+    const bump = async (value: string) =>
+      (await client.request({ action: 'bump' }, { topic: value })).payload;
+    expect(await bump('counter:a')).toEqual({ n: 1, topic: 'counter:a' });
+    expect(await bump('counter:a')).toEqual({ n: 2, topic: 'counter:a' });
+    expect(await bump('counter:b')).toEqual({ n: 1, topic: 'counter:b' });
+  });
+
+  it('name their layer group after the class, as chanx does', async () => {
+    const joined: string[] = [];
+    class Recording extends InMemoryChannelLayer {
+      override async groupAdd(group: string, channel: string) {
+        joined.push(group);
+        await super.groupAdd(group, channel);
+      }
+    }
+    const chanx = createChanx({
+      consumers: [classHub],
+      layers: { default: new Recording() },
+    });
+    const client = connect(chanx, '/ws/hub');
+    await client.ready;
+
+    await client.request({ action: 'subscribe' }, { topic: 'room:lobby' });
+
+    expect(joined).toEqual(['RoomTopic.room-lobby']);
+  });
+
+  it('run their unsubscribe hook on unsubscribe and on disconnect', async () => {
+    const left: string[] = [];
+    class Watched extends Topic {
+      static override pattern = 'w:{id}';
+      override onUnsubscribe() {
+        left.push(this.topic);
+      }
+    }
+    const chanx = createChanx({
+      consumers: [consumer('/ws', { name: 'w', topics: [Watched] })],
+    });
+    const client = connect(chanx, '/ws');
+    await client.ready;
+    await client.request({ action: 'subscribe' }, { topic: 'w:1' });
+    await client.request({ action: 'subscribe' }, { topic: 'w:2' });
+
+    await client.request({ action: 'unsubscribe' }, { topic: 'w:1' });
+    await client.close();
+
+    expect(left).toEqual(['w:1', 'w:2']);
+  });
+
+  it('serve alone on a route', async () => {
+    const chanx = createChanx({
+      consumers: [topicConsumer(RoomTopic, '/ws/room/{room_name}')],
+    });
+    const client = connect(chanx, '/ws/room/lobby');
+
+    expect(await client.receive()).toMatchObject({
+      action: 'subscribed',
+      topic: 'room:lobby',
+    });
+    expect((await client.receive()).payload).toEqual({ body: 'welcome' });
+  });
+
+  it('publish from anywhere', async () => {
+    const chanx = createChanx({ consumers: [classHub] });
+    const client = connect(chanx, '/ws/hub');
+    await client.ready;
+    await client.request({ action: 'subscribe' }, { topic: 'room:lobby' });
+    await client.receive();
+
+    await chanx.publish(RoomTopic, 'room:lobby', RoomEvent.create({ body: 'news' }));
+
+    expect((await client.receive()).payload).toEqual({ body: 'news' });
+  });
+
+  it('refuse a class without a pattern', () => {
+    class NoPattern extends Topic {}
+    expect(() =>
+      createChanx({
+        consumers: [consumer('/ws', { name: 'x', topics: [NoPattern] })],
+      }).asyncapi(),
+    ).toThrow('NoPattern is not a topic');
+  });
+});
+
+describe('topic() state', () => {
+  it('is built per subscription, before authorize', async () => {
+    const seen: string[] = [];
+    const tracked = topic('t:{id}', {
+      state: ({ params }) => ({ id: params.id!, hits: 0 }),
+      authorize: ({ state }) => {
+        seen.push(state.id);
+        return true;
+      },
+    }).on(Post, { output: Posted }, (_m, ctx) =>
+      Posted.create({ body: `${ctx.state.id}:${++ctx.state.hits}` }),
+    );
+    const chanx = createChanx({
+      consumers: [consumer('/ws', { name: 't', topics: [tracked] })],
+    });
+    const client = connect(chanx, '/ws');
+    await client.ready;
+    await client.request({ action: 'subscribe' }, { topic: 't:a' });
+
+    const post = async () =>
+      (await client.request({ action: 'post', payload: { body: '' } }, { topic: 't:a' }))
+        .payload;
+    expect(await post()).toEqual({ body: 'a:1' });
+    expect(await post()).toEqual({ body: 'a:2' });
+    expect(seen).toEqual(['a']);
   });
 });

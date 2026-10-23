@@ -8,16 +8,19 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import type { AsyncAPIDocument } from '../src';
+import type { MessageOf } from '../src';
 import {
   AsyncJsonWebsocketConsumer,
   Consumer,
   On,
   PingMessage,
   PongMessage,
+  Topic,
   consumer,
   createChanx,
   defineMessage,
   topic,
+  topicConsumer,
 } from '../src';
 
 // chanx's FastAPI sandbox schema, which the client conformance tests generate from.
@@ -83,6 +86,42 @@ const hub = consumer('/ws/topics', {
 
 const node = createChanx({
   consumers: [hub, roomTopic.asConsumer('/ws/topics/room/{room_name}')],
+}).asyncapi({
+  title: 'FastAPI AsyncAPI documentation',
+  serverUrl: 'testserver',
+}) as typeof fixture;
+
+// The same topics as chanx's sandbox writes them, as classes.
+class RoomTopic extends Topic {
+  static override pattern = 'room:{room_name}';
+  static override description = 'A chat room, addressed as room:<room_name>.';
+  static override passthrough = [RoomEvent];
+
+  @On(Echo, { output: Posted, summary: 'Acknowledge without broadcasting' })
+  handle_echo(m: MessageOf<typeof Echo>) {
+    return Posted.create(m.payload);
+  }
+
+  @On(Post, { summary: 'Post to a room' })
+  handle_post() {}
+}
+class PresenceTopic extends Topic {
+  static override pattern = 'presence:{user}';
+  static override description = 'Presence for one user, addressed as presence:<user>.';
+  static override passthrough = [PresenceChanged];
+}
+const classes = createChanx({
+  consumers: [
+    consumer('/ws/topics', {
+      name: 'topic_hub',
+      description: 'Several topics multiplexed over a single connection',
+      tags: ['topics'],
+      topics: [RoomTopic, PresenceTopic],
+    }).on(PingMessage, { output: PongMessage, summary: 'Handle ping requests' }, () =>
+      PongMessage.create(),
+    ),
+    topicConsumer(RoomTopic, '/ws/topics/room/{room_name}'),
+  ],
 }).asyncapi({
   title: 'FastAPI AsyncAPI documentation',
   serverUrl: 'testserver',
@@ -210,6 +249,25 @@ describe('AsyncAPI, against chanx', () => {
     } finally {
       await Promise.all(dirs.map((dir) => rm(dir, { recursive: true, force: true })));
     }
+  });
+});
+
+describe('AsyncAPI from Topic classes, against chanx', () => {
+  it('documents the same channels, operations and components as the builders', () => {
+    expect(classes.channels).toEqual(node.channels);
+    expect(operationBodies(classes)).toEqual(operationBodies(python));
+    expect(classes.components).toEqual(node.components);
+  });
+
+  it("names operations after the methods, as chanx does: these are the sandbox's names", () => {
+    const hosted = Object.entries(classes.operations)
+      .filter(([, op]) => op.channel.$ref.endsWith('topic_hub_room_topic'))
+      .map(([name]) => name);
+    expect(hosted).toEqual([
+      'handle_echo',
+      'handle_post',
+      'handle_passthrough_room_event',
+    ]);
   });
 });
 
