@@ -285,6 +285,43 @@ describe.skipIf(!url)('RedisPubSubChannelLayer', () => {
   });
 });
 
+describe.skipIf(!url)('RedisPubSubChannelLayer when its connection drops', () => {
+  it('reconnects and keeps its subscriptions, as after a Redis restart', async () => {
+    const proxy = await redisProxy(url!);
+    const receiver = new RedisPubSubChannelLayer({
+      hosts: [{ url: proxy.url, socket: { reconnectStrategy: () => 50 } }],
+      prefix: 'chanxtest',
+      onError: () => {},
+    });
+    const sender = new RedisPubSubChannelLayer({ hosts: [url!], prefix: 'chanxtest' });
+    const box = inbox();
+    try {
+      const channel = await receiver.newChannel(box.handler);
+      await receiver.groupAdd('room.restart', channel.name);
+      await sender.groupSend('room.restart', { type: 'before' });
+      await box.received(1);
+
+      const opened = proxy.attempts;
+      proxy.drop();
+      await vi.waitFor(() => expect(proxy.attempts).toBeGreaterThan(opened));
+
+      // Publish until a message lands: the resubscribe races the first sends.
+      await vi.waitFor(
+        async () => {
+          await sender.groupSend('room.restart', { type: 'after' });
+          expect(box.messages).toContainEqual({ type: 'after' });
+        },
+        { timeout: 5000, interval: 100 },
+      );
+      await sender.send(channel.name, { type: 'direct' });
+      await vi.waitFor(() => expect(box.messages).toContainEqual({ type: 'direct' }));
+    } finally {
+      await Promise.all([sender.flush(), receiver.flush()]);
+      await proxy.close();
+    }
+  });
+});
+
 describe('RedisPubSubChannelLayer when Redis is unreachable', () => {
   it('rejects, then connects afresh on the next call instead of caching the failure', async () => {
     let attempts = 0;

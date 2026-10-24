@@ -12,6 +12,10 @@ export async function redisProxy(target: string) {
       return sockets.size;
     },
     url: '',
+    /** Cut every open connection but keep accepting new ones, as a Redis restart does. */
+    drop: () => {
+      for (const socket of sockets) socket.destroy();
+    },
     close: async () => {
       for (const socket of sockets) socket.destroy();
       await new Promise((resolve) => server.close(resolve));
