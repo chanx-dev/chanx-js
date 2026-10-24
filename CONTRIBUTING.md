@@ -78,12 +78,18 @@ Maintainers release when they choose to, from `main`:
 
 ```bash
 pnpm version-packages
-git add -A && git commit -m "chore: version packages" && git push
+git show            # read the bumps and changelogs
+git push
 ```
 
 `pnpm version-packages` turns the pending changesets into version bumps, only for the
-packages they name, and writes each package's `CHANGELOG.md`. Read the result before you
-commit it.
+packages they name, writes each package's `CHANGELOG.md`, and commits those files as
+`chore: version packages`. Nothing else you have staged goes into that commit. With no
+pending changesets it stops before committing.
+
+Read the commit before you push it. To change a changelog line, edit it and
+`git commit --amend`. To start over, `git reset --keep HEAD~1` brings the changesets
+back and keeps your other local changes.
 
 The push runs the Publish workflow, which checks the whole repo, builds the packages,
 publishes each version not yet on npm (with provenance, through npm's trusted

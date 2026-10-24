@@ -118,7 +118,7 @@ for (const handler of [...handlers]) safely(handler, message);
 - A change a user of a published package would notice adds a changeset
   (`pnpm changeset`): which packages, `patch` or `minor`, and one line for their
   changelogs. Never `major`: majors follow chanx's (see docs/design.md).
-- A release is `pnpm version-packages`, committed and pushed; do not edit versions or
+- A release is `pnpm version-packages` (it commits), then a push; do not edit versions or
   `CHANGELOG.md` files by hand.
 
 ## Docs

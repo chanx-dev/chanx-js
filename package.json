@@ -22,7 +22,8 @@
     "format:fix": "prettier --write .",
     "check": "pnpm lint && pnpm format && pnpm typecheck && pnpm test",
     "changeset": "changeset",
-    "version-packages": "changeset version && pnpm install --lockfile-only",
+    "version-packages": "changeset version && pnpm install --lockfile-only && pnpm commit-release",
+    "commit-release": "git add -A -- .changeset 'packages/*/package.json' 'packages/*/CHANGELOG.md' pnpm-lock.yaml && git commit -m 'chore: version packages' -- .changeset 'packages/*/package.json' 'packages/*/CHANGELOG.md' pnpm-lock.yaml",
     "release": "pnpm lint && pnpm typecheck && pnpm test && pnpm --filter \"./packages/*\" build && pnpm check:conformance && changeset publish"
   },
   "devDependencies": {
