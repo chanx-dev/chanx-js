@@ -4,6 +4,7 @@
     "src/node.ts",
     "src/crossws.ts",
     "src/hono.ts",
+    "src/fastify.ts",
     "src/testing.ts"
   ],
   "tsconfig": "tsconfig.json",

@@ -3,21 +3,16 @@
  *
  * @module node
  */
-import type {
-  IncomingHttpHeaders,
-  IncomingMessage,
-  Server,
-  ServerResponse,
-} from 'node:http';
+import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import type { TLSSocket } from 'node:tls';
 import type { Duplex } from 'node:stream';
 
-import type { WebSocket } from 'ws';
 import { WebSocketServer } from 'ws';
 
 import type { Chanx } from './app';
 import type { AsyncAPIServeOptions } from './asyncapi-http';
 import { asyncapiHandler } from './asyncapi-http';
+import { Heartbeat, serveWebSocket, toHeaders } from './ws-socket';
 
 type UpgradeListener = (request: IncomingMessage, socket: Duplex, head: Buffer) => void;
 
@@ -47,7 +42,7 @@ export function attachChanx(
   { pingInterval = 20_000 }: AttachOptions = {},
 ): Attachment {
   const wss = new WebSocketServer({ noServer: true });
-  const alive = new WeakSet<WebSocket>();
+  const heartbeat = new Heartbeat(() => wss.clients, pingInterval);
 
   // Listeners already on the server only see the paths chanx leaves alone: some, Nest's
   // WsAdapter among them, destroy every upgrade for a path they do not serve.
@@ -55,46 +50,15 @@ export function attachChanx(
   const onUpgrade = (request: IncomingMessage, socket: Duplex, head: Buffer) => {
     const path = new URL(request.url ?? '/', 'ws://localhost').pathname;
     if (chanx.match(path)) {
-      wss.handleUpgrade(request, socket, head, (ws) => serve(ws, request));
+      wss.handleUpgrade(request, socket, head, (ws) =>
+        serveWebSocket(chanx, ws, request, heartbeat),
+      );
       return;
     }
     for (const listener of others) listener.call(server, request, socket, head);
     // With no other listener at all, nothing would ever answer.
     if (!others.length && server.listenerCount('upgrade') === 1) socket.destroy();
   };
-
-  const serve = (ws: WebSocket, request: IncomingMessage) => {
-    const session = chanx.connect(
-      { url: request.url ?? '/', headers: toHeaders(request.headers) },
-      {
-        send: (data) => ws.send(data),
-        close: (code = 1000, reason) => ws.close(code, reason),
-      },
-    );
-    if (!session) return ws.close(1008, 'No consumer serves this path');
-    alive.add(ws);
-    ws.on('pong', () => alive.add(ws));
-    // A Buffer whether the frame was text or binary: ws's default binaryType.
-    ws.on('message', (data, isBinary) =>
-      session.receive(isBinary ? (data as Buffer) : data.toString()),
-    );
-    ws.on('close', () => void session.closed());
-  };
-
-  const heartbeat =
-    pingInterval > 0
-      ? setInterval(() => {
-          for (const ws of wss.clients) {
-            if (!alive.has(ws)) {
-              ws.terminate();
-              continue;
-            }
-            alive.delete(ws);
-            ws.ping();
-          }
-        }, pingInterval)
-      : undefined;
-  heartbeat?.unref();
 
   for (const listener of others) server.off('upgrade', listener);
   server.on('upgrade', onUpgrade);
@@ -103,17 +67,11 @@ export function attachChanx(
     async close() {
       server.off('upgrade', onUpgrade);
       for (const listener of others) server.on('upgrade', listener);
-      clearInterval(heartbeat);
+      heartbeat.stop();
       for (const ws of wss.clients) ws.close(1001, 'Server shutting down');
       await new Promise<void>((resolve) => wss.close(() => resolve()));
     },
   };
-}
-
-function toHeaders(headers: IncomingHttpHeaders): [string, string][] {
-  return Object.entries(headers).flatMap(([name, value]) =>
-    value === undefined ? [] : [[name, Array.isArray(value) ? value.join(', ') : value]],
-  );
 }
 
 /**

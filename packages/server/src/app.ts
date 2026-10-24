@@ -88,12 +88,14 @@ export interface Chanx {
   ): Promise<void>;
 }
 
-/** What `@chanx-js/server/testing` and the AsyncAPI handler reach into. */
+/** What `@chanx-js/server/testing`, the AsyncAPI handler and the adapters reach into. */
 export const internals = new WeakMap<
   Chanx,
   {
     layerOf(source: { options: { layer?: string } }): ChannelLayer;
     logger: Logger;
+    /** Every consumer's path pattern, such as `/ws/chat/{room}`. */
+    paths: readonly string[];
   }
 >();
 
@@ -182,7 +184,11 @@ export function createChanx(options: ChanxOptions): Chanx {
       });
     },
   };
-  internals.set(app, { layerOf, logger: resolved.logger });
+  internals.set(app, {
+    layerOf,
+    logger: resolved.logger,
+    paths: routes.map((route) => route.definition.path),
+  });
   return app;
 }
 

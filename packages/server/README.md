@@ -83,7 +83,8 @@ answering, as uvicorn does for Python's chanx.
   app.get('/ws/*', chanxHono(chanx, upgradeWebSocket));
   ```
 
-- **Fastify:** `attachChanx(fastify.server, chanx)`.
+- **Fastify:** `chanxFastify(chanx)` from `@chanx-js/server/fastify`, after registering
+  `@fastify/websocket`; Fastify's hooks run before each upgrade.
 
 The crossws and Hono adapters are tested on Node; they leave pings to the runtime.
 Binary frames are refused with an error, as chanx refuses them. crossws drops

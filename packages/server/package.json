@@ -41,10 +41,15 @@
       "@chanx-js/source": "./src/hono.ts",
       "types": "./dist/hono.d.mts",
       "default": "./dist/hono.mjs"
+    },
+    "./fastify": {
+      "@chanx-js/source": "./src/fastify.ts",
+      "types": "./dist/fastify.d.mts",
+      "default": "./dist/fastify.mjs"
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts src/testing.ts src/node.ts src/crossws.ts src/hono.ts --format esm --dts.eager --clean",
+    "build": "tsdown src/index.ts src/testing.ts src/node.ts src/crossws.ts src/hono.ts src/fastify.ts --format esm --dts.eager --clean",
     "typecheck": "tsc -p tsconfig.json && tsc -p tests/legacy/tsconfig.json"
   },
   "dependencies": {
@@ -54,7 +59,9 @@
     "crossws": ">=0.4",
     "hono": ">=4",
     "ws": ">=8.17",
-    "yaml": ">=2"
+    "yaml": ">=2",
+    "fastify": ">=5",
+    "@fastify/websocket": ">=11"
   },
   "peerDependenciesMeta": {
     "ws": {
@@ -68,16 +75,24 @@
     },
     "yaml": {
       "optional": true
+    },
+    "fastify": {
+      "optional": true
+    },
+    "@fastify/websocket": {
+      "optional": true
     }
   },
   "devDependencies": {
     "@chanx-js/client": "workspace:*",
     "@chanx-js/codegen": "workspace:*",
     "@chanx-js/protocol": "workspace:*",
+    "@fastify/websocket": "^11.3.4",
     "@hono/node-server": "^2.1.5",
     "@msgpack/msgpack": "^3.1.3",
     "@types/ws": "^8.18.1",
     "crossws": "^0.4.16",
+    "fastify": "^5.12.7",
     "hono": "^4.13.13",
     "redis": "^6.3.0",
     "ws": "^8.21.3",
