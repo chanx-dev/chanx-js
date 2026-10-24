@@ -11,17 +11,17 @@ publishes a contract, AsyncAPI, and both ends are typed from it.
 
 ## At a glance
 
-|                          | chanx-js                               | Socket.IO                      | `ws`              | tRPC                         |
-| ------------------------ | -------------------------------------- | ------------------------------ | ----------------- | ---------------------------- |
-| Routing                  | A handler per action                   | A listener per event           | Write it yourself | A procedure per name         |
-| Typed messages           | Generated from the server's schema     | Event maps you share by hand   | No                | Inferred from the router     |
-| Runtime validation       | Any Standard Schema: Zod, Valibot, ... | Not built in                   | No                | Input parsers, such as Zod   |
-| Request and reply        | `await request()`, typed per action    | `emitWithAck()`                | Write it yourself | Queries and mutations        |
-| Groups across servers    | Redis layer, shared with Python chanx  | Rooms, with the Redis adapter  | Write it yourself | Write it yourself            |
-| Many streams, one socket | Topics, restored after a reconnect     | Rooms and namespaces           | Write it yourself | A subscription per procedure |
-| API documentation        | AsyncAPI 3, served by the server       | None                           | None              | None                         |
-| Who can connect          | Any WebSocket client sending JSON      | Socket.IO clients              | Any WebSocket     | tRPC clients                 |
-| Testing                  | In-process client, broadcast captures  | Run a server, connect a client | Same              | Call procedures directly     |
+|                      | chanx-js                                                                                    | Socket.IO                                                                                                 | `ws`              | tRPC                              |
+| -------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ----------------- | --------------------------------- |
+| Routing              | A handler per action                                                                        | A listener per event                                                                                      | Write it yourself | A procedure per name              |
+| Typed messages       | Generated from the server's schema                                                          | Event maps you share by hand                                                                              | No                | Inferred from the router          |
+| Runtime validation   | Any Standard Schema: Zod, Valibot, ...                                                      | Not built in                                                                                              | No                | Input parsers, such as Zod        |
+| Request and reply    | `await request()`, typed per action                                                         | `emitWithAck()`                                                                                           | Write it yourself | Queries and mutations             |
+| Groups (server-side) | Joined on the server; any process, workers included, broadcasts over Redis                  | Rooms, joined on the server; across servers with the Redis adapter, from other processes with its emitter | Write it yourself | Write it yourself                 |
+| Client subscriptions | Topics: the client subscribes by name, the server authorizes, both resume after a reconnect | None built in: a join event of your own, then a room                                                      | Write it yourself | A subscription per procedure call |
+| API documentation    | AsyncAPI 3, served by the server                                                            | None                                                                                                      | None              | None                              |
+| Who can connect      | Any WebSocket client sending JSON                                                           | Socket.IO clients                                                                                         | Any WebSocket     | tRPC clients                      |
+| Testing              | In-process client, broadcast captures                                                       | Run a server, connect a client                                                                            | Same              | Call procedures directly          |
 
 ## Compared with Socket.IO
 
@@ -38,6 +38,62 @@ rooms across servers: much of what chanx-js does. The differences:
   chanx-js server.
 - **The API is documented.** The AsyncAPI page shows every message a consumer takes and
   sends, for the team on the other end.
+- **Socket.IO replays what a client missed.** Its connection state recovery restores a
+  socket's rooms and missed packets after a short disconnection, two minutes by default.
+  chanx-js resubscribes but does not replay: send state on (re)subscribe, as topics'
+  `onSubscribe` does, or number messages with `seq` to spot gaps.
+
+### Rooms and topics
+
+A Socket.IO room is joined on the server, so a client that wants one sends an event you
+define, and your handler checks access and joins it. A chanx topic is subscribed to from
+the client: the protocol carries the request, the topic's `authorize` decides, and the
+client subscribes again after every reconnect.
+
+::: code-group
+
+```ts [Socket.IO]
+// server
+io.on('connection', (socket) => {
+  socket.on('join', (room: string) => {
+    if (canJoin(socket.data.user, room)) socket.join(room);
+  });
+});
+io.to('room:lobby').emit('posted', { body: 'hi' });
+
+// client: ask again after every reconnect
+socket.on('connect', () => socket.emit('join', 'room:lobby'));
+socket.on('posted', (post) => render(post));
+```
+
+```ts [chanx-js]
+// server
+const roomTopic = topic('room:{name}', {
+  authorize: ({ params, conn }) => canJoin(conn.user, params.name),
+}).passthrough(Posted);
+
+const hub = consumer('/ws/hub', { name: 'hub', topics: [roomTopic] });
+
+await chanx.publish(
+  roomTopic,
+  roomTopic.with({ name: 'lobby' }),
+  Posted.create({ body: 'hi' }),
+);
+
+// client, with `hub` generated from the server's schema
+const connection = client.connect(hub);
+const room = connection.topic(hub.topics.roomTopic.with({ name: 'lobby' }));
+await room.subscribe(); // and again by itself after every reconnect
+room.on('posted', (message) => render(message.payload));
+```
+
+:::
+
+Topics also share one subscription between every component on a socket that wants the
+same topic, and a refused subscribe rejects with an `unauthorized` error. Groups, the
+server-side half, work like rooms, and a worker or another process can broadcast to them
+with `chanx.broadcastEvent()`. See [Topics](/server/topics) and
+[Consumers](/server/consumers#groups-and-broadcasts).
 
 ## Compared with `ws`
 
