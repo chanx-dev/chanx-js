@@ -22,43 +22,38 @@ so any 2.x client works with any 2.x server, Node or Python.
 ::: code-group
 
 ```bash [pnpm]
-pnpm add @chanx-js/server ws zod
+pnpm add @chanx-js/server zod
 ```
 
 ```bash [npm]
-npm install @chanx-js/server ws zod
+npm install @chanx-js/server zod
 ```
 
 ```bash [yarn]
-yarn add @chanx-js/server ws zod
+yarn add @chanx-js/server zod
 ```
 
 :::
 
-`ws` serves sockets on Node's HTTP server. Any [Standard Schema](https://standardschema.dev)
+Each server below adds its own packages. Any [Standard Schema](https://standardschema.dev)
 library validates payloads; these pages use Zod.
 
-## Define messages
+## Define messages and a consumer
 
-A message is an `action` and a payload schema:
+Put the app in `chanx.ts`, apart from the server, so tests and any server can share it:
 
 ```ts
 import { z } from 'zod';
-import { defineMessage } from '@chanx-js/server';
+import {
+  PingMessage,
+  PongMessage,
+  consumer,
+  createChanx,
+  defineMessage,
+} from '@chanx-js/server';
 
 const Chat = defineMessage('chat', z.object({ text: z.string() }));
 const Notice = defineMessage('notice', z.object({ text: z.string() }));
-```
-
-`Chat.create({ text: 'hi' })` builds a typed `{ action: 'chat', payload: { text: 'hi' } }`.
-`PingMessage` and `PongMessage` are built in.
-
-## Write a consumer
-
-A consumer serves one route and handles its messages:
-
-```ts
-import { PingMessage, PongMessage, consumer, createChanx } from '@chanx-js/server';
 
 const chat = consumer('/ws/chat/{room}', { name: 'chat', emits: [Notice] })
   .on(PingMessage, { output: PongMessage }, () => PongMessage.create())
@@ -69,22 +64,134 @@ const chat = consumer('/ws/chat/{room}', { name: 'chat', emits: [Notice] })
 export const chanx = createChanx({ consumers: [chat] });
 ```
 
-The handler's message and `ctx` are typed: `m.payload.text` is a string,
-`ctx.params.room` comes from the path, and `ctx.send` accepts only what the consumer
-declares.
+- **`defineMessage`** pairs an action with a payload schema. `Chat.create({ text: 'hi' })`
+  builds a typed `{ action: 'chat', payload: { text: 'hi' } }`. `PingMessage` and
+  `PongMessage` are built in.
+- **`consumer`** serves one route and routes each message to its handler.
+- The handler's message and `ctx` are typed: `m.payload.text` is a string,
+  `ctx.params.room` comes from the path, and `ctx.send` accepts only what the consumer
+  declares in `emits`.
 
 ## Serve it
 
-```ts
-import { createServer } from 'node:http';
-import { attachChanx } from '@chanx-js/server/node';
+Pick your server. Each tab is a complete `server.ts`:
 
-const server = createServer();
+::: code-group
+
+```ts [Node]
+// server.ts, after: npm install ws
+import { createServer } from 'node:http';
+import { asyncapiMiddleware, attachChanx } from '@chanx-js/server/node';
+
+import { chanx } from './chanx.js';
+
+const server = createServer(asyncapiMiddleware(chanx)); // AsyncAPI at /asyncapi
 attachChanx(server, chanx);
 server.listen(8000);
 ```
 
-Connect a client to `ws://localhost:8000/ws/chat/lobby` and send
+```ts [Express]
+// server.ts, after: npm install express ws
+import { createServer } from 'node:http';
+import express from 'express';
+import { asyncapiMiddleware, attachChanx } from '@chanx-js/server/node';
+
+import { chanx } from './chanx.js';
+
+const app = express();
+app.use(asyncapiMiddleware(chanx)); // AsyncAPI at /asyncapi
+
+const server = createServer(app);
+attachChanx(server, chanx);
+server.listen(8000);
+```
+
+```ts [Fastify]
+// server.ts, after: npm install fastify @fastify/websocket
+import Fastify from 'fastify';
+import websocket from '@fastify/websocket';
+import { chanxFastify } from '@chanx-js/server/fastify';
+
+import { chanx } from './chanx.js';
+
+const app = Fastify();
+await app.register(websocket);
+await app.register(chanxFastify(chanx));
+app.get('/asyncapi.json', () => chanx.asyncapi());
+
+await app.listen({ port: 8000 });
+```
+
+```ts [Hono]
+// server.ts, after: npm install hono @hono/node-server ws
+import { serve, upgradeWebSocket } from '@hono/node-server';
+import { Hono } from 'hono';
+import { WebSocketServer } from 'ws';
+import { asyncapiHandler } from '@chanx-js/server';
+import { chanxHono } from '@chanx-js/server/hono';
+
+import { chanx } from './chanx.js';
+
+const asyncapi = asyncapiHandler(chanx);
+const app = new Hono();
+app.get('/asyncapi*', async (c, next) => (await asyncapi(c.req.raw)) ?? next());
+app.get('/ws/*', chanxHono(chanx, upgradeWebSocket));
+
+serve({
+  fetch: app.fetch,
+  port: 8000,
+  websocket: { server: new WebSocketServer({ noServer: true }) },
+});
+```
+
+```ts [Bun]
+// server.ts, after: npm install crossws
+import bunAdapter from 'crossws/adapters/bun';
+import { asyncapiHandler } from '@chanx-js/server';
+import { chanxHooks } from '@chanx-js/server/crossws';
+
+import { chanx } from './chanx.ts';
+
+const ws = bunAdapter({ hooks: chanxHooks(chanx) });
+const asyncapi = asyncapiHandler(chanx);
+
+Bun.serve({
+  port: 8000,
+  websocket: ws.websocket,
+  fetch: async (request, server) =>
+    (await asyncapi(request)) ?? ws.handleUpgrade(request, server),
+});
+```
+
+```ts [Deno]
+// server.ts, after: npm install crossws
+import denoAdapter from 'crossws/adapters/deno';
+import { asyncapiHandler } from '@chanx-js/server';
+import { chanxHooks } from '@chanx-js/server/crossws';
+
+import { chanx } from './chanx.ts';
+
+const ws = denoAdapter({ hooks: chanxHooks(chanx) });
+const asyncapi = asyncapiHandler(chanx);
+
+Deno.serve(
+  { port: 8000 },
+  async (request, info) => (await asyncapi(request)) ?? ws.handleUpgrade(request, info),
+);
+```
+
+:::
+
+Run it with `npx tsx server.ts`, `bun server.ts` or `deno run -A server.ts`. Bun and Deno
+import `./chanx.ts` by its real name. Every tab serves the AsyncAPI document at
+`/asyncapi.json`, which the [client](/client/) is generated from.
+
+::: tip NestJS
+Nest defines consumers as injectable classes instead. See
+[NestJS](/server/integrations/nestjs).
+:::
+
+Connect any WebSocket client to `ws://localhost:8000/ws/chat/lobby` and send
 `{ "action": "ping" }`: the server answers `{ "action": "pong", "payload": null }`.
 
 ## Next

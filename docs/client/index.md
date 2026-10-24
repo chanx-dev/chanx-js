@@ -53,59 +53,172 @@ Commit the output and regenerate whenever the server's schema changes. See [Code
 
 ## Connect
 
-```ts
-import { createClient } from '@chanx-js/client';
-
-import { chat } from './generated';
-
-const client = createClient({ baseUrl: 'wss://api.example.com' });
-const connection = client.connect(chat, { params: { room: 'lobby' } });
-
-connection.on('chat_notification', (message) => {
-  console.log(message.payload.message); // narrowed by `action`
-});
-
-connection.send({ action: 'chat', payload: { message: 'hello' } });
-```
-
-`params` is checked against the channel's address, so `chat` at `/ws/chat/{room}/` requires `room`. Every message is typed from the schema: sending an action the server does not accept, or reading a field a message does not have, fails to compile.
-
-## In a component
+The examples connect to the chat server from [Server: getting started](/server/), which
+generates a `chat` channel at `/ws/chat/{room}` that receives `chat` and sends `notice`.
+Each tab is a complete file:
 
 ::: code-group
 
-```tsx [React]
-import { useChannel } from '@chanx-js/client/react';
+```ts [Node]
+// client.ts: a script or a service
+import { createClient } from '@chanx-js/client';
 
-function ChatPanel({ room }: { room: string }) {
-  const { lastMessage, status, send } = useChannel(chat, { params: { room } });
-  // ...
+import { chat } from './generated/index.js';
+
+const client = createClient({ baseUrl: 'ws://localhost:8000' });
+const connection = client.connect(chat, { params: { room: 'lobby' } });
+
+connection.on('notice', (message) => console.log(message.payload.text));
+
+const pong = await connection.request({ action: 'ping' }); // typed: PongMessage
+connection.send({ action: 'chat', payload: { text: 'hello' } });
+```
+
+```tsx [React]
+// ChatPanel.tsx
+import { useState } from 'react';
+import { setDefaultClient, useChannel } from '@chanx-js/client/react';
+
+import { chat } from './generated';
+
+setDefaultClient({ baseUrl: 'ws://localhost:8000' }); // once, in your app's entry
+
+export function ChatPanel({ room }: { room: string }) {
+  const [notices, setNotices] = useState<string[]>([]);
+  const { status, send } = useChannel(chat, {
+    params: { room },
+    buffer: 'none',
+    on: { notice: (message) => setNotices((all) => [...all, message.payload.text]) },
+  });
+
+  return (
+    <div>
+      <p>{status}</p>
+      <ul>
+        {notices.map((text, i) => (
+          <li key={i}>{text}</li>
+        ))}
+      </ul>
+      <button onClick={() => send({ action: 'chat', payload: { text: 'hello' } })}>
+        Say hello
+      </button>
+    </div>
+  );
 }
 ```
 
-```ts [Vue]
-import { useChannel } from '@chanx-js/client/vue';
+```vue [Vue]
+<!-- ChatPanel.vue -->
+<script setup lang="ts">
+import { computed, ref } from 'vue';
+import { setDefaultClient, useChannel } from '@chanx-js/client/vue';
 
-const { lastMessage, status, send } = useChannel(chat, { params: { room: 'lobby' } });
+import { chat } from './generated';
+
+setDefaultClient({ baseUrl: 'ws://localhost:8000' }); // once, in your app's entry
+
+const props = defineProps<{ room: string }>();
+const notices = ref<string[]>([]);
+const { status, send } = useChannel(chat, {
+  params: computed(() => ({ room: props.room })), // a new room reconnects
+  buffer: 'none',
+  on: { notice: (message) => notices.value.push(message.payload.text) },
+});
+</script>
+
+<template>
+  <p>{{ status }}</p>
+  <ul>
+    <li v-for="(text, i) in notices" :key="i">{{ text }}</li>
+  </ul>
+  <button @click="send({ action: 'chat', payload: { text: 'hello' } })">Say hello</button>
+</template>
 ```
 
-```ts [Svelte]
-import { createChannel } from '@chanx-js/client/svelte';
+```svelte [Svelte]
+<!-- ChatPanel.svelte -->
+<script lang="ts">
+  import { createChannel, setDefaultClient } from '@chanx-js/client/svelte';
 
-const channel = createChannel(chat, { params: { room: 'lobby' } });
-// $channel.status, $channel.lastMessage
+  import { chat } from './generated';
+
+  setDefaultClient({ baseUrl: 'ws://localhost:8000' }); // once, in your app's entry
+
+  let { room }: { room: string } = $props();
+  let notices = $state<string[]>([]);
+  // Options are read once: to switch rooms, wrap the component in {#key room}.
+  // svelte-ignore state_referenced_locally
+  const channel = createChannel(chat, {
+    params: { room },
+    buffer: 'none',
+    on: { notice: (message) => notices.push(message.payload.text) },
+  });
+</script>
+
+<p>{$channel.status}</p>
+<ul>
+  {#each notices as text}
+    <li>{text}</li>
+  {/each}
+</ul>
+<button onclick={() => channel.send({ action: 'chat', payload: { text: 'hello' } })}>
+  Say hello
+</button>
 ```
 
 ```tsx [Solid]
-import { createChannel } from '@chanx-js/client/solid';
+// ChatPanel.tsx
+import { For, createSignal } from 'solid-js';
+import { createChannel, setDefaultClient } from '@chanx-js/client/solid';
 
-const channel = createChannel(chat, { params: { room: 'lobby' } });
-// channel.status(), channel.lastMessage()
+import { chat } from './generated';
+
+setDefaultClient({ baseUrl: 'ws://localhost:8000' }); // once, in your app's entry
+
+export function ChatPanel(props: { room: string }) {
+  const [notices, setNotices] = createSignal<string[]>([]);
+  // Options are read once: to switch rooms, key the component on the room.
+  const channel = createChannel(chat, {
+    params: { room: props.room },
+    buffer: 'none',
+    on: { notice: (message) => setNotices((all) => [...all, message.payload.text]) },
+  });
+
+  return (
+    <div>
+      <p>{channel.status()}</p>
+      <ul>
+        <For each={notices()}>{(text) => <li>{text}</li>}</For>
+      </ul>
+      <button
+        onClick={() => channel.send({ action: 'chat', payload: { text: 'hello' } })}
+      >
+        Say hello
+      </button>
+    </div>
+  );
+}
 ```
 
 :::
 
-Components on a channel that carries topics share one socket, which closes when the last of them unmounts. A plain channel gives each component its own socket unless you pass `share: true`; see [Sharing and closing](/client/sharing).
+What every tab shares:
+
+- **`params`** is checked against the channel's address, so `/ws/chat/{room}` requires
+  `room`.
+- **Every message is typed from the schema.** In the `notice` handler,
+  `message.payload.text` is a `string`; sending an action the server does not accept, or
+  a field a message does not have, fails to compile.
+- **`setDefaultClient`** points every component at the server. Call it once, in your
+  app's entry; React also takes a `ChanxClientProvider`, and Vue an `app.use(chanxPlugin)`.
+- In React and Vue, a new `room` reconnects. Svelte and Solid read their options once.
+
+Components on a channel that carries topics share one socket, which closes when the last
+of them unmounts. A plain channel gives each component its own socket unless you pass
+`share: true`; see [Sharing and closing](/client/sharing). Each framework's page covers
+the rest: [React](/client/integrations/react), [Vue](/client/integrations/vue),
+[Svelte](/client/integrations/svelte), [Solid](/client/integrations/solid) and
+[Node](/client/integrations/node).
 
 ## Next
 
