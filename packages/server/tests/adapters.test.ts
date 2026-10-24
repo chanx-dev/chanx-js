@@ -3,21 +3,17 @@ import { createServer } from 'node:http';
 
 import { createClient, defineChannel } from '@chanx-js/client';
 import websocket from '@fastify/websocket';
-import { serve, upgradeWebSocket } from '@hono/node-server';
 import Fastify from 'fastify';
-import type { FastifyInstance } from 'fastify';
-import nodeAdapter from 'crossws/adapters/node';
-import { Hono } from 'hono';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { WebSocket, WebSocketServer } from 'ws';
+import { WebSocket } from 'ws';
 import { z } from 'zod';
 
 import type { Chanx } from '../src';
 import { PingMessage, PongMessage, consumer, createChanx, defineMessage } from '../src';
-import { chanxHooks } from '../src/adapters/crossws';
 import { chanxFastify } from '../src/adapters/fastify';
-import { chanxHono } from '../src/adapters/hono';
 import { attachChanx } from '../src/adapters/node';
+import type { OnCleanup } from './servers';
+import { SERVERS, listen, startFastify } from './servers';
 
 const Chat = defineMessage('chat', z.object({ text: z.string() }));
 const Notice = defineMessage('notice', z.object({ text: z.string() }));
@@ -36,80 +32,11 @@ const chat = consumer('/ws/chat/{room}', {
   });
 
 const cleanups: Array<() => unknown> = [];
+const onCleanup: OnCleanup = (cleanup) => void cleanups.push(cleanup);
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
   disconnected.mockClear();
 });
-
-const listen = async (server: ReturnType<typeof createServer>) => {
-  if (!server.listening)
-    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
-  cleanups.push(() => new Promise((resolve) => server.close(resolve)));
-  return `ws://127.0.0.1:${(server.address() as AddressInfo).port}`;
-};
-
-// Each serves the same app, the way an application would wire that adapter.
-const ADAPTERS: Array<[string, (chanx: Chanx) => Promise<string>]> = [
-  [
-    'node (ws)',
-    async (chanx) => {
-      const server = createServer();
-      const attachment = attachChanx(server, chanx);
-      cleanups.push(() => attachment.close());
-      return listen(server);
-    },
-  ],
-  [
-    'crossws',
-    async (chanx) => {
-      const ws = nodeAdapter({ hooks: chanxHooks(chanx) });
-      const server = createServer();
-      server.on('upgrade', (request, socket, head) =>
-        ws.handleUpgrade(request, socket, head),
-      );
-      cleanups.push(() => ws.closeAll());
-      return listen(server);
-    },
-  ],
-  [
-    'hono',
-    async (chanx) => {
-      const app = new Hono();
-      app.get('/ws/*', chanxHono(chanx, upgradeWebSocket));
-      app.get('/plain', (c) => c.text('plain http still works'));
-      const wss = new WebSocketServer({ noServer: true });
-      const server = await new Promise<ReturnType<typeof createServer>>((resolve) => {
-        const created = serve(
-          {
-            fetch: app.fetch,
-            port: 0,
-            hostname: '127.0.0.1',
-            websocket: { server: wss },
-          },
-          () => resolve(created as never),
-        );
-      });
-      cleanups.push(() => new Promise((resolve) => wss.close(resolve)));
-      return listen(server);
-    },
-  ],
-  ['fastify', (chanx) => startFastify(chanx)],
-];
-
-async function startFastify(
-  chanx: Chanx,
-  setup?: (app: FastifyInstance) => void,
-  pingInterval?: number,
-  maxBufferedAmount?: number,
-) {
-  const app = Fastify();
-  await app.register(websocket);
-  setup?.(app);
-  await app.register(chanxFastify(chanx, { pingInterval, maxBufferedAmount }));
-  await app.listen({ port: 0, host: '127.0.0.1' });
-  cleanups.push(() => app.close());
-  return `ws://127.0.0.1:${(app.server.address() as AddressInfo).port}`;
-}
 
 function open(
   url: string,
@@ -135,7 +62,8 @@ function open(
   };
 }
 
-describe.each(ADAPTERS)('the %s adapter', (name, start) => {
+describe.each(SERVERS)('the %s adapter', (name, startServer) => {
+  const start = (chanx: Chanx) => startServer(chanx, onCleanup);
   const app = () => createChanx({ consumers: [chat], logger: { error() {}, warn() {} } });
 
   it('serves a consumer: authentication, path params, ref echo', async () => {
@@ -256,7 +184,7 @@ describe.each(ADAPTERS)('the %s adapter', (name, start) => {
 
 describe('the hono adapter', () => {
   it('leaves other routes to the app', async () => {
-    const url = await ADAPTERS[2]![1](createChanx({ consumers: [chat] }));
+    const url = await SERVERS[2]![1](createChanx({ consumers: [chat] }), onCleanup);
     const response = await fetch(`${url.replace('ws:', 'http:')}/plain`);
     expect(await response.text()).toBe('plain http still works');
   });
@@ -266,11 +194,12 @@ describe('the fastify adapter', () => {
   const app = () => createChanx({ consumers: [chat] });
 
   it("runs Fastify's hooks before the upgrade, so one can refuse it with a status", async () => {
-    const url = await startFastify(app(), (fastify) =>
-      fastify.addHook('onRequest', async (request, reply) => {
-        if (request.headers['x-api-key'] !== 'secret') await reply.code(401).send();
-      }),
-    );
+    const url = await startFastify(app(), onCleanup, {
+      setup: (fastify) =>
+        fastify.addHook('onRequest', async (request, reply) => {
+          if (request.headers['x-api-key'] !== 'secret') await reply.code(401).send();
+        }),
+    });
 
     const refused = new WebSocket(`${url}/ws/chat/lobby`);
     const status = await new Promise<number>((resolve) =>
@@ -289,9 +218,11 @@ describe('the fastify adapter', () => {
   });
 
   it('leaves other routes, websocket ones included, to the app', async () => {
-    const url = await startFastify(app(), (fastify) => {
-      fastify.get('/plain', () => 'plain');
-      fastify.get('/echo', { websocket: true }, (ws) => ws.send('"echo"'));
+    const url = await startFastify(app(), onCleanup, {
+      setup: (fastify) => {
+        fastify.get('/plain', () => 'plain');
+        fastify.get('/echo', { websocket: true }, (ws) => ws.send('"echo"'));
+      },
     });
 
     expect(await (await fetch(`${url.replace('ws://', 'http://')}/plain`)).text()).toBe(
@@ -317,11 +248,10 @@ describe('the fastify adapter', () => {
   });
 
   it("drops chanx clients that stop answering pings, leaving other routes' clients", async () => {
-    const url = await startFastify(
-      app(),
-      (fastify) => fastify.get('/echo', { websocket: true }, () => {}),
-      30,
-    );
+    const url = await startFastify(app(), onCleanup, {
+      setup: (fastify) => fastify.get('/echo', { websocket: true }, () => {}),
+      pingInterval: 30,
+    });
     const silentChanx = new WebSocket(`${url}/ws/chat/lobby`, {
       headers: { authorization: 'Bearer ok' },
       autoPong: false,
@@ -353,14 +283,14 @@ describe.each([
     async (chanx: Chanx, maxBufferedAmount: number) => {
       const server = createServer();
       const attachment = attachChanx(server, chanx, { maxBufferedAmount });
-      cleanups.push(() => attachment.close());
-      return listen(server);
+      onCleanup(() => attachment.close());
+      return listen(server, onCleanup);
     },
   ],
   [
     'fastify',
     (chanx: Chanx, maxBufferedAmount: number) =>
-      startFastify(chanx, undefined, undefined, maxBufferedAmount),
+      startFastify(chanx, onCleanup, { maxBufferedAmount }),
   ],
 ] as const)('backpressure on the %s adapter', (_name, start) => {
   const Flood = defineMessage('flood');
