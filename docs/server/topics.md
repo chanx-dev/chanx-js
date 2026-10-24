@@ -12,7 +12,8 @@ A pattern names the topic family; its params come from the subscribed name:
 import { topic } from '@chanx-js/server';
 
 const roomTopic = topic('room:{room_name}', {
-  authorize: ({ params, conn }) => canJoin(conn.user, params.room_name),
+  authorize: ({ params, conn }) =>
+    canJoin(conn.user, params.room_name),
   onSubscribe: async (ctx) =>
     ctx.send(History.create(await history(ctx.params.room_name))),
 })
@@ -22,7 +23,10 @@ const roomTopic = topic('room:{room_name}', {
   })
   .passthrough(RoomEvent);
 
-const hub = consumer('/ws/hub', { name: 'hub', topics: [roomTopic] });
+const hub = consumer('/ws/hub', {
+  name: 'hub',
+  topics: [roomTopic],
+});
 ```
 
 - `authorize` decides whether a connection may subscribe. A refusal answers with an
@@ -38,9 +42,14 @@ const hub = consumer('/ws/hub', { name: 'hub', topics: [roomTopic] });
 subscriber in every process:
 
 ```ts
-await chanx.publish(roomTopic, roomTopic.with({ room_name: 'lobby' }), event, {
-  seq: 42,
-});
+await chanx.publish(
+  roomTopic,
+  roomTopic.with({ room_name: 'lobby' }),
+  event,
+  {
+    seq: 42,
+  },
+);
 ```
 
 `roomTopic.with(params)` builds the topic name. `seq` is yours to assign, for the

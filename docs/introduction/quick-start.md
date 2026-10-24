@@ -25,18 +25,28 @@ import {
   createChanx,
   defineMessage,
 } from '@chanx-js/server';
-import { asyncapiMiddleware, attachChanx } from '@chanx-js/server/node';
+import {
+  asyncapiMiddleware,
+  attachChanx,
+} from '@chanx-js/server/node';
 
 const Chat = defineMessage('chat', z.object({ text: z.string() }));
-const Notice = defineMessage('notice', z.object({ text: z.string() }));
+const Notice = defineMessage(
+  'notice',
+  z.object({ text: z.string() }),
+);
 
 const chat = consumer('/ws/chat/{room}', {
   name: 'chat',
   emits: [Notice],
   groups: (conn) => [`room.${conn.params.room}`],
 })
-  .on(PingMessage, { output: PongMessage }, () => PongMessage.create())
-  .on(Chat, (m, ctx) => ctx.broadcast(Notice.create({ text: m.payload.text })));
+  .on(PingMessage, { output: PongMessage }, () =>
+    PongMessage.create(),
+  )
+  .on(Chat, (m, ctx) =>
+    ctx.broadcast(Notice.create({ text: m.payload.text })),
+  );
 
 const chanx = createChanx({ consumers: [chat] });
 const server = createServer(asyncapiMiddleware(chanx));
@@ -87,10 +97,15 @@ import { createClient } from '@chanx-js/client';
 import { chat } from './src/generated/index.js';
 
 const client = createClient({ baseUrl: 'ws://localhost:8000' });
-const connection = client.connect(chat, { params: { room: 'lobby' } });
+const connection = client.connect(chat, {
+  params: { room: 'lobby' },
+});
 
-connection.on('notice', (message) => console.log(message.payload.text));
-const pong = await connection.request({ action: 'ping' }); // typed: PongMessage
+connection.on('notice', (message) =>
+  console.log(message.payload.text),
+);
+// typed: PongMessage
+const pong = await connection.request({ action: 'ping' });
 connection.send({ action: 'chat', payload: { text: 'hello' } });
 ```
 

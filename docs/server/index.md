@@ -53,12 +53,24 @@ import {
 } from '@chanx-js/server';
 
 const Chat = defineMessage('chat', z.object({ text: z.string() }));
-const Notice = defineMessage('notice', z.object({ text: z.string() }));
+const Notice = defineMessage(
+  'notice',
+  z.object({ text: z.string() }),
+);
 
-const chat = consumer('/ws/chat/{room}', { name: 'chat', emits: [Notice] })
-  .on(PingMessage, { output: PongMessage }, () => PongMessage.create())
+const chat = consumer('/ws/chat/{room}', {
+  name: 'chat',
+  emits: [Notice],
+})
+  .on(PingMessage, { output: PongMessage }, () =>
+    PongMessage.create(),
+  )
   .on(Chat, async (m, ctx) => {
-    await ctx.send(Notice.create({ text: `${ctx.params.room}: ${m.payload.text}` }));
+    await ctx.send(
+      Notice.create({
+        text: `${ctx.params.room}: ${m.payload.text}`,
+      }),
+    );
   });
 
 export const chanx = createChanx({ consumers: [chat] });
@@ -81,11 +93,15 @@ Pick your server. Each tab is a complete `server.ts`:
 ```ts [Node]
 // server.ts, after: npm install ws
 import { createServer } from 'node:http';
-import { asyncapiMiddleware, attachChanx } from '@chanx-js/server/node';
+import {
+  asyncapiMiddleware,
+  attachChanx,
+} from '@chanx-js/server/node';
 
 import { chanx } from './chanx.js';
 
-const server = createServer(asyncapiMiddleware(chanx)); // AsyncAPI at /asyncapi
+// AsyncAPI at /asyncapi
+const server = createServer(asyncapiMiddleware(chanx));
 attachChanx(server, chanx);
 server.listen(8000);
 ```
@@ -94,7 +110,10 @@ server.listen(8000);
 // server.ts, after: npm install express ws
 import { createServer } from 'node:http';
 import express from 'express';
-import { asyncapiMiddleware, attachChanx } from '@chanx-js/server/node';
+import {
+  asyncapiMiddleware,
+  attachChanx,
+} from '@chanx-js/server/node';
 
 import { chanx } from './chanx.js';
 
@@ -134,7 +153,10 @@ import { chanx } from './chanx.js';
 
 const asyncapi = asyncapiHandler(chanx);
 const app = new Hono();
-app.get('/asyncapi*', async (c, next) => (await asyncapi(c.req.raw)) ?? next());
+app.get(
+  '/asyncapi*',
+  async (c, next) => (await asyncapi(c.req.raw)) ?? next(),
+);
 app.get('/ws/*', chanxHono(chanx, upgradeWebSocket));
 
 serve({
@@ -176,7 +198,8 @@ const asyncapi = asyncapiHandler(chanx);
 
 Deno.serve(
   { port: 8000 },
-  async (request, info) => (await asyncapi(request)) ?? ws.handleUpgrade(request, info),
+  async (request, info) =>
+    (await asyncapi(request)) ?? ws.handleUpgrade(request, info),
 );
 ```
 

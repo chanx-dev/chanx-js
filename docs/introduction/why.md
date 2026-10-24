@@ -72,7 +72,10 @@ const roomTopic = topic('room:{name}', {
   authorize: ({ params, conn }) => canJoin(conn.user, params.name),
 }).passthrough(Posted);
 
-const hub = consumer('/ws/hub', { name: 'hub', topics: [roomTopic] });
+const hub = consumer('/ws/hub', {
+  name: 'hub',
+  topics: [roomTopic],
+});
 
 await chanx.publish(
   roomTopic,
@@ -82,7 +85,9 @@ await chanx.publish(
 
 // client, with `hub` generated from the server's schema
 const connection = client.connect(hub);
-const room = connection.topic(hub.topics.roomTopic.with({ name: 'lobby' }));
+const room = connection.topic(
+  hub.topics.roomTopic.with({ name: 'lobby' }),
+);
 await room.subscribe(); // and again by itself after every reconnect
 room.on('posted', (message) => render(message.payload));
 ```

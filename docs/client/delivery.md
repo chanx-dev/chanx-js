@@ -17,7 +17,8 @@ The familiar react-use-websocket shape: the newest message, in state:
 const { lastMessage } = useChannel(chat, { params: { room } });
 
 useEffect(() => {
-  if (lastMessage?.action === 'chat_notification') append(lastMessage.payload);
+  if (lastMessage?.action === 'chat_notification')
+    append(lastMessage.payload);
 }, [lastMessage]);
 ```
 
@@ -28,7 +29,10 @@ It **drops messages**: when two arrive before the component re-renders, only the
 Nothing is dropped; drain the buffer once you have handled it:
 
 ```tsx
-const { messages, clearMessages } = useChannel(chat, { params: { room }, buffer: 'all' });
+const { messages, clearMessages } = useChannel(chat, {
+  params: { room },
+  buffer: 'all',
+});
 
 useEffect(() => {
   if (messages.length === 0) return;
@@ -60,7 +64,10 @@ For a token stream, coalesce an action's messages and handle them once per frame
 
 ```tsx
 on: {
-  agent_streaming: { batch: 'raf', handler: (batch) => appendTokens(batch) },
+  agent_streaming: {
+    batch: 'raf',
+    handler: (batch) => appendTokens(batch),
+  },
 }
 ```
 

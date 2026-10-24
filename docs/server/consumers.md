@@ -11,7 +11,9 @@ reply; the reply carries the request's `ref`, so the client matches it to the re
 
 ```ts
 const chat = consumer('/ws/chat/{room}', { name: 'chat' })
-  .on(PingMessage, { output: PongMessage }, () => PongMessage.create())
+  .on(PingMessage, { output: PongMessage }, () =>
+    PongMessage.create(),
+  )
   .on(History, { output: HistoryResult }, async (_m, ctx) =>
     HistoryResult.create(await loadHistory(ctx.params.room)),
   );
@@ -112,7 +114,9 @@ consumer('/ws/room/{name}', {
   name: 'room',
   emits: [Said],
   groups: (conn) => [`room.${conn.params.name}`],
-}).on(Say, (m, ctx) => ctx.broadcast(Said.create(m.payload), { excludeCurrent: true }));
+}).on(Say, (m, ctx) =>
+  ctx.broadcast(Said.create(m.payload), { excludeCurrent: true }),
+);
 ```
 
 `groups` is a list, or a function of the connection. To join or leave later, such as
@@ -126,15 +130,25 @@ process. `.event()` handles one; its declared `output` goes to the client.
 `.passthrough()` forwards events to the client unchanged.
 
 ```ts
-const room = consumer('/ws/room/{name}', { name: 'room', groups: ['everyone'] })
+const room = consumer('/ws/room/{name}', {
+  name: 'room',
+  groups: ['everyone'],
+})
   .event(UserJoined, { output: JoinedNotice }, (e) =>
     JoinedNotice.create({ text: `${e.payload.user} joined` }),
   )
   .passthrough(Alert);
 
 // In a route handler, a job, anywhere:
-await chanx.broadcastEvent(room, UserJoined.create({ user: 'ann' }));
-await chanx.sendEvent(room, Alert.create({ text: 'hi' }), channelName);
+await chanx.broadcastEvent(
+  room,
+  UserJoined.create({ user: 'ann' }),
+);
+await chanx.sendEvent(
+  room,
+  Alert.create({ text: 'hi' }),
+  channelName,
+);
 ```
 
 `broadcastEvent` goes to the consumer's groups, or to the groups you pass.
@@ -147,8 +161,9 @@ events the consumer handles.
 type parameter states the state it needs, and `.use()` checks the consumer has it:
 
 ```ts
-const presence = handlers<{ room: RoomService }>().on(Who, (_m, ctx) =>
-  ctx.send(Present.create(ctx.state.room.members())),
+const presence = handlers<{ room: RoomService }>().on(
+  Who,
+  (_m, ctx) => ctx.send(Present.create(ctx.state.room.members())),
 );
 
 consumer('/ws/room/{name}', {
@@ -171,7 +186,8 @@ Override any of them per consumer:
 ```ts
 consumer('/ws/chat', {
   name: 'chat',
-  onValidationError: (issues, ctx) => ctx.send(Problem.create({ issues })),
+  onValidationError: (issues, ctx) =>
+    ctx.send(Problem.create({ issues })),
   onHandlerError: (error, message, ctx) => report(error),
   onEventError: (error, event, ctx) => report(error),
 });
@@ -183,7 +199,11 @@ The same consumer as a class, for shared logic, base classes and hooks to overri
 instance serves one connection, so its fields are per-connection state:
 
 ```ts
-import { AsyncJsonWebsocketConsumer, Consumer, On } from '@chanx-js/server';
+import {
+  AsyncJsonWebsocketConsumer,
+  Consumer,
+  On,
+} from '@chanx-js/server';
 
 @Consumer('/ws/chat/{room}', { name: 'chat', emits: [Notice] })
 class ChatConsumer extends AsyncJsonWebsocketConsumer<User> {
@@ -197,7 +217,11 @@ class ChatConsumer extends AsyncJsonWebsocketConsumer<User> {
   @On(Chat)
   async chat(m: MessageOf<typeof Chat>) {
     this.messages++;
-    await this.push(Notice.create({ text: `${this.params.room}: ${m.payload.text}` }));
+    await this.push(
+      Notice.create({
+        text: `${this.params.room}: ${m.payload.text}`,
+      }),
+    );
   }
 
   override onConnect() {

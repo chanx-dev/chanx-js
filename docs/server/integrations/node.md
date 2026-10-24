@@ -11,11 +11,15 @@ npm install @chanx-js/server ws
 
 ```ts
 import { createServer } from 'node:http';
-import { asyncapiMiddleware, attachChanx } from '@chanx-js/server/node';
+import {
+  asyncapiMiddleware,
+  attachChanx,
+} from '@chanx-js/server/node';
 
 import { chanx } from './app.js';
 
-const server = createServer(asyncapiMiddleware(chanx)); // AsyncAPI docs at /asyncapi
+// AsyncAPI docs at /asyncapi
+const server = createServer(asyncapiMiddleware(chanx));
 attachChanx(server, chanx);
 server.listen(8000);
 ```
@@ -31,7 +35,10 @@ app:
 ```ts
 import { createServer } from 'node:http';
 import express from 'express';
-import { asyncapiMiddleware, attachChanx } from '@chanx-js/server/node';
+import {
+  asyncapiMiddleware,
+  attachChanx,
+} from '@chanx-js/server/node';
 
 const app = express();
 app.use(asyncapiMiddleware(chanx));

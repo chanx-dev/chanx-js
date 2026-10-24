@@ -14,15 +14,22 @@ serve:
 ```ts
 import { asyncapiHandler } from '@chanx-js/server';
 
-const asyncapi = asyncapiHandler(chanx, { title: 'Chat API', version: '1.2.0' });
+const asyncapi = asyncapiHandler(chanx, {
+  title: 'Chat API',
+  version: '1.2.0',
+});
 
 // Hono
-app.get('/asyncapi*', async (c, next) => (await asyncapi(c.req.raw)) ?? next());
+app.get(
+  '/asyncapi*',
+  async (c, next) => (await asyncapi(c.req.raw)) ?? next(),
+);
 
 // Bun, Deno, Workers
 export default {
   fetch: async (request) =>
-    (await asyncapi(request)) ?? new Response(null, { status: 404 }),
+    (await asyncapi(request)) ??
+    new Response(null, { status: 404 }),
 };
 ```
 
@@ -47,7 +54,8 @@ expressApp.use(asyncapiMiddleware(chanx, { title: 'Chat API' }));
 Then generate the client:
 
 ```bash
-npx @chanx-js/codegen http://localhost:8000/asyncapi.json -o src/generated
+npx @chanx-js/codegen http://localhost:8000/asyncapi.json \
+  -o src/generated
 ```
 
 `chanx.asyncapi()` returns the document itself, to write it to a file in CI or serve it

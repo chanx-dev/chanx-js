@@ -2,7 +2,7 @@
 
 ## When sockets are shared
 
-Whether consumers of the same channel and params share one socket depends on the channel. Connections opened with different `protocols` never share, since subprotocols often carry credentials.
+Whether consumers of the same channel and params share one socket depends on the channel. Connections opened with different `protocols` or `headers` never share, since both often carry credentials.
 
 | Channel        | Default                 | Why                                                                                                                                                               |
 | -------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -18,11 +18,17 @@ When several components genuinely want the same stream, opt in, like react-use-w
 ```tsx
 // Both components use one connection.
 function MessageList({ room }: { room: string }) {
-  const { lastMessage } = useChannel(chat, { params: { room }, share: true });
+  const { lastMessage } = useChannel(chat, {
+    params: { room },
+    share: true,
+  });
 }
 
 function MessageInput({ room }: { room: string }) {
-  const { send } = useChannel(chat, { params: { room }, share: true });
+  const { send } = useChannel(chat, {
+    params: { room },
+    share: true,
+  });
 }
 ```
 

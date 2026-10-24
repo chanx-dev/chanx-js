@@ -21,7 +21,13 @@ npm install @chanx-js/nestjs @chanx-js/server ws zod
 import { Injectable, Module, UseGuards } from '@nestjs/common';
 import type { ConnectRequest, Context } from '@chanx-js/server';
 import { PingMessage, PongMessage } from '@chanx-js/server';
-import { ChanxConsumer, ChanxModule, Ctx, On, Payload } from '@chanx-js/nestjs';
+import {
+  ChanxConsumer,
+  ChanxModule,
+  Ctx,
+  On,
+  Payload,
+} from '@chanx-js/nestjs';
 
 @ChanxConsumer('/ws/chat/{room}', { name: 'chat', emits: [Notice] })
 export class ChatGateway {
@@ -59,7 +65,8 @@ takes `createChanx`'s options (`layers`, `camelize`, ...) plus `pingInterval`, a
 `asyncapi` to serve the [AsyncAPI](/server/asyncapi) docs page and document:
 
 ```ts
-ChanxModule.forRoot({ asyncapi: { title: 'Chat API' } }); // /asyncapi, .json, .yaml
+// /asyncapi, .json, .yaml
+ChanxModule.forRoot({ asyncapi: { title: 'Chat API' } });
 ```
 
 Nest needs `emitDecoratorMetadata`, as any Nest app does.
@@ -75,7 +82,9 @@ ChanxModule.forRootAsync({
   inject: [ConfigService],
   useFactory: (config: ConfigService) => ({
     layers: {
-      default: new RedisPubSubChannelLayer({ hosts: [config.get('REDIS_URL')] }),
+      default: new RedisPubSubChannelLayer({
+        hosts: [config.get('REDIS_URL')],
+      }),
     },
     asyncapi: { title: config.get('API_TITLE') },
   }),
@@ -181,7 +190,8 @@ Mount it in a consumer's options: `@ChanxConsumer('/ws/hub', { name: 'hub', topi
 it, to commit it or hand it to [`@chanx-js/codegen`](/client/codegen):
 
 ```bash
-npx chanx-nestjs asyncapi dist/app.module.js -o asyncapi.json --title "Chat API"
+npx chanx-nestjs asyncapi dist/app.module.js \
+  -o asyncapi.json --title "Chat API"
 ```
 
 It boots the module as an application context, with no HTTP server: providers still
@@ -204,7 +214,10 @@ export class RoomsService {
   constructor(private readonly chanx: ChanxService) {}
 
   announce(user: string) {
-    return this.chanx.broadcastEvent(ChatGateway, UserJoined.create({ user }));
+    return this.chanx.broadcastEvent(
+      ChatGateway,
+      UserJoined.create({ user }),
+    );
   }
 }
 ```

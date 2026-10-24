@@ -19,15 +19,23 @@ import { Show } from 'solid-js';
 import { createChannel } from '@chanx-js/client/solid';
 
 function ChatPanel() {
-  const channel = createChannel(chat, { params: { room: 'lobby' } });
+  const channel = createChannel(chat, {
+    params: { room: 'lobby' },
+  });
 
   return (
     <>
       <p>{channel.status()}</p>
-      <Show when={channel.lastMessage()?.action === 'chat_notification'}>
+      <Show
+        when={channel.lastMessage()?.action === 'chat_notification'}
+      >
         <p>new message</p>
       </Show>
-      <button onClick={() => channel.send({ action: 'ping', payload: null })}>
+      <button
+        onClick={() =>
+          channel.send({ action: 'ping', payload: null })
+        }
+      >
         ping
       </button>
     </>
@@ -60,7 +68,9 @@ For a set of topics known only at runtime:
 import { createTopics } from '@chanx-js/client/solid';
 
 const topics = createTopics(topicHub, {
-  topics: members.map((user) => topicHub.topics.presenceTopic.with({ user })),
+  topics: members.map((user) =>
+    topicHub.topics.presenceTopic.with({ user }),
+  ),
 });
 // topics.subscribed(), topics.lastMessage()
 ```

@@ -29,7 +29,9 @@ import { chanxHooks } from '@chanx-js/server/crossws';
 
 const ws = denoAdapter({ hooks: chanxHooks(chanx) });
 
-Deno.serve({ port: 8000 }, (request, info) => ws.handleUpgrade(request, info));
+Deno.serve({ port: 8000 }, (request, info) =>
+  ws.handleUpgrade(request, info),
+);
 ```
 
 ```ts [h3]

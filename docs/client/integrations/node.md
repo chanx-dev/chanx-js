@@ -20,12 +20,20 @@ const lobby = client.connect(chat, {
 });
 
 await lobby.ready(); // open, or throw once it gives up
-const pong = await lobby.request({ action: 'ping' }); // the reply, typed PongMessage
-const first = await lobby.once('said', { timeout: 5000 }); // the next `said`
+// the reply, typed PongMessage
+const pong = await lobby.request({ action: 'ping' });
+// the next `said`
+const first = await lobby.once('said', { timeout: 5000 });
 
 for await (const message of lobby) {
-  if (message.action === 'said' && message.payload.text === '!time') {
-    lobby.send({ action: 'say', payload: { text: new Date().toISOString() } });
+  if (
+    message.action === 'said' &&
+    message.payload.text === '!time'
+  ) {
+    lobby.send({
+      action: 'say',
+      payload: { text: new Date().toISOString() },
+    });
   }
 }
 ```
@@ -63,7 +71,8 @@ const ingest = consumer('/ws/ingest', {
   name: 'ingest',
   rejectBeforeUpgrade: true,
   authenticate: ({ headers }) =>
-    headers.get('authorization') === `Bearer ${process.env.INGEST_KEY}`
+    headers.get('authorization') ===
+    `Bearer ${process.env.INGEST_KEY}`
       ? { service: 'sensors' }
       : false,
 }).on(Reading, { output: Ack }, () => Ack.create());
@@ -79,7 +88,9 @@ createClient({
   baseUrl: 'wss://api.example.com',
   headers: { authorization: `Bearer ${process.env.INGEST_KEY}` },
   socketFactory: (url, protocols, options) =>
-    new WebSocket(url, protocols, { headers: options?.headers }) as never,
+    new WebSocket(url, protocols, {
+      headers: options?.headers,
+    }) as never,
 });
 ```
 

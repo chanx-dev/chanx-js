@@ -41,7 +41,10 @@ To check what was sent, rather than what a second client received, capture it. A
 capture records without delivering unless given `{ suppress: false }`:
 
 ```ts
-import { captureBroadcastEvents, captureTopicBroadcasts } from '@chanx-js/server/testing';
+import {
+  captureBroadcastEvents,
+  captureTopicBroadcasts,
+} from '@chanx-js/server/testing';
 
 const posts = captureTopicBroadcasts(chanx, roomTopic);
 await client.request(
@@ -50,7 +53,11 @@ await client.request(
 );
 
 expect(posts.captured).toEqual([
-  { topic: 'room:lobby', event: RoomEvent.create({ body: 'hi' }), seq: undefined },
+  {
+    topic: 'room:lobby',
+    event: RoomEvent.create({ body: 'hi' }),
+    seq: undefined,
+  },
 ]);
 posts.restore();
 ```

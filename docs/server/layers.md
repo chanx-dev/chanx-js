@@ -30,7 +30,11 @@ import { RedisPubSubChannelLayer } from '@chanx-js/layers/redis';
 
 const chanx = createChanx({
   consumers: [chat],
-  layers: { default: new RedisPubSubChannelLayer({ hosts: [process.env.REDIS_URL!] }) },
+  layers: {
+    default: new RedisPubSubChannelLayer({
+      hosts: [process.env.REDIS_URL!],
+    }),
+  },
 });
 ```
 
@@ -48,7 +52,10 @@ Name layers in `createChanx({ layers })`, then pick one per consumer or topic wi
 ```ts
 createChanx({
   consumers: [chat, metrics],
-  layers: { default: redisLayer, local: new InMemoryChannelLayer() },
+  layers: {
+    default: redisLayer,
+    local: new InMemoryChannelLayer(),
+  },
 });
 
 consumer('/ws/metrics', { name: 'metrics', layer: 'local' });
@@ -78,9 +85,14 @@ A layer works without chanx. Its operations are Python's, camelCased, and delive
 through a handler instead of `receive()`:
 
 ```ts
-const channel = await layer.newChannel((message) => console.log(message));
+const channel = await layer.newChannel((message) =>
+  console.log(message),
+);
 await layer.groupAdd('room.lobby', channel.name);
-await layer.groupSend('room.lobby', { type: 'chat.message', text: 'hi' });
+await layer.groupSend('room.lobby', {
+  type: 'chat.message',
+  text: 'hi',
+});
 await channel.close();
 ```
 

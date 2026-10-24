@@ -20,7 +20,9 @@ import { ref } from 'vue';
 import { useChannel } from '@chanx-js/client/vue';
 
 const room = ref({ room: 'lobby' });
-const { status, lastMessage, send } = useChannel(chat, { params: room });
+const { status, lastMessage, send } = useChannel(chat, {
+  params: room,
+});
 </script>
 
 <template>
@@ -44,7 +46,9 @@ import { useTopic } from '@chanx-js/client/vue';
 const props = defineProps<{ room: string }>();
 const { subscribed, lastMessage, send } = useTopic(
   topicHub,
-  computed(() => topicHub.topics.roomTopic.with({ room_name: props.room })),
+  computed(() =>
+    topicHub.topics.roomTopic.with({ room_name: props.room }),
+  ),
 );
 ```
 
@@ -57,7 +61,9 @@ For a set of topics known only at runtime:
 ```ts
 const { subscribed, lastMessage } = useTopics(topicHub, {
   topics: computed(() =>
-    members.value.map((user) => topicHub.topics.presenceTopic.with({ user })),
+    members.value.map((user) =>
+      topicHub.topics.presenceTopic.with({ user }),
+    ),
   ),
 });
 ```

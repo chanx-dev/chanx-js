@@ -33,7 +33,9 @@ Every option except `baseUrl` can also be passed per connection. Address `params
 ## Connecting
 
 ```ts
-const connection = client.connect(chat, { params: { room: 'lobby' } });
+const connection = client.connect(chat, {
+  params: { room: 'lobby' },
+});
 ```
 
 `params` fills the `{placeholders}` in the channel's address, and its type is derived from that address: a missing or misspelt param is a compile error.
@@ -54,7 +56,8 @@ connection.on('chat_notification', (message) => {
 });
 
 connection.onAny((message) => {}); // every message
-connection.onUnhandled((message) => {}); // messages no `on` handler claimed
+// messages no `on` handler claimed
+connection.onUnhandled((message) => {});
 connection.onError((error) => {}); // the server's `error` frames
 ```
 
@@ -67,10 +70,12 @@ chanx's own protocol frames (`subscribed`, `unsubscribed`, `complete`, `event_co
 To await a single message, or consume them in a loop:
 
 ```ts
-const first = await connection.once('chat_notification', { timeout: 5000 });
+const first = await connection.once('chat_notification', {
+  timeout: 5000,
+});
 
 for await (const message of connection) {
-  // ends when the connection closes, or once the socket gives up reconnecting
+  // ends when the connection closes, or reconnecting gives up
 }
 ```
 
@@ -81,7 +86,8 @@ for await (const message of connection) {
 ```ts
 connection.send({ action: 'chat', payload: { message: 'hello' } });
 
-const pong = await connection.request({ action: 'ping' }); // PongMessage
+// PongMessage
+const pong = await connection.request({ action: 'ping' });
 ```
 
 `request()` stamps the frame with a `ref` and resolves with the reply carrying the same `ref`. The reply is typed from the action you send: codegen records which message answers each one, so `pong` above is a `PongMessage`. An action whose handler declares no reply resolves to a plain `ChanxMessage`. It rejects on the server's `error` reply, on timeout (10 seconds by default), or when the connection closes first. Any later frame carrying the same `ref`, such as a reply that arrives after its request timed out, is delivered to the handlers like any other message.
@@ -106,8 +112,10 @@ Subscribed topics resubscribe automatically once the socket reopens.
 A heartbeat pings on an interval and reconnects when nothing comes back. It runs automatically on channels whose schema declares ping and pong (codegen marks them `heartbeat: true`) and is off everywhere else, because a chanx consumer without a ping handler answers each ping with an `error` frame.
 
 ```ts
-createClient({ heartbeat: { interval: 30_000, timeout: 10_000 } }); // tunes it; does not force it
-client.connect(chat, { heartbeat: false }); // off for this connection
+// tunes it; does not force it
+createClient({ heartbeat: { interval: 30_000, timeout: 10_000 } });
+// off for this connection
+client.connect(chat, { heartbeat: false });
 client.connect(legacy, { heartbeat: {} }); // force it on
 ```
 
@@ -117,7 +125,8 @@ A per-connection setting always wins. Any inbound frame counts as proof of life,
 
 ```ts
 connection.close(); // give up this consumer's claim on the socket
-connection.terminate(); // close the socket for every consumer sharing it
+// close the socket for every consumer sharing it
+connection.terminate();
 ```
 
 The difference matters when a socket is shared; see [Sharing and closing](/client/sharing).

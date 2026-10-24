@@ -25,7 +25,10 @@ reaches connections on the other:
 
 ```ts
 // Node
-new RedisPubSubChannelLayer({ hosts: ['redis://redis:6379'], prefix: 'asgi' });
+new RedisPubSubChannelLayer({
+  hosts: ['redis://redis:6379'],
+  prefix: 'asgi',
+});
 ```
 
 ```python
@@ -33,7 +36,10 @@ new RedisPubSubChannelLayer({ hosts: ['redis://redis:6379'], prefix: 'asgi' });
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.pubsub.RedisPubSubChannelLayer",
-        "CONFIG": {"hosts": ["redis://redis:6379"], "prefix": "asgi"},
+        "CONFIG": {
+            "hosts": ["redis://redis:6379"],
+            "prefix": "asgi",
+        },
     }
 }
 ```

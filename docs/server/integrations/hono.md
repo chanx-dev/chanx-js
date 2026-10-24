@@ -14,7 +14,10 @@ import { chanxHono } from '@chanx-js/server/hono';
 const app = new Hono();
 const asyncapi = asyncapiHandler(chanx);
 
-app.get('/asyncapi*', async (c, next) => (await asyncapi(c.req.raw)) ?? next());
+app.get(
+  '/asyncapi*',
+  async (c, next) => (await asyncapi(c.req.raw)) ?? next(),
+);
 app.get('/ws/*', chanxHono(chanx, upgradeWebSocket));
 
 export default { port: 8000, fetch: app.fetch, websocket };

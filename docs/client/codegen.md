@@ -33,7 +33,11 @@ export type ChatReplies = {
   ping: PongMessage;
 };
 
-export const chat = defineChannel<ChatToServer, ChatToClient, ChatReplies>()({
+export const chat = defineChannel<
+  ChatToServer,
+  ChatToClient,
+  ChatReplies
+>()({
   name: 'chat',
   address: '/ws/chat/{room}/',
   heartbeat: true,
@@ -43,11 +47,17 @@ export const chat = defineChannel<ChatToServer, ChatToClient, ChatReplies>()({
 A channel carrying topics nests them under the connection they share:
 
 ```ts
-export const topicHub = defineChannel<TopicHubToServer, TopicHubToClient>()({
+export const topicHub = defineChannel<
+  TopicHubToServer,
+  TopicHubToClient
+>()({
   name: 'topic_hub',
   address: '/ws/topics',
   topics: {
-    roomTopic: defineTopic<TopicHubRoomTopicToServer, TopicHubRoomTopicToClient>()({
+    roomTopic: defineTopic<
+      TopicHubRoomTopicToServer,
+      TopicHubRoomTopicToClient
+    >()({
       name: 'room_topic',
       pattern: 'room:{room_name}',
     }),

@@ -110,7 +110,13 @@ import { chat, type SaidMessage } from './generated';
 
 type Line = SaidMessage['payload'];
 
-export function ChatRoom({ room, name }: { room: string; name: string }) {
+export function ChatRoom({
+  room,
+  name,
+}: {
+  room: string;
+  name: string;
+}) {
   const [lines, setLines] = useState<Line[]>([]);
   const [online, setOnline] = useState<string[]>([]);
   const [draft, setDraft] = useState('');
@@ -121,7 +127,8 @@ export function ChatRoom({ room, name }: { room: string; name: string }) {
     buffer: 'none',
     on: {
       history: (message) => setLines(message.payload.lines),
-      said: (message) => setLines((lines) => [...lines, message.payload]),
+      said: (message) =>
+        setLines((lines) => [...lines, message.payload]),
       online: (message) => setOnline(message.payload.users),
     },
   });
@@ -146,7 +153,10 @@ export function ChatRoom({ room, name }: { room: string; name: string }) {
         ))}
       </ul>
       <form onSubmit={submit}>
-        <input value={draft} onChange={(e) => setDraft(e.target.value)} />
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+        />
         <button disabled={!draft.trim()}>Send</button>
       </form>
     </main>

@@ -38,7 +38,8 @@ Both packages are ESM only. The types need TypeScript 5.0 or later.
 chanx serves its AsyncAPI schema over HTTP. Point the generator at it:
 
 ```bash
-npx @chanx-js/codegen http://localhost:8000/asyncapi.json -o src/generated
+npx @chanx-js/codegen http://localhost:8000/asyncapi.json \
+  -o src/generated
 ```
 
 This writes three files:
@@ -66,29 +67,41 @@ import { createClient } from '@chanx-js/client';
 import { chat } from './generated/index.js';
 
 const client = createClient({ baseUrl: 'ws://localhost:8000' });
-const connection = client.connect(chat, { params: { room: 'lobby' } });
+const connection = client.connect(chat, {
+  params: { room: 'lobby' },
+});
 
-connection.on('notice', (message) => console.log(message.payload.text));
+connection.on('notice', (message) =>
+  console.log(message.payload.text),
+);
 
-const pong = await connection.request({ action: 'ping' }); // typed: PongMessage
+// typed: PongMessage
+const pong = await connection.request({ action: 'ping' });
 connection.send({ action: 'chat', payload: { text: 'hello' } });
 ```
 
 ```tsx [React]
 // ChatPanel.tsx
 import { useState } from 'react';
-import { setDefaultClient, useChannel } from '@chanx-js/client/react';
+import {
+  setDefaultClient,
+  useChannel,
+} from '@chanx-js/client/react';
 
 import { chat } from './generated';
 
-setDefaultClient({ baseUrl: 'ws://localhost:8000' }); // once, in your app's entry
+// once, in your app's entry
+setDefaultClient({ baseUrl: 'ws://localhost:8000' });
 
 export function ChatPanel({ room }: { room: string }) {
   const [notices, setNotices] = useState<string[]>([]);
   const { status, send } = useChannel(chat, {
     params: { room },
     buffer: 'none',
-    on: { notice: (message) => setNotices((all) => [...all, message.payload.text]) },
+    on: {
+      notice: (message) =>
+        setNotices((all) => [...all, message.payload.text]),
+    },
   });
 
   return (
@@ -99,7 +112,11 @@ export function ChatPanel({ room }: { room: string }) {
           <li key={i}>{text}</li>
         ))}
       </ul>
-      <button onClick={() => send({ action: 'chat', payload: { text: 'hello' } })}>
+      <button
+        onClick={() =>
+          send({ action: 'chat', payload: { text: 'hello' } })
+        }
+      >
         Say hello
       </button>
     </div>
@@ -115,14 +132,18 @@ import { setDefaultClient, useChannel } from '@chanx-js/client/vue';
 
 import { chat } from './generated';
 
-setDefaultClient({ baseUrl: 'ws://localhost:8000' }); // once, in your app's entry
+// once, in your app's entry
+setDefaultClient({ baseUrl: 'ws://localhost:8000' });
 
 const props = defineProps<{ room: string }>();
 const notices = ref<string[]>([]);
 const { status, send } = useChannel(chat, {
-  params: computed(() => ({ room: props.room })), // a new room reconnects
+  // a new room reconnects
+  params: computed(() => ({ room: props.room })),
   buffer: 'none',
-  on: { notice: (message) => notices.value.push(message.payload.text) },
+  on: {
+    notice: (message) => notices.value.push(message.payload.text),
+  },
 });
 </script>
 
@@ -131,22 +152,31 @@ const { status, send } = useChannel(chat, {
   <ul>
     <li v-for="(text, i) in notices" :key="i">{{ text }}</li>
   </ul>
-  <button @click="send({ action: 'chat', payload: { text: 'hello' } })">Say hello</button>
+  <button
+    @click="send({ action: 'chat', payload: { text: 'hello' } })"
+  >
+    Say hello
+  </button>
 </template>
 ```
 
 ```svelte [Svelte]
 <!-- ChatPanel.svelte -->
 <script lang="ts">
-  import { createChannel, setDefaultClient } from '@chanx-js/client/svelte';
+  import {
+    createChannel,
+    setDefaultClient,
+  } from '@chanx-js/client/svelte';
 
   import { chat } from './generated';
 
-  setDefaultClient({ baseUrl: 'ws://localhost:8000' }); // once, in your app's entry
+  // once, in your app's entry
+  setDefaultClient({ baseUrl: 'ws://localhost:8000' });
 
   let { room }: { room: string } = $props();
   let notices = $state<string[]>([]);
-  // Options are read once: to switch rooms, wrap the component in {#key room}.
+  // Options are read once: wrap the component in {#key room}
+  // to switch rooms.
   // svelte-ignore state_referenced_locally
   const channel = createChannel(chat, {
     params: { room },
@@ -161,7 +191,10 @@ const { status, send } = useChannel(chat, {
     <li>{text}</li>
   {/each}
 </ul>
-<button onclick={() => channel.send({ action: 'chat', payload: { text: 'hello' } })}>
+<button
+  onclick={() =>
+    channel.send({ action: 'chat', payload: { text: 'hello' } })}
+>
   Say hello
 </button>
 ```
@@ -169,19 +202,27 @@ const { status, send } = useChannel(chat, {
 ```tsx [Solid]
 // ChatPanel.tsx
 import { For, createSignal } from 'solid-js';
-import { createChannel, setDefaultClient } from '@chanx-js/client/solid';
+import {
+  createChannel,
+  setDefaultClient,
+} from '@chanx-js/client/solid';
 
 import { chat } from './generated';
 
-setDefaultClient({ baseUrl: 'ws://localhost:8000' }); // once, in your app's entry
+// once, in your app's entry
+setDefaultClient({ baseUrl: 'ws://localhost:8000' });
 
 export function ChatPanel(props: { room: string }) {
   const [notices, setNotices] = createSignal<string[]>([]);
-  // Options are read once: to switch rooms, key the component on the room.
+  // Options are read once: key the component on the room to
+  // switch rooms.
   const channel = createChannel(chat, {
     params: { room: props.room },
     buffer: 'none',
-    on: { notice: (message) => setNotices((all) => [...all, message.payload.text]) },
+    on: {
+      notice: (message) =>
+        setNotices((all) => [...all, message.payload.text]),
+    },
   });
 
   return (
@@ -191,7 +232,12 @@ export function ChatPanel(props: { room: string }) {
         <For each={notices()}>{(text) => <li>{text}</li>}</For>
       </ul>
       <button
-        onClick={() => channel.send({ action: 'chat', payload: { text: 'hello' } })}
+        onClick={() =>
+          channel.send({
+            action: 'chat',
+            payload: { text: 'hello' },
+          })
+        }
       >
         Say hello
       </button>

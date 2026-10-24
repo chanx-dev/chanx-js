@@ -27,14 +27,19 @@ Without a provider, hooks use a default client, which `setDefaultClient({ baseUr
 import { useChannel } from '@chanx-js/client/react';
 
 function ChatPanel({ room }: { room: string }) {
-  const { status, lastMessage, send } = useChannel(chat, { params: { room } });
+  const { status, lastMessage, send } = useChannel(chat, {
+    params: { room },
+  });
 
   useEffect(() => {
-    if (lastMessage?.action === 'chat_notification') append(lastMessage.payload);
+    if (lastMessage?.action === 'chat_notification')
+      append(lastMessage.payload);
   }, [lastMessage]);
 
   return (
-    <button onClick={() => send({ action: 'ping', payload: null })}>{status}</button>
+    <button onClick={() => send({ action: 'ping', payload: null })}>
+      {status}
+    </button>
   );
 }
 ```
@@ -52,7 +57,7 @@ It returns:
 
 Options: everything a [connection](/client/connections) takes, plus `enabled`, `buffer`, `only`, `on`, `onError` and `onUnhandled`; see [Delivery modes](/client/delivery).
 
-The connection is rebuilt only when an option that shapes it changes: `params`, `queryParams` (a refreshed token, say), `protocols`, `share` or `enabled`. An inline `on` map changes every render and does not reconnect.
+The connection is rebuilt only when an option that shapes it changes: `params`, `queryParams` (a refreshed token, say), `headers`, `protocols`, `share` or `enabled`. An inline `on` map changes every render and does not reconnect.
 
 ## `useTopic`
 
@@ -76,7 +81,9 @@ For a set of topics known only at runtime:
 
 ```tsx
 const { subscribed, lastMessage } = useTopics(topicHub, {
-  topics: members.map((user) => topicHub.topics.presenceTopic.with({ user })),
+  topics: members.map((user) =>
+    topicHub.topics.presenceTopic.with({ user }),
+  ),
 });
 ```
 
@@ -101,9 +108,13 @@ export function useNotifications() {
 }
 
 export function useRoom(name: string) {
-  return useTopic(topicHub, topicHub.topics.roomTopic.with({ room_name: name }), {
-    onSubscribeError: (topic) => toast(`Cannot join ${topic}`),
-  });
+  return useTopic(
+    topicHub,
+    topicHub.topics.roomTopic.with({ room_name: name }),
+    {
+      onSubscribeError: (topic) => toast(`Cannot join ${topic}`),
+    },
+  );
 }
 ```
 

@@ -8,7 +8,9 @@ Topics are reached through the channel whose connection carries them. Codegen ne
 
 ```ts
 const hub = client.connect(topicHub);
-const room = hub.topic(topicHub.topics.roomTopic.with({ room_name: 'lobby' }));
+const room = hub.topic(
+  topicHub.topics.roomTopic.with({ room_name: 'lobby' }),
+);
 
 await room.subscribe();
 
@@ -24,7 +26,10 @@ A handle has the same helpers as a connection: `on`, `onAny`, `once`, `stream`, 
 ```ts
 room.send({ action: 'post', payload: { body: 'hello' } });
 
-const posted = await room.request({ action: 'post', payload: { body: 'hi' } });
+const posted = await room.request({
+  action: 'post',
+  payload: { body: 'hi' },
+});
 ```
 
 A topic request resolves with the reply carrying its `ref`, typed as the topic's handler declares it, on any chanx version with topics.
@@ -38,11 +43,16 @@ function Room({ name }: { name: string }) {
   const { subscribed, lastMessage, send } = useTopic(
     topicHub,
     topicHub.topics.roomTopic.with({ room_name: name }),
-    { onSubscribeError: (topic, error) => console.warn(topic, error) },
+    {
+      onSubscribeError: (topic, error) =>
+        console.warn(topic, error),
+    },
   );
 
-  if (lastMessage?.action === 'posted') lastMessage.payload.body; // the topic's own types
-  send({ action: 'post', payload: { body: 'hi' } }); // sent on room:<name>
+  // the topic's own types
+  if (lastMessage?.action === 'posted') lastMessage.payload.body;
+  // sent on room:<name>
+  send({ action: 'post', payload: { body: 'hi' } });
 }
 ```
 
@@ -59,8 +69,12 @@ When the set of topics is only known at runtime, such as presence for every memb
 
 ```tsx
 const { subscribed, lastMessage, sendTopic } = useTopics(topicHub, {
-  topics: members.map((user) => topicHub.topics.presenceTopic.with({ user })),
-  on: { presence_changed: (message) => setOnline(message.payload.user) },
+  topics: members.map((user) =>
+    topicHub.topics.presenceTopic.with({ user }),
+  ),
+  on: {
+    presence_changed: (message) => setOnline(message.payload.user),
+  },
 });
 ```
 
@@ -74,9 +88,14 @@ const { subscribed, lastMessage, sendTopic } = useTopics(topicHub, {
 A topic may number its events on the envelope, as chanx-kit's ag_ui kit does per run, so a client joining mid-run can apply a replay that overlaps live events without duplicates. Handlers get it as the second argument, and buffered messages carry it next to `topic`:
 
 ```ts
-handle.on('ag_ui_event', (message, { seq }) => apply(seq, message.payload));
+handle.on('ag_ui_event', (message, { seq }) =>
+  apply(seq, message.payload),
+);
 
-const { lastMessage } = useTopic(hub, hub.topics.agUi.with({ thread }));
+const { lastMessage } = useTopic(
+  hub,
+  hub.topics.agUi.with({ thread }),
+);
 lastMessage?.seq;
 ```
 
@@ -95,7 +114,7 @@ The server is told to unsubscribe only when the last consumer holding the topic 
 
 Every topic that was subscribed resubscribes automatically when the socket reopens. There is nothing to do. If the server rejects a resubscribe (say permissions changed while the socket was down), the topic drops out of `subscribed`, and `handle.onSubscribeError` and the bindings' `onSubscribeError` report it.
 
-A topic's `stream()` ends when the last consumer releases the topic, the connection closes, or the socket is terminated.
+A topic's `stream()` ends when the last consumer releases the topic, the connection closes, or the socket closes for good: terminated, or done reconnecting.
 
 ## State pushed on join
 

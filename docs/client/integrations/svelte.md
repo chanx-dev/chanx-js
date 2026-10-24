@@ -20,7 +20,9 @@ The result is a store, so `$` works in templates:
 <script lang="ts">
   import { createChannel } from '@chanx-js/client/svelte';
 
-  const channel = createChannel(chat, { params: { room: 'lobby' } });
+  const channel = createChannel(chat, {
+    params: { room: 'lobby' },
+  });
 </script>
 
 <p>{$channel.status}</p>
@@ -28,7 +30,11 @@ The result is a store, so `$` works in templates:
   <p>{$channel.lastMessage.payload.message}</p>
 {/if}
 
-<button on:click={() => channel.send({ action: 'ping', payload: null })}>ping</button>
+<button
+  on:click={() => channel.send({ action: 'ping', payload: null })}
+>
+  ping
+</button>
 ```
 
 The store's value has `status`, `lastMessage` and `messages`. Alongside `subscribe`, it has `send`, `request`, `clearMessages`, `getConnection`, `close` and `terminate`.
@@ -60,7 +66,9 @@ For a set of topics known only at runtime:
 import { createTopics } from '@chanx-js/client/svelte';
 
 const topics = createTopics(topicHub, {
-  topics: members.map((user) => topicHub.topics.presenceTopic.with({ user })),
+  topics: members.map((user) =>
+    topicHub.topics.presenceTopic.with({ user }),
+  ),
 });
 // $topics.subscribed, $topics.lastMessage
 ```
