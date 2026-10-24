@@ -27,6 +27,7 @@ pnpm build              # every package
 pnpm check:conformance  # regenerate conformance clients; fails on any diff
 pnpm docs:build         # TypeDoc warnings and dead links fail it
 pnpm test <path>        # one test file or directory
+pnpm test --project server  # one package's tests (client:solid holds the Solid binding)
 ```
 
 Redis tests run only with `REDIS_URL` set:
