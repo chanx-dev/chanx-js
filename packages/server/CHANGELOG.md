@@ -1,5 +1,13 @@
 # @chanx-js/server
 
+## 2.0.2
+
+### Patch Changes
+
+- e1abc6a: The package README says what the package is for, shows a working example, and links to the docs.
+- Updated dependencies [e1abc6a]
+  - @chanx-js/layers@2.0.1
+
 ## 2.0.1
 
 ### Patch Changes
