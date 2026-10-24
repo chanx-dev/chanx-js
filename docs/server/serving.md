@@ -93,7 +93,9 @@ DI, `attachChanx(app.getHttpServer(), chanx)` works too.
 - The crossws and Hono adapters leave pings to the runtime.
 
 ::: info Tested on
-The test suite runs every adapter on Node over real sockets: Node's `http` with `ws`,
-crossws's Node adapter, Hono on `@hono/node-server`, and Fastify. Other runtimes and
-frameworks are not tested yet.
+The full suites, `@chanx-js/client` end to end included, run every adapter over real
+sockets on Node: `/node` on plain `http`, Express and Koa; Fastify; crossws on its Node
+adapter and under h3; Hono on `@hono/node-server`. CI also runs the built packages on
+Bun and Deno, through each runtime's crossws and Hono adapters. Cloudflare Workers is
+not tested yet.
 :::

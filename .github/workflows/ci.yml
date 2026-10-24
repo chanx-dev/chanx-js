@@ -78,6 +78,31 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test packages/layers packages/server
 
+  runtimes:
+    name: Server on ${{ matrix.runtime }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime: [bun, deno]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: oven-sh/setup-bun@v2
+        if: matrix.runtime == 'bun'
+      - uses: denoland/setup-deno@v2
+        if: matrix.runtime == 'deno'
+        with:
+          deno-version: v2.x
+      - run: pnpm install --frozen-lockfile
+      # The smoke script runs the built packages, as they are published.
+      - run: pnpm build
+      - run: pnpm --filter @chanx-js/server smoke:${{ matrix.runtime }}
+
   docs:
     name: Docs build
     runs-on: ubuntu-latest

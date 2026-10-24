@@ -37,6 +37,23 @@ export default tseslint.config(
     },
   },
   {
+    // Run by Bun and Deno, with their globals.
+    files: ['packages/server/tests/runtimes/**'],
+    languageOptions: {
+      globals: Object.fromEntries(
+        [
+          'Bun',
+          'Deno',
+          'WebSocket',
+          'TextEncoder',
+          'console',
+          'process',
+          'setTimeout',
+        ].map((name) => [name, 'readonly']),
+      ),
+    },
+  },
+  {
     // Hand-written plain JavaScript, type-checked by tsc through checkJs instead.
     files: ['conformance-js/**/*.js'],
     languageOptions: { globals: { console: 'readonly' } },

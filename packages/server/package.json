@@ -49,7 +49,9 @@
   },
   "scripts": {
     "build": "tsdown src/index.ts src/testing.ts src/adapters/node.ts src/adapters/crossws.ts src/adapters/hono.ts src/adapters/fastify.ts --format esm --dts.eager --clean",
-    "typecheck": "tsc -p tsconfig.json && tsc -p tests/legacy/tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json && tsc -p tests/legacy/tsconfig.json",
+    "smoke:bun": "bun tests/runtimes/smoke.mjs",
+    "smoke:deno": "deno run -A tests/runtimes/smoke.mjs"
   },
   "dependencies": {
     "@chanx-js/layers": "workspace:*",

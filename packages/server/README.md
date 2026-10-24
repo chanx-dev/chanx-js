@@ -84,7 +84,8 @@ answering, as uvicorn does for Python's chanx.
 - **Fastify:** `chanxFastify(chanx)` from `@chanx-js/server/fastify`, after registering
   `@fastify/websocket`; Fastify's hooks run before each upgrade.
 
-The crossws and Hono adapters are tested on Node; they leave pings to the runtime.
+Every adapter is tested on Node; crossws and Hono also on Bun and Deno. They leave pings
+to the runtime.
 Binary frames are refused with an error, as chanx refuses them. crossws drops
 uWebSockets' binary flag, so every frame there looks binary: chanx cannot run on
 crossws' uWebSockets adapter.
