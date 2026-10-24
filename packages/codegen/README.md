@@ -3,7 +3,7 @@
 Generate typed channel descriptors for the [`@chanx-js/client`](https://www.npmjs.com/package/@chanx-js/client)
 WebSocket client from a [chanx](https://github.com/huynguyengl99/chanx) AsyncAPI 3 schema.
 
-**[Documentation](https://huynguyengl99.github.io/chanx-js/guide/codegen)**
+**[Documentation](https://huynguyengl99.github.io/chanx-js/client/codegen)**
 
 ```bash
 npx @chanx-js/codegen http://localhost:8000/asyncapi.json -o src/generated

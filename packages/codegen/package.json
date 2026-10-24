@@ -4,7 +4,7 @@
   "description": "Generate TypeScript channel descriptors and message types from a chanx AsyncAPI 3 schema.",
   "license": "MIT",
   "author": "Huy Nguyen",
-  "homepage": "https://huynguyengl99.github.io/chanx-js/guide/codegen",
+  "homepage": "https://huynguyengl99.github.io/chanx-js/client/codegen",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/huynguyengl99/chanx-js.git",

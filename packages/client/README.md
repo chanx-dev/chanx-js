@@ -5,7 +5,7 @@ schemas, with topic multiplexing. Zero dependencies, with optional bindings for 
 Vue, Svelte and Solid, and first-class support for plain JavaScript and Node.
 
 **[Documentation](https://huynguyengl99.github.io/chanx-js/)** ·
-[Getting started](https://huynguyengl99.github.io/chanx-js/guide/getting-started) ·
+[Getting started](https://huynguyengl99.github.io/chanx-js/client/) ·
 [API reference](https://huynguyengl99.github.io/chanx-js/api/)
 
 ```bash
