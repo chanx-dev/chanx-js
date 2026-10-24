@@ -23,7 +23,7 @@
     "check": "pnpm lint && pnpm format && pnpm typecheck && pnpm test",
     "changeset": "changeset",
     "version-packages": "changeset version && pnpm install --lockfile-only",
-    "release": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm check:conformance && changeset publish"
+    "release": "pnpm lint && pnpm typecheck && pnpm test && pnpm --filter \"./packages/*\" build && pnpm check:conformance && changeset publish"
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.3",

@@ -33,17 +33,19 @@ jobs:
       # Trusted publishing needs npm 11.5.1 or later; pnpm publishes through it.
       - run: npm install -g npm@11
       - run: pnpm install --frozen-lockfile
-      # Pending changesets mean the packages are not versioned yet: nothing to publish.
-      - id: pending
+      # Something to publish means no changesets pending (the packages are versioned) and
+      # a package version not yet on npm; any other push to main stops here.
+      - id: plan
         run: |
-          if find .changeset -name '*.md' ! -name README.md | grep -q .; then
-            echo "changesets=true" >> "$GITHUB_OUTPUT"
+          if find .changeset -name '*.md' ! -name README.md | grep -q .; then exit 0; fi
+          if pnpm changeset publish-plan | grep -q '^Packages to publish:'; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
           fi
-      # With no changesets pending, the action only publishes: `pnpm release` checks,
-      # builds and runs `changeset publish`, which skips versions already on npm. A new
-      # package's first version is published by hand: trusted publishing needs it to exist.
+      # The action only publishes: `pnpm release` checks, builds the packages and runs
+      # `changeset publish`. A new package's first version is published by hand: trusted
+      # publishing needs the package to exist.
       - id: changesets
-        if: steps.pending.outputs.changesets != 'true'
+        if: steps.plan.outputs.publish == 'true'
         uses: changesets/action@v2
         with:
           publish-script: pnpm release
