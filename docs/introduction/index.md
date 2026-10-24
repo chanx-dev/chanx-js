@@ -73,6 +73,7 @@ own minor and patch releases; see the [changelog](/reference/changelog).
 
 ## Next
 
+- [Why chanx-js?](./why): how it compares with Socket.IO, `ws` and tRPC.
 - [Quick start](./quick-start): a server and a typed client, running in five minutes.
 - [Build a chat server](/tutorials/chat-server), then
   [its React UI](/tutorials/chat-ui), step by step.

@@ -10,6 +10,7 @@ const guideSidebar = [
     text: 'Introduction',
     items: [
       { text: 'What is chanx-js?', link: '/introduction/' },
+      { text: 'Why chanx-js?', link: '/introduction/why' },
       { text: 'Quick start', link: '/introduction/quick-start' },
     ],
   },
