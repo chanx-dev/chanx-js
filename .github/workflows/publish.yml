@@ -44,8 +44,9 @@ jobs:
       - run: pnpm build
       - run: pnpm check:conformance
 
-      # Trusted publishing (OIDC) when configured on npm; NPM_TOKEN only bootstraps the
-      # very first release, before the packages exist to attach a trusted publisher to.
+      # Trusted publishing (OIDC): no token is set. It needs a package to exist, so a new
+      # package's first version is published by hand, held for npm's review of new names,
+      # and only then given this workflow as its trusted publisher.
       - name: Publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

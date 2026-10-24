@@ -42,6 +42,13 @@ same as from the Python sandbox's schema.
   on them works against either server. Locations match exactly; a schema library's
   wording cannot.
 
+## Versions
+
+All packages release together, on one version, one tag and one changelog: the client and
+the server share the wire protocol, `@chanx-js/nestjs` pins its `@chanx-js/server`, and the
+server its layers, so they cannot drift apart. The major version follows chanx's, which
+makes it say something a user can rely on: chanx-js 2.x speaks the chanx 2 protocol.
+
 ## Why a separate repo from chanx
 
 - **The valuable half is a runtime library**, which needs semver and `npm install`, so it cannot live in a PyPI package. It is the same split as zodios (runtime) and openapi-zod-client (generator).

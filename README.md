@@ -286,14 +286,26 @@ pnpm docs:build         # the site as GitHub Pages serves it
 ### Releasing
 
 ```bash
-pnpm release              # version from the commits, CHANGELOG.md, signed commit and tag
-git push origin main      # let CI check it
-git push origin v0.1.1    # the tag publishes to npm and cuts a GitHub release
+git push origin main             # let CI check it first
+pnpm release                     # version from the commits, CHANGELOG.md, signed commit and tag
+git push --follow-tags origin main  # the tag publishes to npm, then the docs deploy
 ```
 
-Below 1.0, `feat` bumps the patch version; use `pnpm release --release-as minor` for a
-minor one. The very first release is `pnpm release --first-release`, which tags the
-current version instead of bumping it.
+Every package shares one version, and its major follows chanx's: chanx-js 2.x speaks the
+chanx 2 protocol. A `feat` bumps the minor version and a `fix` the patch; a new chanx
+major is a new major here too (`pnpm release --release-as major`).
+
+A new package's first version is published by hand, packed as `publish.yml` packs it so
+`workspace:*` becomes a real version:
+
+```bash
+(cd packages/<name> && npm pkg delete devDependencies && pnpm pack --pack-destination /tmp/chanx-out)
+npm publish /tmp/chanx-out/*.tgz --access public
+git checkout packages/<name>/package.json
+```
+
+npm reviews new names for a few minutes before releasing them. Then add `publish.yml` as
+the package's trusted publisher on npm, and CI publishes it from there on.
 
 See the [design notes](https://huynguyengl99.github.io/chanx-js/design) for the protocol,
 the reference-counting rules, and why this does not wrap react-use-websocket.
