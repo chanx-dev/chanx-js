@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
 import type { ChanxMessage } from '@chanx-js/protocol';
 
-import type { RequestOptions } from '../core/connection';
+import type { RequestFn } from '../core/connection';
 import type { TopicsControllerOptions, TopicsSnapshot } from '../core/controller';
 import { connectionKey, createTopicsController, topicsKey } from '../core/controller';
 import type {
   AddressOf,
   ChannelDescriptor,
+  NoReplies,
+  RepliesOf,
   ToServerOf,
   TopicRef,
   TopicRefOf,
@@ -21,6 +23,7 @@ export type UseTopicsOptions<
 export interface UseTopicsResult<
   ToServer extends ChanxMessage,
   Ref extends TopicRef,
+  Replies = NoReplies,
 > extends TopicsSnapshot<Ref> {
   clearMessages: () => void;
   /** Send on the channel itself, not on a topic. */
@@ -30,7 +33,8 @@ export interface UseTopicsResult<
    * to exactly one topic, use `useTopic`, or take the handle from `handles`.
    */
   sendTopic: (topic: string, message: ToServerOf<Ref>) => void;
-  request: (message: ToServer, options?: RequestOptions) => Promise<ChanxMessage>;
+  /** Request on the channel itself, not on a topic. */
+  request: RequestFn<ToServer, Replies>;
   /** Close the socket for every component sharing it, not just this one. */
   terminate: (code?: number, reason?: string) => void;
 }
@@ -54,7 +58,7 @@ export function useTopics<
 >(
   descriptor: D,
   options: UseTopicsOptions<AddressOf<D>, Refs[number]> & { topics: Refs },
-): UseTopicsResult<ToServerOf<D>, Refs[number]> {
+): UseTopicsResult<ToServerOf<D>, Refs[number], RepliesOf<D>> {
   type Ref = Refs[number];
   const client = useChanxClient();
 
@@ -93,9 +97,8 @@ export function useTopics<
     (topic: string, message: ToServerOf<Ref>) => controller.sendTopic(topic, message),
     [controller],
   );
-  const request = useCallback(
-    (message: ToServerOf<D>, requestOptions?: RequestOptions) =>
-      controller.request(message, requestOptions),
+  const request = useCallback<RequestFn<ToServerOf<D>, RepliesOf<D>>>(
+    (message, requestOptions) => controller.request(message, requestOptions),
     [controller],
   );
   const clearMessages = useCallback(() => controller.clearMessages(), [controller]);

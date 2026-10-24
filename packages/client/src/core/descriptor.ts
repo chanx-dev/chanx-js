@@ -18,6 +18,18 @@ export type ParamsOf<S extends string> = [ExtractParams<S>] extends [never]
  */
 export type Validator<T> = (value: unknown) => T;
 
+/** A descriptor that declares no replies: every request resolves to a `ChanxMessage`. */
+export type NoReplies = Record<never, never>;
+
+/**
+ * The reply to a request with this action. `Replies` maps actions to what answers them,
+ * such as `{ ping: PongMessage }`; codegen writes it from the `reply` the AsyncAPI
+ * document gives each handler. An action it does not list resolves to any message.
+ */
+export type ReplyOf<Replies, Action> = Action extends keyof Replies
+  ? Replies[Action]
+  : ChanxMessage;
+
 export interface Validators<ToServer, ToClient> {
   toServer?: Validator<ToServer>;
   toClient?: Validator<ToClient>;
@@ -34,19 +46,20 @@ export interface TopicDescriptor<
   ToServer extends ChanxMessage = ChanxMessage,
   ToClient extends ChanxMessage = ChanxMessage,
   Pattern extends string = string,
+  Replies = NoReplies,
 > {
   readonly kind: 'topic';
   readonly name: string;
   readonly pattern: Pattern;
   readonly validators?: Validators<ToServer, ToClient>;
   /** Phantom: carries message types through inference, never present at runtime. */
-  readonly types?: { toServer: ToServer; toClient: ToClient };
+  readonly types?: { toServer: ToServer; toClient: ToClient; replies: Replies };
   /**
    * The topic with its params filled in, ready to join:
    * `roomTopic.with({ room_name: 'lobby' })`. A missing or misspelled param is a
    * compile error.
    */
-  with(...args: TopicParamsArgs<Pattern>): TopicRef<ToServer, ToClient, Pattern>;
+  with(...args: TopicParamsArgs<Pattern>): TopicRef<ToServer, ToClient, Pattern, Replies>;
 }
 
 /** A topic with its params filled in, from `topic.with(params)`. What gets joined. */
@@ -54,20 +67,22 @@ export interface TopicRef<
   ToServer extends ChanxMessage = ChanxMessage,
   ToClient extends ChanxMessage = ChanxMessage,
   Pattern extends string = string,
+  Replies = NoReplies,
 > {
-  readonly descriptor: TopicDescriptor<ToServer, ToClient, Pattern>;
+  readonly descriptor: TopicDescriptor<ToServer, ToClient, Pattern, Replies>;
   readonly params: Record<string, string | number>;
   /** The resolved topic string, such as `room:lobby`. */
   readonly topic: string;
 }
 
-export type TopicMap = Record<string, TopicDescriptor<any, any, any>>;
+export type TopicMap = Record<string, TopicDescriptor<any, any, any, any>>;
 
 export interface ChannelDescriptor<
   ToServer extends ChanxMessage = ChanxMessage,
   ToClient extends ChanxMessage = ChanxMessage,
   Address extends string = string,
   Topics extends TopicMap = TopicMap,
+  Replies = NoReplies,
 > {
   readonly kind: 'channel';
   readonly name: string;
@@ -76,7 +91,7 @@ export interface ChannelDescriptor<
   /** The channel answers `ping` with `pong`, so a heartbeat is safe to run on it. */
   readonly heartbeat?: boolean;
   readonly validators?: Validators<ToServer, ToClient>;
-  readonly types?: { toServer: ToServer; toClient: ToClient };
+  readonly types?: { toServer: ToServer; toClient: ToClient; replies: Replies };
 }
 
 interface ChannelSpec<Address extends string, Topics extends TopicMap> {
@@ -100,7 +115,7 @@ interface TopicSpec<Pattern extends string> {
  * topic map are still inferred: TypeScript has no partial type-argument inference.
  *
  * ```ts
- * export const chat = defineChannel<ChatToServer, ChatToClient>()({
+ * export const chat = defineChannel<ChatToServer, ChatToClient, ChatReplies>()({
  *   name: 'chat',
  *   address: '/ws/chat/{room}/',
  * });
@@ -109,10 +124,11 @@ interface TopicSpec<Pattern extends string> {
 export function defineChannel<
   ToServer extends ChanxMessage,
   ToClient extends ChanxMessage,
+  Replies = NoReplies,
 >() {
   return <const Address extends string, Topics extends TopicMap = Record<never, never>>(
     spec: ChannelSpec<Address, Topics>,
-  ): ChannelDescriptor<ToServer, ToClient, Address, Topics> => ({
+  ): ChannelDescriptor<ToServer, ToClient, Address, Topics, Replies> => ({
     kind: 'channel',
     name: spec.name,
     address: spec.address,
@@ -126,13 +142,14 @@ export function defineChannel<
 export function defineTopic<
   ToServer extends ChanxMessage,
   ToClient extends ChanxMessage,
+  Replies = NoReplies,
 >() {
   // `const`, or a topic defined inline inside `defineChannel` (as codegen writes it)
   // would have its pattern widened to `string`, and `with()` could check nothing.
   return <const Pattern extends string>(
     spec: TopicSpec<Pattern>,
-  ): TopicDescriptor<ToServer, ToClient, Pattern> => {
-    const descriptor: TopicDescriptor<ToServer, ToClient, Pattern> = {
+  ): TopicDescriptor<ToServer, ToClient, Pattern, Replies> => {
+    const descriptor: TopicDescriptor<ToServer, ToClient, Pattern, Replies> = {
       kind: 'topic',
       name: spec.name,
       pattern: spec.pattern,
@@ -147,39 +164,52 @@ export function defineTopic<
 }
 
 export type ToServerOf<D> =
-  D extends ChannelDescriptor<infer TS, any, any, any>
+  D extends ChannelDescriptor<infer TS, any, any, any, any>
     ? TS
-    : D extends TopicDescriptor<infer TS, any, any>
+    : D extends TopicDescriptor<infer TS, any, any, any>
       ? TS
-      : D extends TopicRef<infer TS, any, any>
+      : D extends TopicRef<infer TS, any, any, any>
         ? TS
         : never;
 
 export type ToClientOf<D> =
-  D extends ChannelDescriptor<any, infer TC, any, any>
+  D extends ChannelDescriptor<any, infer TC, any, any, any>
     ? TC
-    : D extends TopicDescriptor<any, infer TC, any>
+    : D extends TopicDescriptor<any, infer TC, any, any>
       ? TC
-      : D extends TopicRef<any, infer TC, any>
+      : D extends TopicRef<any, infer TC, any, any>
         ? TC
         : never;
 
+export type RepliesOf<D> =
+  D extends ChannelDescriptor<any, any, any, any, infer R>
+    ? R
+    : D extends TopicDescriptor<any, any, any, infer R>
+      ? R
+      : D extends TopicRef<any, any, any, infer R>
+        ? R
+        : NoReplies;
+
 export type AddressOf<D> =
-  D extends ChannelDescriptor<any, any, infer A, any> ? A : never;
-export type PatternOf<D> = D extends TopicDescriptor<any, any, infer P> ? P : never;
-export type TopicsOf<D> = D extends ChannelDescriptor<any, any, any, infer T> ? T : never;
+  D extends ChannelDescriptor<any, any, infer A, any, any> ? A : never;
+export type PatternOf<D> = D extends TopicDescriptor<any, any, infer P, any> ? P : never;
+export type TopicsOf<D> =
+  D extends ChannelDescriptor<any, any, any, infer T, any> ? T : never;
 
 /** A ref to any of a channel's topics: what that channel's topic APIs accept. */
 export type TopicRefOf<D> = {
   [K in keyof TopicsOf<D>]: TopicsOf<D>[K] extends TopicDescriptor<
     infer TS,
     infer TC,
-    infer P
+    infer P,
+    infer R
   >
-    ? TopicRef<TS, TC, P>
+    ? TopicRef<TS, TC, P, R>
     : never;
 }[keyof TopicsOf<D>];
 
 /** A message on one of the refs' topics, tagged with its topic and, if sent, its `seq`. */
 export type TopicMessage<R> =
-  R extends TopicRef<any, infer TC, any> ? TC & { topic: string; seq?: number } : never;
+  R extends TopicRef<any, infer TC, any, any>
+    ? TC & { topic: string; seq?: number }
+    : never;

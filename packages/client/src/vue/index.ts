@@ -20,7 +20,7 @@ import type { ChanxMessage } from '@chanx-js/protocol';
 
 import type { ChanxClient, ClientOptions } from '../core/client';
 import { createClient } from '../core/client';
-import type { ChannelConnection, RequestOptions } from '../core/connection';
+import type { ChannelConnection, RequestFn } from '../core/connection';
 import type {
   ChannelSnapshot,
   ControllerOptions,
@@ -41,6 +41,8 @@ import {
 import type {
   AddressOf,
   ChannelDescriptor,
+  NoReplies,
+  RepliesOf,
   ToClientOf,
   ToServerOf,
   TopicRef,
@@ -108,14 +110,15 @@ function whenMounted(start: () => void): () => boolean {
 export interface UseChannelResult<
   ToServer extends ChanxMessage,
   ToClient extends ChanxMessage,
+  Replies = NoReplies,
 > {
   status: Ref<SocketStatus>;
   lastMessage: Ref<ToClient | null>;
   messages: Ref<ToClient[]>;
   clearMessages: () => void;
   send: (message: ToServer) => void;
-  request: (message: ToServer, options?: RequestOptions) => Promise<ChanxMessage>;
-  connection: Ref<ChannelConnection<ToServer, ToClient> | null>;
+  request: RequestFn<ToServer, Replies>;
+  connection: Ref<ChannelConnection<ToServer, ToClient, Replies> | null>;
   /** Release this consumer's claim; the socket stays up for any others. */
   close: () => void;
   /** Close the socket for every consumer sharing it. */
@@ -136,7 +139,7 @@ export function useChannel<D extends ChannelDescriptor<any, any, any, any>>(
     'params' | 'queryParams'
   > &
     ReactiveConnectOptions = {},
-): UseChannelResult<ToServerOf<D>, ToClientOf<D>> {
+): UseChannelResult<ToServerOf<D>, ToClientOf<D>, RepliesOf<D>> {
   type ToServer = ToServerOf<D>;
   type ToClient = ToClientOf<D>;
 
@@ -147,7 +150,11 @@ export function useChannel<D extends ChannelDescriptor<any, any, any, any>>(
   ) as Ref<SocketStatus>;
   const lastMessage = shallowRef<ToClient | null>(null);
   const messages = shallowRef<ToClient[]>([]);
-  const connection = shallowRef<ChannelConnection<ToServer, ToClient> | null>(null);
+  const connection = shallowRef<ChannelConnection<
+    ToServer,
+    ToClient,
+    RepliesOf<D>
+  > | null>(null);
 
   let current: ReturnType<typeof createChannelController<D>> | null = null;
   let unsubscribe: (() => void) | null = null;
@@ -208,7 +215,11 @@ export function useChannel<D extends ChannelDescriptor<any, any, any, any>>(
   };
 }
 
-export interface UseTopicsResult<ToServer extends ChanxMessage, T extends TopicRef> {
+export interface UseTopicsResult<
+  ToServer extends ChanxMessage,
+  T extends TopicRef,
+  Replies = NoReplies,
+> {
   status: Ref<SocketStatus>;
   lastMessage: Ref<TopicsSnapshot<T>['lastMessage']>;
   messages: Ref<TopicsSnapshot<T>['messages']>;
@@ -219,7 +230,8 @@ export interface UseTopicsResult<ToServer extends ChanxMessage, T extends TopicR
   send: (message: ToServer) => void;
   /** Send on one of the joined topics, addressed by its resolved name. */
   sendTopic: (topic: string, message: ToServerOf<T>) => void;
-  request: (message: ToServer, options?: RequestOptions) => Promise<ChanxMessage>;
+  /** Request on the channel itself, not on a topic. */
+  request: RequestFn<ToServer, Replies>;
   close: () => void;
   terminate: (code?: number, reason?: string) => void;
 }
@@ -241,7 +253,7 @@ export function useTopics<
     'params' | 'queryParams' | 'topics'
   > &
     ReactiveConnectOptions & { topics: MaybeRef<Refs> },
-): UseTopicsResult<ToServerOf<D>, Refs[number]> {
+): UseTopicsResult<ToServerOf<D>, Refs[number], RepliesOf<D>> {
   type T = Refs[number];
   const client = useChanxClient();
   const snapshot = shallowRef<TopicsSnapshot<T>>({
@@ -252,7 +264,7 @@ export function useTopics<
     handles: {},
   });
 
-  let current: TopicsController<ToServerOf<D>, T> | null = null;
+  let current: TopicsController<ToServerOf<D>, T, RepliesOf<D>> | null = null;
   let unsubscribe: (() => void) | null = null;
 
   const resolved = () => ({
@@ -319,12 +331,12 @@ export interface UseTopicResult<T extends TopicRef> {
   lastMessage: Ref<TopicSnapshot<T>['lastMessage']>;
   messages: Ref<TopicSnapshot<T>['messages']>;
   /** The topic's handle while joined. */
-  handle: Ref<TopicHandle<ToServerOf<T>, ToClientOf<T>> | null>;
+  handle: Ref<TopicHandle<ToServerOf<T>, ToClientOf<T>, RepliesOf<T>> | null>;
   clearMessages: () => void;
   /** Send on the topic. */
   send: (message: ToServerOf<T>) => void;
   /** Send on the topic and wait for the reply carrying the same `ref`. */
-  request: (message: ToServerOf<T>, options?: RequestOptions) => Promise<ChanxMessage>;
+  request: RequestFn<ToServerOf<T>, RepliesOf<T>>;
   close: () => void;
   terminate: (code?: number, reason?: string) => void;
 }
@@ -355,7 +367,11 @@ export function useTopic<
     lastMessage: null,
     messages: [],
   });
-  const handle = shallowRef<TopicHandle<ToServerOf<T>, ToClientOf<T>> | null>(null);
+  const handle = shallowRef<TopicHandle<
+    ToServerOf<T>,
+    ToClientOf<T>,
+    RepliesOf<T>
+  > | null>(null);
 
   let current: TopicController<T> | null = null;
   let unsubscribe: (() => void) | null = null;

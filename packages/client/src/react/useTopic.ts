@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
-import type { ChanxMessage } from '@chanx-js/protocol';
 
-import type { RequestOptions } from '../core/connection';
+import type { RequestFn } from '../core/connection';
 import type { TopicControllerOptions, TopicSnapshot } from '../core/controller';
 import { connectionKey, createTopicController } from '../core/controller';
 import type {
   AddressOf,
   ChannelDescriptor,
+  RepliesOf,
   ToClientOf,
   ToServerOf,
   TopicRef,
@@ -25,9 +25,9 @@ export interface UseTopicResult<Ref extends TopicRef> extends TopicSnapshot<Ref>
   /** Send on the topic. */
   send: (message: ToServerOf<Ref>) => void;
   /** Send on the topic and wait for the reply carrying the same `ref`. */
-  request: (message: ToServerOf<Ref>, options?: RequestOptions) => Promise<ChanxMessage>;
+  request: RequestFn<ToServerOf<Ref>, RepliesOf<Ref>>;
   /** The topic's handle while joined. */
-  handle: TopicHandle<ToServerOf<Ref>, ToClientOf<Ref>> | null;
+  handle: TopicHandle<ToServerOf<Ref>, ToClientOf<Ref>, RepliesOf<Ref>> | null;
   /** Close the socket for every component sharing it, not just this one. */
   terminate: (code?: number, reason?: string) => void;
 }
@@ -79,9 +79,8 @@ export function useTopic<
     (message: ToServerOf<Ref>) => controller.send(message),
     [controller],
   );
-  const request = useCallback(
-    (message: ToServerOf<Ref>, requestOptions?: RequestOptions) =>
-      controller.request(message, requestOptions),
+  const request = useCallback<RequestFn<ToServerOf<Ref>, RepliesOf<Ref>>>(
+    (message, requestOptions) => controller.request(message, requestOptions),
     [controller],
   );
   const clearMessages = useCallback(() => controller.clearMessages(), [controller]);

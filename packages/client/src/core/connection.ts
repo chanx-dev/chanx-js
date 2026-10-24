@@ -13,7 +13,13 @@ import {
   withEnvelope,
 } from '@chanx-js/protocol';
 
-import type { ChannelDescriptor, TopicRef, Validator } from './descriptor';
+import type {
+  ChannelDescriptor,
+  NoReplies,
+  ReplyOf,
+  TopicRef,
+  Validator,
+} from './descriptor';
 import { ActionEmitter } from './emitter';
 import type { SharedSocket, SocketStatus } from './socket';
 import type { MessageStream, StreamOptions } from './stream';
@@ -33,6 +39,19 @@ export interface RequestOptions {
   timeout?: number;
 }
 
+/**
+ * Send a message and await its reply, typed by the action sent when the descriptor
+ * declares what answers it.
+ */
+export type RequestFn<
+  ToServer extends ChanxMessage,
+  Replies = NoReplies,
+  Options = RequestOptions,
+> = <A extends ToServer['action']>(
+  message: ToServer & { action: A },
+  options?: Options,
+) => Promise<ReplyOf<Replies, A>>;
+
 const DEFAULT_REQUEST_TIMEOUT = 10_000;
 
 /**
@@ -42,7 +61,7 @@ const DEFAULT_REQUEST_TIMEOUT = 10_000;
 let connectionCounter = 0;
 
 interface TopicEntry {
-  handle: TopicHandle<any, any>;
+  handle: TopicHandle<any, any, any>;
   refs: number;
 }
 
@@ -56,6 +75,7 @@ interface TopicEntry {
 export class ChannelConnection<
   ToServer extends ChanxMessage = ChanxMessage,
   ToClient extends ChanxMessage = ChanxMessage,
+  Replies = NoReplies,
 > implements TopicHost {
   private readonly emitter = new ActionEmitter<ToClient>();
   private readonly errorHandlers = new Set<(error: ChanxErrorFrame) => void>();
@@ -199,9 +219,15 @@ export class ChannelConnection<
    * Resolves on the first matching frame. Needs chanx 2.11.2+, the first release to
    * echo the ref on replies to untopiced frames; earlier servers time out here.
    */
-  request(message: ToServer, options: RequestOptions = {}): Promise<ChanxMessage> {
+  request<A extends ToServer['action']>(
+    message: ToServer & { action: A },
+    options: RequestOptions = {},
+  ): Promise<ReplyOf<Replies, A>> {
     this.validateOutbound?.(message);
-    return this.dispatchRequest(message, undefined, options.timeout);
+    // The server declared this reply for the action; an `error` frame rejects instead.
+    return this.dispatchRequest(message, undefined, options.timeout) as Promise<
+      ReplyOf<Replies, A>
+    >;
   }
 
   /**
@@ -209,15 +235,15 @@ export class ChannelConnection<
    * Handles are shared per resolved topic string and reference counted, so two
    * components wanting `room:lobby` get one subscription.
    */
-  topic<TS extends ChanxMessage, TC extends ChanxMessage>(
-    ref: TopicRef<TS, TC, string>,
-  ): TopicHandle<TS, TC> {
+  topic<TS extends ChanxMessage, TC extends ChanxMessage, R = NoReplies>(
+    ref: TopicRef<TS, TC, string, R>,
+  ): TopicHandle<TS, TC, R> {
     const existing = this.topics.get(ref.topic);
     if (existing) {
       existing.refs += 1;
-      return existing.handle as TopicHandle<TS, TC>;
+      return existing.handle as TopicHandle<TS, TC, R>;
     }
-    const handle = new TopicHandle<TS, TC>(this, ref, this.validate);
+    const handle = new TopicHandle<TS, TC, R>(this, ref, this.validate);
     this.topics.set(ref.topic, { handle, refs: 1 });
     return handle;
   }

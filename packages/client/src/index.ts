@@ -7,15 +7,18 @@ export { createClient } from './core/client';
 export type { ChanxClient, ClientOptions, ConnectOptions } from './core/client';
 
 export { ChannelConnection, ChanxRequestError } from './core/connection';
-export type { RequestOptions, ValidateConfig } from './core/connection';
+export type { RequestFn, RequestOptions, ValidateConfig } from './core/connection';
 
 export { defineChannel, defineTopic } from './core/descriptor';
 export type {
   AddressOf,
   ChannelDescriptor,
   ExtractParams,
+  NoReplies,
   ParamsOf,
   PatternOf,
+  RepliesOf,
+  ReplyOf,
   ToClientOf,
   ToServerOf,
   TopicDescriptor,

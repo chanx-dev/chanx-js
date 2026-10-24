@@ -3,10 +3,12 @@ import type { ChanxErrorFrame, ChanxMessage, Envelope } from '@chanx-js/protocol
 import type { ActionHandler, HandlerMap } from './batch';
 import { BatchQueue } from './batch';
 import type { ChanxClient, ConnectOptions } from './client';
-import type { ChannelConnection, RequestOptions } from './connection';
+import type { ChannelConnection, RequestFn } from './connection';
 import type {
   AddressOf,
   ChannelDescriptor,
+  NoReplies,
+  RepliesOf,
   ToClientOf,
   ToServerOf,
   TopicMessage,
@@ -89,15 +91,16 @@ export interface ChannelSnapshot<ToClient extends ChanxMessage> {
 export interface ChannelController<
   ToServer extends ChanxMessage,
   ToClient extends ChanxMessage,
+  Replies = NoReplies,
 > {
   /** Subscribe to snapshot changes. Returns a disposer. */
   subscribe: (listener: () => void) => () => void;
   /** Stable between changes, so it can back `useSyncExternalStore`. */
   getSnapshot: () => ChannelSnapshot<ToClient>;
   send: (message: ToServer) => void;
-  request: (message: ToServer, options?: RequestOptions) => Promise<ChanxMessage>;
+  request: RequestFn<ToServer, Replies>;
   clearMessages: () => void;
-  getConnection: () => ChannelConnection<ToServer, ToClient> | null;
+  getConnection: () => ChannelConnection<ToServer, ToClient, Replies> | null;
   /** Close the socket for every consumer sharing it. See `ChannelConnection.terminate`. */
   terminate: (code?: number, reason?: string) => void;
   /** Replace the options the handlers close over, without reconnecting. */
@@ -126,12 +129,12 @@ export function createChannelController<D extends ChannelDescriptor<any, any, an
   client: ChanxClient,
   descriptor: D,
   initialOptions: ControllerOptions<AddressOf<D>, ToClientOf<D>> = {},
-): ChannelController<ToServerOf<D>, ToClientOf<D>> {
+): ChannelController<ToServerOf<D>, ToClientOf<D>, RepliesOf<D>> {
   type ToServer = ToServerOf<D>;
   type ToClient = ToClientOf<D>;
 
   let options = initialOptions as ControllerOptions<string, ToClient>;
-  let connection: ChannelConnection<ToServer, ToClient> | null = null;
+  let connection: ChannelConnection<ToServer, ToClient, RepliesOf<D>> | null = null;
   let disposers: Array<() => void> = [];
   let queue: BatchQueue | null = null;
 
@@ -213,7 +216,7 @@ export function createChannelController<D extends ChannelDescriptor<any, any, an
       const opened = client.connect(
         descriptor,
         connectOptionsOf<AddressOf<D>>(options),
-      ) as ChannelConnection<ToServer, ToClient>;
+      ) as ChannelConnection<ToServer, ToClient, RepliesOf<D>>;
       connection = opened;
 
       queue = new BatchQueue((action, batched, envelopes) => {
@@ -270,12 +273,13 @@ export interface TopicsSnapshot<Ref extends TopicRef = TopicRef> {
   lastMessage: TopicMessage<Ref> | null;
   messages: Array<TopicMessage<Ref>>;
   subscribed: string[];
-  handles: Record<string, TopicHandle>;
+  handles: Record<string, TopicHandle<ChanxMessage, ChanxMessage, unknown>>;
 }
 
 export interface TopicsController<
   ToServer extends ChanxMessage,
   Ref extends TopicRef = TopicRef,
+  Replies = NoReplies,
 > {
   subscribe: (listener: () => void) => () => void;
   getSnapshot: () => TopicsSnapshot<Ref>;
@@ -283,7 +287,8 @@ export interface TopicsController<
   send: (message: ToServer) => void;
   /** Send on a joined topic, addressed by its resolved name. */
   sendTopic: (topic: string, message: ToServerOf<Ref>) => void;
-  request: (message: ToServer, options?: RequestOptions) => Promise<ChanxMessage>;
+  /** Request on the channel itself, not on a topic. */
+  request: RequestFn<ToServer, Replies>;
   clearMessages: () => void;
   terminate: (code?: number, reason?: string) => void;
   setOptions: (options: TopicsControllerOptions<string, Ref>) => void;
@@ -310,7 +315,7 @@ export function createTopicsController<
   client: ChanxClient,
   descriptor: D,
   initialOptions: TopicsControllerOptions<AddressOf<D>, Refs[number]> & { topics: Refs },
-): TopicsController<ToServerOf<D>, Refs[number]> {
+): TopicsController<ToServerOf<D>, Refs[number], RepliesOf<D>> {
   type ToServer = ToServerOf<D>;
   type Ref = Refs[number];
   type Snapshot = TopicsSnapshot<Ref>;
@@ -387,7 +392,10 @@ export function createTopicsController<
           handler.handler(batched as ChanxMessage[], envelopes);
       });
 
-      const handles: Record<string, TopicHandle> = {};
+      const handles: Record<
+        string,
+        TopicHandle<ChanxMessage, ChanxMessage, unknown>
+      > = {};
       // Derived from the handles rather than tracked from the subscribe promise, so a
       // terminate, unsubscribe or release is reflected without special-casing each.
       const syncSubscribed = () =>
@@ -446,7 +454,7 @@ export function createTopicsController<
       publish({ handles: {}, subscribed: [] });
       channel.stop();
     },
-  } satisfies TopicsController<ToServer, Ref>;
+  } satisfies TopicsController<ToServer, Ref, RepliesOf<D>>;
 }
 
 export type TopicControllerOptions<
@@ -467,12 +475,12 @@ export interface TopicController<Ref extends TopicRef = TopicRef> {
   getSnapshot: () => TopicSnapshot<Ref>;
   /** Send on the topic. Dropped when it is not joined (disabled, or not started). */
   send: (message: ToServerOf<Ref>) => void;
-  request: (message: ToServerOf<Ref>, options?: RequestOptions) => Promise<ChanxMessage>;
+  request: RequestFn<ToServerOf<Ref>, RepliesOf<Ref>>;
   clearMessages: () => void;
   terminate: (code?: number, reason?: string) => void;
   setOptions: (options: TopicControllerOptions<string, Ref>) => void;
   /** The topic's handle while joined, for everything else a handle offers. */
-  getHandle: () => TopicHandle<ToServerOf<Ref>, ToClientOf<Ref>> | null;
+  getHandle: () => TopicHandle<ToServerOf<Ref>, ToClientOf<Ref>, RepliesOf<Ref>> | null;
   readonly url: string | null;
   /** The resolved topic, so bindings can rejoin only when it changes. */
   readonly topicKey: string;
@@ -493,7 +501,7 @@ export function createTopicController<
   topic: Ref,
   initialOptions: TopicControllerOptions<AddressOf<D>, Ref> = {},
 ): TopicController<Ref> {
-  type Handle = TopicHandle<ToServerOf<Ref>, ToClientOf<Ref>>;
+  type Handle = TopicHandle<ToServerOf<Ref>, ToClientOf<Ref>, RepliesOf<Ref>>;
 
   const inner = createTopicsController<D, readonly Ref[]>(client, descriptor, {
     ...initialOptions,

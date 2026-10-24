@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
 import type { ChanxMessage } from '@chanx-js/protocol';
 
-import type { ChannelConnection, RequestOptions } from '../core/connection';
+import type { ChannelConnection, RequestFn } from '../core/connection';
 import type { ControllerOptions } from '../core/controller';
 import { connectionKey, createChannelController } from '../core/controller';
 import type {
   AddressOf,
   ChannelDescriptor,
+  NoReplies,
+  RepliesOf,
   ToClientOf,
   ToServerOf,
 } from '../core/descriptor';
@@ -23,14 +25,15 @@ export type UseChannelOptions<
 export interface UseChannelResult<
   ToServer extends ChanxMessage,
   ToClient extends ChanxMessage,
+  Replies = NoReplies,
 > {
   status: SocketStatus;
   lastMessage: ToClient | null;
   messages: ToClient[];
   clearMessages: () => void;
   send: (message: ToServer) => void;
-  request: (message: ToServer, options?: RequestOptions) => Promise<ChanxMessage>;
-  connection: ChannelConnection<ToServer, ToClient> | null;
+  request: RequestFn<ToServer, Replies>;
+  connection: ChannelConnection<ToServer, ToClient, Replies> | null;
   /** Close the socket for every component sharing it, not just this one. */
   terminate: (code?: number, reason?: string) => void;
 }
@@ -46,7 +49,7 @@ export interface UseChannelResult<
 export function useChannel<D extends ChannelDescriptor<any, any, any, any>>(
   descriptor: D,
   options: UseChannelOptions<AddressOf<D>, ToClientOf<D>> = {},
-): UseChannelResult<ToServerOf<D>, ToClientOf<D>> {
+): UseChannelResult<ToServerOf<D>, ToClientOf<D>, RepliesOf<D>> {
   const client = useChanxClient();
 
   const key = connectionKey(options);
@@ -79,9 +82,8 @@ export function useChannel<D extends ChannelDescriptor<any, any, any, any>>(
     (message: ToServerOf<D>) => controller.send(message),
     [controller],
   );
-  const request = useCallback(
-    (message: ToServerOf<D>, requestOptions?: RequestOptions) =>
-      controller.request(message, requestOptions),
+  const request = useCallback<RequestFn<ToServerOf<D>, RepliesOf<D>>>(
+    (message, requestOptions) => controller.request(message, requestOptions),
     [controller],
   );
   const clearMessages = useCallback(() => controller.clearMessages(), [controller]);

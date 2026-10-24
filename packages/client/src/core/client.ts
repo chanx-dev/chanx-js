@@ -6,6 +6,7 @@ import type {
   AddressOf,
   ChannelDescriptor,
   ParamsOf,
+  RepliesOf,
   ToClientOf,
   ToServerOf,
 } from './descriptor';
@@ -116,7 +117,7 @@ export interface ChanxClient {
   connect<D extends ChannelDescriptor<any, any, any, any>>(
     descriptor: D,
     options?: ConnectOptions<AddressOf<D>>,
-  ): ChannelConnection<ToServerOf<D>, ToClientOf<D>>;
+  ): ChannelConnection<ToServerOf<D>, ToClientOf<D>, RepliesOf<D>>;
   /**
    * Terminate every socket this client opened, for every consumer (on logout, say).
    * Consumers see `closed` and do not reconnect; the next `connect()` starts fresh.

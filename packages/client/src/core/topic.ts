@@ -1,7 +1,13 @@
 import type { ChanxMessage, Envelope, RawFrame } from '@chanx-js/protocol';
 import { envelopeOf, isFrameworkAction, stripEnvelope } from '@chanx-js/protocol';
 
-import type { TopicDescriptor, TopicRef, Validator } from './descriptor';
+import type {
+  NoReplies,
+  ReplyOf,
+  TopicDescriptor,
+  TopicRef,
+  Validator,
+} from './descriptor';
 import { ActionEmitter } from './emitter';
 import type { MessageStream, StreamOptions } from './stream';
 import { firstMessage, trackStream } from './stream';
@@ -34,6 +40,7 @@ export interface TopicRequestOptions {
 export class TopicHandle<
   ToServer extends ChanxMessage = ChanxMessage,
   ToClient extends ChanxMessage = ChanxMessage,
+  Replies = NoReplies,
 > {
   readonly topic: string;
 
@@ -83,10 +90,11 @@ export class TopicHandle<
 
   constructor(
     private readonly host: TopicHost,
-    ref: TopicRef<ToServer, ToClient, string>,
+    ref: TopicRef<ToServer, ToClient, string, Replies>,
     validate: { inbound: boolean; outbound: boolean },
   ) {
-    const descriptor: TopicDescriptor<ToServer, ToClient, string> = ref.descriptor;
+    const descriptor: TopicDescriptor<ToServer, ToClient, string, Replies> =
+      ref.descriptor;
     this.topic = ref.topic;
     this.validateInbound = validate.inbound ? descriptor.validators?.toClient : undefined;
     this.validateOutbound = validate.outbound
@@ -148,10 +156,16 @@ export class TopicHandle<
     this.host.sendTopic(this.topic, message);
   }
 
-  /** Send and wait for the frame carrying the same `ref`. */
-  request(message: ToServer, options: TopicRequestOptions = {}): Promise<ChanxMessage> {
+  /** Send and wait for the frame carrying the same `ref`, typed by the action sent. */
+  request<A extends ToServer['action']>(
+    message: ToServer & { action: A },
+    options: TopicRequestOptions = {},
+  ): Promise<ReplyOf<Replies, A>> {
     this.validateOutbound?.(message);
-    return this.host.requestTopic(this.topic, message, options.timeout);
+    // The server declared this reply for the action; an `error` frame rejects instead.
+    return this.host.requestTopic(this.topic, message, options.timeout) as Promise<
+      ReplyOf<Replies, A>
+    >;
   }
 
   /** `envelope.seq` orders a topic's events, e.g. a replay overlapping live ones. */

@@ -10,7 +10,7 @@ import type { ChanxMessage } from '@chanx-js/protocol';
 
 import type { ChanxClient, ClientOptions } from '../core/client';
 import { createClient } from '../core/client';
-import type { ChannelConnection, RequestOptions } from '../core/connection';
+import type { ChannelConnection, RequestFn } from '../core/connection';
 import type {
   ChannelSnapshot,
   ControllerOptions,
@@ -27,6 +27,8 @@ import {
 import type {
   AddressOf,
   ChannelDescriptor,
+  NoReplies,
+  RepliesOf,
   ToClientOf,
   ToServerOf,
   TopicRef,
@@ -67,11 +69,12 @@ function bindLifecycle(start: () => void, teardown: () => void): void {
 export interface ChannelStore<
   ToServer extends ChanxMessage,
   ToClient extends ChanxMessage,
+  Replies = NoReplies,
 > extends Readable<ChannelSnapshot<ToClient>> {
   send: (message: ToServer) => void;
-  request: (message: ToServer, options?: RequestOptions) => Promise<ChanxMessage>;
+  request: RequestFn<ToServer, Replies>;
   clearMessages: () => void;
-  getConnection: () => ChannelConnection<ToServer, ToClient> | null;
+  getConnection: () => ChannelConnection<ToServer, ToClient, Replies> | null;
   close: () => void;
   /** Close the socket for every consumer sharing it. */
   terminate: (code?: number, reason?: string) => void;
@@ -87,7 +90,7 @@ export interface ChannelStore<
 export function createChannel<D extends ChannelDescriptor<any, any, any, any>>(
   descriptor: D,
   options: ControllerOptions<AddressOf<D>, ToClientOf<D>> & { client?: ChanxClient } = {},
-): ChannelStore<ToServerOf<D>, ToClientOf<D>> {
+): ChannelStore<ToServerOf<D>, ToClientOf<D>, RepliesOf<D>> {
   type ToClient = ToClientOf<D>;
 
   const controller = createChannelController(
@@ -125,12 +128,14 @@ export function createChannel<D extends ChannelDescriptor<any, any, any, any>>(
 export interface TopicsStore<
   ToServer extends ChanxMessage,
   T extends TopicRef,
+  Replies = NoReplies,
 > extends Readable<TopicsSnapshot<T>> {
   /** Send on the channel itself, not on a topic. */
   send: (message: ToServer) => void;
   /** Send on one of the joined topics, addressed by its resolved name. */
   sendTopic: (topic: string, message: ToServerOf<T>) => void;
-  request: (message: ToServer, options?: RequestOptions) => Promise<ChanxMessage>;
+  /** Request on the channel itself, not on a topic. */
+  request: RequestFn<ToServer, Replies>;
   clearMessages: () => void;
   close: () => void;
   /** Close the socket for every consumer sharing it. */
@@ -151,7 +156,7 @@ export function createTopics<
     topics: Refs;
     client?: ChanxClient;
   },
-): TopicsStore<ToServerOf<D>, Refs[number]> {
+): TopicsStore<ToServerOf<D>, Refs[number], RepliesOf<D>> {
   const controller = createTopicsController<D, Refs>(
     options.client ?? defaultClient,
     descriptor,
@@ -182,9 +187,9 @@ export interface TopicStore<T extends TopicRef> extends Readable<TopicSnapshot<T
   /** Send on the topic. */
   send: (message: ToServerOf<T>) => void;
   /** Send on the topic and wait for the reply carrying the same `ref`. */
-  request: (message: ToServerOf<T>, options?: RequestOptions) => Promise<ChanxMessage>;
+  request: RequestFn<ToServerOf<T>, RepliesOf<T>>;
   /** The topic's handle while joined. */
-  getHandle: () => TopicHandle<ToServerOf<T>, ToClientOf<T>> | null;
+  getHandle: () => TopicHandle<ToServerOf<T>, ToClientOf<T>, RepliesOf<T>> | null;
   clearMessages: () => void;
   close: () => void;
   /** Close the socket for every consumer sharing it. */
