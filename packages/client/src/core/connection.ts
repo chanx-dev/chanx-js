@@ -106,20 +106,26 @@ export class ChannelConnection<
   }
 
   /**
-   * Resolve once the socket is open.
+   * Resolve once the socket is open; reject once it has given up, after its reconnect
+   * attempts, or was refused or terminated.
    *
    * Sends are queued until then, so this is only needed when a script wants to fail
    * fast on an unreachable server rather than buffer.
    */
   ready(options: { timeout?: number; signal?: AbortSignal } = {}): Promise<void> {
+    const failed = () =>
+      new Error(`Channel "${this.descriptor.name}" closed before it opened`);
     if (this.socket.status === 'open') return Promise.resolve();
+    if (this.socket.status === 'closed') return Promise.reject(failed());
     return firstMessage<SocketStatus>(
       (handler) =>
         this.socket.onStatus((status) => {
-          if (status === 'open') handler(status);
+          if (status === 'open' || status === 'closed') handler(status);
         }),
       { ...options, label: `channel "${this.descriptor.name}" to open` },
-    ).then(() => undefined);
+    ).then((status) => {
+      if (status === 'closed') throw failed();
+    });
   }
 
   /** Resolve with the next message carrying this action. */

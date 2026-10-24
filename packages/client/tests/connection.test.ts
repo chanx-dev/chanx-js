@@ -815,6 +815,43 @@ describe('socket factory failure', () => {
   });
 });
 
+describe('waiting to be ready', () => {
+  it('resolves once the socket opens, after a reconnect', async () => {
+    const connection = makeClient({ reconnectInterval: 1 }).connect(hub);
+    const ready = connection.ready();
+    FakeSocket.last.close(1006);
+    await wait(10);
+    FakeSocket.last.accept();
+
+    await expect(ready).resolves.toBeUndefined();
+  });
+
+  it('rejects once reconnecting gives up', async () => {
+    const connection = makeClient({ reconnectAttempts: 0 }).connect(hub);
+    const ready = connection.ready();
+
+    FakeSocket.last.close(1006);
+
+    await expect(ready).rejects.toThrow('Channel "topic_hub" closed before it opened');
+  });
+
+  it('rejects when the socket is terminated', async () => {
+    const connection = makeClient().connect(hub);
+    const ready = connection.ready();
+
+    connection.terminate();
+
+    await expect(ready).rejects.toThrow('closed before it opened');
+  });
+
+  it('rejects at once on a socket that already gave up', async () => {
+    const connection = makeClient({ reconnectAttempts: 0 }).connect(hub);
+    FakeSocket.last.close(1006);
+
+    await expect(connection.ready()).rejects.toThrow('closed before it opened');
+  });
+});
+
 describe('aborting a wait', () => {
   it('rejects and stops listening at once', async () => {
     const connection = makeClient().connect(chat, { params: { room: 'lobby' } });
