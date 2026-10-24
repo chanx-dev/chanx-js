@@ -21,6 +21,26 @@ const guideSidebar = [
     ],
   },
   {
+    text: 'Going further',
+    items: [
+      { text: 'Server guide', link: '/server/' },
+      { text: 'Client guide', link: '/client/' },
+      { text: 'Python and Node together', link: '/advanced/python' },
+    ],
+  },
+  {
+    text: 'Reference',
+    items: [
+      { text: 'API', link: '/api/' },
+      { text: 'Changelog', link: '/reference/changelog' },
+      { text: 'Design notes', link: '/design' },
+      { text: 'Ecosystem', link: '/ecosystem' },
+    ],
+  },
+];
+
+const serverSidebar = [
+  {
     text: 'Server',
     items: [
       { text: 'Getting started', link: '/server/' },
@@ -28,11 +48,11 @@ const guideSidebar = [
       { text: 'Topics', link: '/server/topics' },
       { text: 'AsyncAPI', link: '/server/asyncapi' },
       { text: 'Testing', link: '/server/testing' },
+      { text: 'Tutorial: a chat server', link: '/tutorials/chat-server' },
     ],
   },
   {
-    text: 'Server integrations',
-    collapsed: false,
+    text: 'Integrations',
     items: [
       { text: 'Overview', link: '/server/integrations/' },
       { text: 'Node, Express, Koa', link: '/server/integrations/node' },
@@ -43,17 +63,27 @@ const guideSidebar = [
     ],
   },
   {
+    text: 'Advanced',
+    items: [
+      { text: 'Channel layers', link: '/server/layers' },
+      { text: 'Python and Node together', link: '/advanced/python' },
+    ],
+  },
+];
+
+const clientSidebar = [
+  {
     text: 'Client',
     items: [
       { text: 'Getting started', link: '/client/' },
       { text: 'Code generation', link: '/client/codegen' },
       { text: 'Connections', link: '/client/connections' },
       { text: 'Topics', link: '/client/topics' },
+      { text: 'Tutorial: a chat UI in React', link: '/tutorials/chat-ui' },
     ],
   },
   {
-    text: 'Client integrations',
-    collapsed: false,
+    text: 'Integrations',
     items: [
       { text: 'React', link: '/client/integrations/react' },
       { text: 'Vue', link: '/client/integrations/vue' },
@@ -65,19 +95,8 @@ const guideSidebar = [
   {
     text: 'Advanced',
     items: [
-      { text: 'Channel layers', link: '/server/layers' },
-      { text: 'Python and Node together', link: '/advanced/python' },
       { text: 'Delivery modes', link: '/client/delivery' },
       { text: 'Sharing and closing', link: '/client/sharing' },
-    ],
-  },
-  {
-    text: 'Reference',
-    items: [
-      { text: 'API', link: '/api/' },
-      { text: 'Changelog', link: '/reference/changelog' },
-      { text: 'Design notes', link: '/design' },
-      { text: 'Ecosystem', link: '/ecosystem' },
     ],
   },
 ];
@@ -119,7 +138,9 @@ export default defineConfig({
       },
     ],
     sidebar: {
-      // One sidebar for the guide, in reading order; the API reference keeps its own.
+      // Each top tab has its own sidebar; everything else falls back to the guide's.
+      '/server/': serverSidebar,
+      '/client/': clientSidebar,
       '/': guideSidebar,
       '/api/': [{ text: 'API reference', items: apiSidebar }],
     },
