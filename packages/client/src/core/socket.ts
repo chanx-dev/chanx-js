@@ -1,7 +1,7 @@
 import type { RawFrame } from '@chanx-js/protocol';
 import { ENVELOPE_VERSION } from '@chanx-js/protocol';
 
-import { safely } from './report';
+import { reportError, safely } from './report';
 
 export type SocketStatus = 'connecting' | 'open' | 'reconnecting' | 'closed';
 
@@ -16,7 +16,12 @@ export interface WebSocketLike {
   onmessage: ((event: { data: unknown }) => void) | null;
 }
 
-export type SocketFactory = (url: string, protocols?: string | string[]) => WebSocketLike;
+/** Opens a WebSocket. `options.headers` is set only when the connection has headers. */
+export type SocketFactory = (
+  url: string,
+  protocols?: string | string[],
+  options?: { headers: Record<string, string> },
+) => WebSocketLike;
 
 export interface HeartbeatOptions {
   /** Milliseconds between pings. */
@@ -30,6 +35,11 @@ export interface HeartbeatOptions {
 export interface SocketOptions {
   protocols?: string | string[];
   queryParams?: Record<string, string | number>;
+  /**
+   * Headers sent with the upgrade request, such as a service's `authorization`. Node,
+   * Bun and Deno send them; a browser's WebSocket cannot, so passing them there throws.
+   */
+  headers?: Record<string, string>;
   /**
    * Share one socket per resolved URL. `connect()` defaults it to true for channels that
    * carry topics and false otherwise: topic frames are routed per consumer, but on a
@@ -75,14 +85,23 @@ const DEFAULTS = {
   heartbeatTimeout: 10_000,
 };
 
-function defaultFactory(url: string, protocols?: string | string[]): WebSocketLike {
+const defaultFactory: SocketFactory = (url, protocols, options) => {
   if (typeof WebSocket === 'undefined') {
     throw new Error(
       'No global WebSocket. Pass `socketFactory` when running outside a browser.',
     );
   }
-  return new WebSocket(url, protocols) as unknown as WebSocketLike;
-}
+  if (!options) return new WebSocket(url, protocols) as unknown as WebSocketLike;
+  if ('document' in globalThis) {
+    throw new Error(
+      'A browser WebSocket cannot send headers: put credentials in queryParams.',
+    );
+  }
+  // Node, Bun and Deno take `{ headers, protocols }` in place of the protocols argument,
+  // an extension the DOM's WebSocket type does not declare.
+  const init = { headers: options.headers, protocols } as unknown as string[];
+  return new WebSocket(url, init) as unknown as WebSocketLike;
+};
 
 /**
  * One WebSocket, shared by every consumer that resolved the same URL.
@@ -230,8 +249,14 @@ export class SharedSocket {
     const factory = this.options.socketFactory ?? defaultFactory;
     let socket: WebSocketLike;
     try {
-      socket = factory(this.url, this.options.protocols);
-    } catch {
+      const { headers } = this.options;
+      socket = headers
+        ? factory(this.url, this.options.protocols, { headers })
+        : factory(this.url, this.options.protocols);
+    } catch (error) {
+      // A factory that throws, such as no WebSocket or headers in a browser, is usually a
+      // setup mistake: report it rather than retry in silence.
+      reportError(error);
       this.scheduleReconnect({ code: 1006, reason: 'factory threw' });
       return;
     }
@@ -385,8 +410,8 @@ const factoryIds = new WeakMap<SocketFactory, number>();
 
 /**
  * What makes two connections interchangeable: the URL, and what the socket is opened
- * with. Subprotocols often carry credentials, so a connection must never join a socket
- * opened under different ones.
+ * with. Subprotocols and headers often carry credentials, so a connection must never join
+ * a socket opened under different ones.
  */
 function registryKey(url: string, options: SocketOptions): string {
   keyCounter += 1;
@@ -396,7 +421,12 @@ function registryKey(url: string, options: SocketOptions): string {
     factoryId = factoryIds.get(options.socketFactory) ?? keyCounter;
     factoryIds.set(options.socketFactory, factoryId);
   }
-  return JSON.stringify([url, options.protocols ?? null, factoryId]);
+  return JSON.stringify([
+    url,
+    options.protocols ?? null,
+    options.headers ?? null,
+    factoryId,
+  ]);
 }
 
 export function acquireSocket(url: string, options: SocketOptions): SharedSocket {

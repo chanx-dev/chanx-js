@@ -22,6 +22,7 @@ const client = createClient({ baseUrl: 'wss://api.example.com' });
 | `heartbeat`         | automatic                    | See [Heartbeat](#heartbeat)                                               |
 | `queryParams`       |                              | Appended to every URL; per-connection values merge over these             |
 | `protocols`         |                              | WebSocket subprotocols                                                    |
+| `headers`           |                              | Sent on the upgrade; Node, Bun and Deno only. Merge like `queryParams`    |
 | `maxQueuedFrames`   | `100`                        | Frames buffered before the socket opens; past this the oldest is dropped  |
 | `closeDelay`        | `100` ms                     | Grace period before an unused socket closes                               |
 | `validate`          | outbound always, inbound dev | See [Validation](/client/codegen#validation)                              |

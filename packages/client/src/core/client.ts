@@ -159,9 +159,14 @@ export function createClient(options: ClientOptions = {}): ChanxClient {
       for (const socket of [...opened]) socket.terminate(code, reason);
     },
     connect(descriptor, connectOptions = {}) {
+      const headers =
+        options.headers || connectOptions.headers
+          ? { ...options.headers, ...connectOptions.headers }
+          : undefined;
       const socketOptions = {
         ...options,
         ...connectOptions,
+        headers,
         heartbeat: resolveHeartbeat(options, connectOptions, descriptor),
         share: resolveShare(options, connectOptions, descriptor),
       };

@@ -796,7 +796,11 @@ describe('malformed frames', () => {
 });
 
 describe('socket factory failure', () => {
-  it('retries instead of throwing out of connect', async () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('reports the error and retries instead of throwing out of connect', async () => {
+    const reported = vi.fn();
+    vi.stubGlobal('reportError', reported);
     let calls = 0;
     const flaky: ClientOptions['socketFactory'] = (url) => {
       calls += 1;
@@ -812,6 +816,99 @@ describe('socket factory failure', () => {
     await wait(30);
     expect(calls).toBe(2);
     expect(FakeSocket.instances).toHaveLength(1);
+    expect(reported).toHaveBeenCalledWith(new Error('refused'));
+  });
+});
+
+describe('headers', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  /** Stands in for the runtime's WebSocket, recording what it was opened with. */
+  class RecordingSocket extends FakeSocket {
+    static opened: unknown[][] = [];
+    constructor(...args: [string, unknown?]) {
+      super(args[0]);
+      RecordingSocket.opened.push(args);
+    }
+  }
+
+  beforeEach(() => {
+    RecordingSocket.opened = [];
+    vi.stubGlobal('WebSocket', RecordingSocket);
+  });
+
+  const defaultClient = (overrides: Partial<ClientOptions> = {}) =>
+    createClient({ baseUrl: 'ws://test.local', heartbeat: false, ...overrides });
+
+  it('opens the runtime’s WebSocket with headers and protocols together', () => {
+    defaultClient().connect(chat, {
+      params: { room: 'lobby' },
+      headers: { authorization: 'Bearer k' },
+      protocols: ['chanx'],
+    });
+
+    expect(RecordingSocket.opened).toEqual([
+      [
+        'ws://test.local/ws/chat/lobby/',
+        { headers: { authorization: 'Bearer k' }, protocols: ['chanx'] },
+      ],
+    ]);
+  });
+
+  it('opens it as a browser would without headers', () => {
+    defaultClient().connect(chat, { params: { room: 'lobby' }, protocols: ['chanx'] });
+
+    expect(RecordingSocket.opened).toEqual([
+      ['ws://test.local/ws/chat/lobby/', ['chanx']],
+    ]);
+  });
+
+  it('merges the client’s headers under the connection’s', () => {
+    defaultClient({ headers: { authorization: 'Bearer client', 'x-app': 'a' } }).connect(
+      chat,
+      { params: { room: 'lobby' }, headers: { authorization: 'Bearer call' } },
+    );
+
+    expect(RecordingSocket.opened[0]?.[1]).toMatchObject({
+      headers: { authorization: 'Bearer call', 'x-app': 'a' },
+    });
+  });
+
+  it('shares a socket only between connections with the same headers', () => {
+    const client = defaultClient();
+    client.connect(hub, { headers: { authorization: 'Bearer ann' } });
+    client.connect(hub, { headers: { authorization: 'Bearer ann' } });
+    client.connect(hub, { headers: { authorization: 'Bearer bob' } });
+
+    expect(RecordingSocket.opened).toHaveLength(2);
+  });
+
+  it('passes them to a custom socket factory', () => {
+    const factory = vi.fn(fakeFactory);
+    makeClient({ socketFactory: factory }).connect(chat, {
+      params: { room: 'lobby' },
+      headers: { authorization: 'Bearer k' },
+    });
+
+    expect(factory).toHaveBeenCalledWith('ws://test.local/ws/chat/lobby/', undefined, {
+      headers: { authorization: 'Bearer k' },
+    });
+  });
+
+  it('reports headers in a browser, which cannot send them', () => {
+    const reported = vi.fn();
+    vi.stubGlobal('reportError', reported);
+    vi.stubGlobal('document', {});
+
+    defaultClient({ reconnectAttempts: 0 }).connect(chat, {
+      params: { room: 'lobby' },
+      headers: { authorization: 'Bearer k' },
+    });
+
+    expect(RecordingSocket.opened).toEqual([]);
+    expect(reported).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringMatching(/cannot send headers/) }),
+    );
   });
 });
 

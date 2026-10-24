@@ -77,6 +77,7 @@ export function connectionKey(
     options.enabled ?? true,
     options.params ?? {},
     options.queryParams ?? {},
+    options.headers ?? null,
     options.protocols ?? null,
     options.share ?? null,
   ]);

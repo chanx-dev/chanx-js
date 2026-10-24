@@ -40,21 +40,19 @@ for await (const message of lobby) {
 
 ## Authenticate as a service
 
-A browser can only put credentials in the URL, but a service can send headers. Node's
-built-in `WebSocket` cannot set them, so pass a `socketFactory` that uses
-[`ws`](https://github.com/websockets/ws):
+A browser can only put credentials in the URL, but a service can send headers. Pass
+them with `headers`, on the client for every connection or on one `connect()`:
 
 ```ts
-import WebSocket from 'ws';
-
 const client = createClient({
   baseUrl: 'wss://api.example.com',
-  socketFactory: (url, protocols) =>
-    new WebSocket(url, protocols, {
-      headers: { authorization: `Bearer ${process.env.INGEST_KEY}` },
-    }) as never,
+  headers: { authorization: `Bearer ${process.env.INGEST_KEY}` },
 });
 ```
+
+Node 22 and later, Bun and Deno send them with the built-in `WebSocket`. Connections
+with different headers never share a socket, and in a framework binding, new headers
+reconnect. A browser cannot send headers, so passing them there reports an error.
 
 On a chanx-js server, read the header in `authenticate`. With `rejectBeforeUpgrade`, a
 wrong key is refused with 401 before any socket opens, which suits a service: no
@@ -71,8 +69,29 @@ const ingest = consumer('/ws/ingest', {
 }).on(Reading, { output: Ack }, () => Ack.create());
 ```
 
-`ws` also serves Node 20, which has no global `WebSocket`: pass the same factory without
-the headers.
+Node 20 has no global `WebSocket`. Pass a `socketFactory` that uses
+[`ws`](https://github.com/websockets/ws); it receives the headers too:
+
+```ts
+import WebSocket from 'ws';
+
+createClient({
+  baseUrl: 'wss://api.example.com',
+  headers: { authorization: `Bearer ${process.env.INGEST_KEY}` },
+  socketFactory: (url, protocols, options) =>
+    new WebSocket(url, protocols, { headers: options?.headers }) as never,
+});
+```
+
+## Trust what arrives
+
+A browser trusts its own server; a service often talks to another team's. Generate the
+client with `--validation zod` and validate what arrives in production too, so a changed
+payload fails loudly at the edge instead of deep in your code:
+
+```ts
+createClient({ baseUrl, validate: { inbound: true } });
+```
 
 ## Retry, or fail fast
 

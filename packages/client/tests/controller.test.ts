@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  connectionKey,
   createChannelController,
   createTopicController,
   createTopicsController,
@@ -561,5 +562,13 @@ describe('single topic controller', () => {
     controller.stop();
 
     expect(controller.getHandle()).toBeNull();
+  });
+});
+
+describe('connection identity', () => {
+  it('changes with the headers, so a binding reconnects with new credentials', () => {
+    expect(connectionKey({ headers: { authorization: 'Bearer old' } })).not.toBe(
+      connectionKey({ headers: { authorization: 'Bearer new' } }),
+    );
   });
 });
