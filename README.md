@@ -1,8 +1,7 @@
 # chanx-js
 
 Type-safe WebSocket client for [chanx](https://github.com/huynguyengl99/chanx) AsyncAPI
-schemas, with topic multiplexing. A Node.js server (`@chanx-js/server`) and channel layer
-(`@chanx-js/layers`) speaking the same protocol are in development, not yet published.
+schemas, with topic multiplexing, and a Node.js server speaking the same protocol.
 
 **[Documentation](https://huynguyengl99.github.io/chanx-js/)** ·
 [Getting started](https://huynguyengl99.github.io/chanx-js/guide/getting-started) ·
@@ -12,6 +11,11 @@ schemas, with topic multiplexing. A Node.js server (`@chanx-js/server`) and chan
   bindings on `@chanx-js/client/react`, `@chanx-js/client/vue`, `@chanx-js/client/svelte` and `@chanx-js/client/solid`.
 - **`@chanx-js/codegen`**: the CLI that turns an AsyncAPI 3 schema into typed channel
   descriptors.
+- **`@chanx-js/server`**: typed consumers and topics, served on Node, Fastify, Hono or
+  crossws, with AsyncAPI that `@chanx-js/codegen` reads
+  ([guide](https://huynguyengl99.github.io/chanx-js/server/)).
+- **`@chanx-js/layers`**: channel layers, the Redis one shared with Python processes.
+- **`@chanx-js/nestjs`**: consumers and topics as injectable NestJS gateways.
 
 All four bindings are thin adapters over one shared controller, so buffering, filtering
 and batching behave identically whichever you use.

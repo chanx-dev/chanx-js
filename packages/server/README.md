@@ -4,8 +4,6 @@ chanx for Node: typed WebSocket consumers speaking the same protocol as Python's
 [chanx](https://github.com/huynguyengl99/chanx), so `@chanx-js/client` and generated
 clients work against either server.
 
-In development; see the repository's design notes. Not yet published.
-
 ```ts
 import { z } from 'zod';
 import {

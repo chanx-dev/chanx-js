@@ -1,7 +1,6 @@
 {
   "name": "@chanx-js/server",
   "version": "0.1.2",
-  "private": true,
   "description": "chanx for Node: typed WebSocket consumers with topics and groups, speaking the same protocol as Python's chanx.",
   "license": "MIT",
   "author": "Huy Nguyen",
@@ -53,15 +52,16 @@
     "typecheck": "tsc -p tsconfig.json && tsc -p tests/legacy/tsconfig.json"
   },
   "dependencies": {
-    "@chanx-js/layers": "workspace:*"
+    "@chanx-js/layers": "workspace:*",
+    "@noble/hashes": "^2.4.0"
   },
   "peerDependencies": {
+    "@fastify/websocket": ">=11",
     "crossws": ">=0.4",
+    "fastify": ">=5",
     "hono": ">=4",
     "ws": ">=8.17",
-    "yaml": ">=2",
-    "fastify": ">=5",
-    "@fastify/websocket": ">=11"
+    "yaml": ">=2"
   },
   "peerDependenciesMeta": {
     "ws": {

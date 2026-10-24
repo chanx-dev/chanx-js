@@ -12,8 +12,8 @@ Three packages make up the server side:
   layer is wire-compatible with Python's.
 - **`@chanx-js/nestjs`**: consumers and topics as injectable NestJS gateways.
 
-::: warning In development
-The server packages are not published yet. The API may still change.
+::: warning Before 1.0
+The server packages are new. Their API may still change between minor versions.
 :::
 
 ## Install

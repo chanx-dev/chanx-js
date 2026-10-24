@@ -27,10 +27,10 @@ jobs:
       - run: npm install -g npm@11
       - run: pnpm install --frozen-lockfile
 
-      - name: Check the tag matches both package versions
+      - name: Check the tag matches every package version
         run: |
           tag="${GITHUB_REF_NAME#v}"
-          for dir in client codegen; do
+          for dir in client codegen layers server nestjs; do
             version=$(node -p "require('./packages/$dir/package.json').version")
             if [ "$version" != "$tag" ]; then
               echo "::error::packages/$dir is $version but the tag is $GITHUB_REF_NAME"
@@ -50,7 +50,8 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          for dir in client codegen; do
+          # Dependencies first: server needs layers, nestjs needs server.
+          for dir in client codegen layers server nestjs; do
             pkg=$(node -p "require('./packages/$dir/package.json').name")
             version=$(node -p "require('./packages/$dir/package.json').version")
             if npm view "$pkg@$version" version > /dev/null 2>&1; then

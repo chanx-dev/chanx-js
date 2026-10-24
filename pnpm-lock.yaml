@@ -235,6 +235,9 @@ importers:
       '@chanx-js/layers':
         specifier: workspace:*
         version: link:../layers
+      '@noble/hashes':
+        specifier: ^2.4.0
+        version: 2.4.0
     devDependencies:
       '@chanx-js/client':
         specifier: workspace:*
