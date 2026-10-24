@@ -3,35 +3,94 @@ layout: home
 
 hero:
   name: chanx-js
-  text: Typed WebSockets for chanx
-  tagline: Generate a client from your chanx AsyncAPI schema and use it from React, Vue, Svelte, Solid or plain JavaScript. Serve the same protocol from Node, NestJS included.
+  text: Type-safe WebSockets for TypeScript, end to end.
+  tagline: Declare your messages once. chanx-js routes, validates, broadcasts and documents them on the server, and generates a typed client for the browser, your framework or another Node service.
   actions:
     - theme: brand
-      text: Get started
-      link: /guide/getting-started
-    - theme: alt
-      text: Node server
+      text: Build a server
       link: /server/
     - theme: alt
-      text: API reference
-      link: /api/
+      text: Connect a client
+      link: /guide/getting-started
     - theme: alt
       text: GitHub
       link: https://github.com/huynguyengl99/chanx-js
 
 features:
-  - title: Typed from the schema
-    details: '@chanx-js/codegen turns the AsyncAPI document chanx already serves into typed channel descriptors. Sending an inbound-only action, or forgetting an address param, is a compile error.'
-  - title: Topics over one socket
-    details: 'Subscribe to many topics over a single connection. Subscriptions are reference counted, requests are matched by ref, and everything resubscribes after a reconnect.'
-  - title: Sharing done right
-    details: 'Components on a topic channel share one socket, and one leaving never unsubscribes or cuts off another. Plain channels stay separate unless you opt in, so replies never leak between components.'
-  - title: Every framework, one behaviour
-    details: 'React, Vue, Svelte and Solid bindings are thin adapters over one shared controller, so buffering and batching behave identically everywhere.'
-  - title: Plain JavaScript and Node
-    details: 'No framework required. Await a connection, await one message, or iterate with for await. Node 22 works out of the box.'
-  - title: A Node server too
-    details: '@chanx-js/server speaks the same protocol as Python chanx, with typed consumers, topics, AsyncAPI and NestJS gateways. Its Redis layer is shared with Python processes.'
-  - title: Zero runtime dependencies
-    details: 'The runtime ships no dependencies. Validation with zod is opt-in and only loaded when you ask for it; types-only builds carry none of it.'
+  - title: Handlers, not if/else
+    details: 'Each action gets a typed handler. Payloads are validated by Zod, Valibot, ArkType or any Standard Schema before your code sees them.'
+  - title: Typed on both ends
+    details: 'The server publishes AsyncAPI 3; codegen turns it into a typed client. Sending a message the server does not accept is a compile error.'
+  - title: Groups and topics
+    details: 'Broadcast to groups across processes over Redis. Clients subscribe to many topics over one socket, restored after a reconnect.'
+  - title: Requests that await
+    details: 'await connection.request(...) resolves with the reply to that message, matched by ref, even on a socket shared by many components.'
+  - title: Runs where you do
+    details: 'Serve from Node, Fastify, Hono, NestJS, Bun or Deno. Connect from React, Vue, Svelte, Solid, plain JavaScript or a Node service.'
+  - title: Compatible with Python chanx
+    details: 'Same protocol as chanx on Django Channels and FastAPI: one client for either server, and one Redis shared by Node and Python.'
 ---
+
+## Quick start
+
+Install the server, with `ws` for Node's HTTP server and Zod for payloads:
+
+```bash
+npm install @chanx-js/server ws zod
+```
+
+Then the client, and generate its types from the running server:
+
+```bash
+npm install @chanx-js/client
+npx @chanx-js/codegen http://localhost:8000/asyncapi.json   # writes src/generated
+```
+
+::: code-group
+
+```ts [server.ts]
+import { createServer } from 'node:http';
+import { z } from 'zod';
+import {
+  PingMessage,
+  PongMessage,
+  consumer,
+  createChanx,
+  defineMessage,
+} from '@chanx-js/server';
+import { asyncapiMiddleware, attachChanx } from '@chanx-js/server/node';
+
+const Chat = defineMessage('chat', z.object({ text: z.string() }));
+const Notice = defineMessage('notice', z.object({ text: z.string() }));
+
+const chat = consumer('/ws/chat/{room}', {
+  name: 'chat',
+  emits: [Notice],
+  groups: (conn) => [`room.${conn.params.room}`],
+})
+  .on(PingMessage, { output: PongMessage }, () => PongMessage.create())
+  .on(Chat, (m, ctx) => ctx.broadcast(Notice.create({ text: m.payload.text })));
+
+const chanx = createChanx({ consumers: [chat] });
+const server = createServer(asyncapiMiddleware(chanx)); // docs at /asyncapi
+attachChanx(server, chanx);
+server.listen(8000);
+```
+
+```ts [client.ts]
+import { createClient } from '@chanx-js/client';
+import { chat } from './src/generated/index.js';
+
+const client = createClient({ baseUrl: 'ws://localhost:8000' });
+const connection = client.connect(chat, { params: { room: 'lobby' } });
+
+connection.on('notice', (message) => console.log(message.payload.text));
+await connection.request({ action: 'ping', payload: null }); // resolves with the pong
+connection.send({ action: 'chat', payload: { text: 'hello' } });
+```
+
+:::
+
+Run the server, then the client: it prints `hello`, broadcast back to everyone in
+`lobby`. From here, [build out the server](/server/) or
+[use the client in your framework](/guide/getting-started).

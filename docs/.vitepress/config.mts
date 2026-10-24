@@ -8,7 +8,7 @@ const repo = 'https://github.com/huynguyengl99/chanx-js';
 export default defineConfig({
   title: 'chanx-js',
   description:
-    'Type-safe WebSocket clients and a Node server for chanx, with topic multiplexing.',
+    'Type-safe WebSockets for TypeScript, end to end: typed servers, generated clients, topics and groups.',
   base: '/chanx-js/',
   cleanUrls: true,
   head: [['meta', { name: 'theme-color', content: '#3f51b5' }]],
