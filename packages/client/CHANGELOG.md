@@ -1,0 +1,12 @@
+# @chanx-js/client
+
+## 2.1.0
+
+### Minor Changes
+
+- c489c24: `request()` resolves with the reply its action declares, such as `PongMessage` for `ping`, on connections, topic handles and every framework binding. Descriptors take the replies as an optional third type argument; without it, replies stay `ChanxMessage`.
+
+### Patch Changes
+
+- de61aa1: `connection.ready()` rejects once the socket gives up, is refused or is terminated, instead of waiting forever.
+- 18ecacf: `for await` loops over a connection or topic end once the socket gives up reconnecting, instead of waiting forever.
