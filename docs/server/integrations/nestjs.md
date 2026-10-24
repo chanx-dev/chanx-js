@@ -58,10 +58,11 @@ starts, and serves them on the app's HTTP server, on Express or Fastify. `forRoo
 takes `createChanx`'s options (`layers`, `camelize`, ...) plus `pingInterval`, and
 `asyncapi` to serve the [AsyncAPI](/server/asyncapi) docs page and document:
 
-````ts
+```ts
 ChanxModule.forRoot({ asyncapi: { title: 'Chat API' } }); // /asyncapi, .json, .yaml
-``` Nest needs
-`emitDecoratorMetadata`, as any Nest app does.
+```
+
+Nest needs `emitDecoratorMetadata`, as any Nest app does.
 
 ## Options from providers
 
@@ -73,7 +74,9 @@ ChanxModule.forRootAsync({
   imports: [ConfigModule],
   inject: [ConfigService],
   useFactory: (config: ConfigService) => ({
-    layers: { default: new RedisPubSubChannelLayer({ hosts: [config.get('REDIS_URL')] }) },
+    layers: {
+      default: new RedisPubSubChannelLayer({ hosts: [config.get('REDIS_URL')] }),
+    },
     asyncapi: { title: config.get('API_TITLE') },
   }),
 });
@@ -168,7 +171,7 @@ export class RoomTopic {
     return Posted.create(payload);
   }
 }
-````
+```
 
 Mount it in a consumer's options: `@ChanxConsumer('/ws/hub', { name: 'hub', topics: [RoomTopic] })`.
 
