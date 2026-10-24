@@ -273,44 +273,9 @@ loaded if you opt in (add `zod` 3.25 or later to your project). Defaults to vali
 outbound messages always and inbound in development only. Validation only checks:
 handlers always get the message exactly as sent.
 
-## Development
+## Contributing
 
-```bash
-pnpm install
-pnpm check              # lint, format, typecheck, test
-pnpm check:conformance  # regenerate from the chanx sandbox schema, fail on drift
-pnpm docs:dev           # docs site with live reload
-pnpm docs:build         # the site as GitHub Pages serves it
-```
-
-### Releasing
-
-Releases go through [Changesets](https://github.com/changesets/changesets). A change a
-user would notice comes with a changeset:
-
-```bash
-pnpm changeset    # pick the packages, patch or minor, and write a line for their changelogs
-```
-
-To release, version what the changesets name and push:
-
-```bash
-pnpm version-packages    # bump the packages, write their CHANGELOG.md, use up the changesets
-git add -A && git commit -m "chore: version packages" && git push
-```
-
-The Publish workflow then checks everything, publishes each package version not yet on
-npm, tags and releases it on GitHub, and deploys the docs. Pushes with changesets still
-pending publish nothing: they wait for the next `pnpm version-packages`.
-
-A package's major version follows chanx's: chanx-js 2.x speaks the chanx 2 protocol. A
-new chanx major is a new major for every package; nothing else is.
-
-A new package's first version is published by hand, since trusted publishing needs the
-package to exist: `cd packages/<name> && pnpm publish --access public`.
-
-npm reviews new names for a few minutes before releasing them. Then add `publish.yml` as
-the package's trusted publisher on npm, and CI publishes it from there on.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests, changesets and releasing.
 
 See the [design notes](https://huynguyengl99.github.io/chanx-js/design) for the protocol,
 the reference-counting rules, and why this does not wrap react-use-websocket.

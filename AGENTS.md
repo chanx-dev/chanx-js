@@ -1,7 +1,8 @@
 # AGENTS.md
 
 How to work in chanx-js. Read [docs/design.md](docs/design.md) for why things are built the
-way they are.
+way they are, and [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow: tests, changesets,
+releases.
 
 ## The repo
 
@@ -34,7 +35,7 @@ Redis tests run only with `REDIS_URL` set:
 
 ```bash
 docker compose up -d
-REDIS_URL=redis://localhost:6389 REDIS_URL_2=redis://localhost:6390 pnpm test packages/layers packages/server
+REDIS_URL=redis://localhost:6389 REDIS_URL_2=redis://localhost:6390 pnpm test --project layers --project server
 ```
 
 ## Code that speaks for itself
