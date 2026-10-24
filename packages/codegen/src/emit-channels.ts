@@ -81,9 +81,11 @@ export function emitChannels(
   messageNames: string[],
   options: ChannelEmitOptions,
 ): string {
-  const lines: string[] = [
-    `import { defineChannel, defineTopic } from '@chanx-js/client';\n\n`,
-  ];
+  // Only what is used: an unused import fails under `noUnusedLocals`, which Vite's
+  // templates turn on.
+  const hasTopics = connections.some((connection) => connection.topics.length > 0);
+  const imported = hasTopics ? 'defineChannel, defineTopic' : 'defineChannel';
+  const lines: string[] = [`import { ${imported} } from '@chanx-js/client';\n\n`];
 
   if (options.target === 'ts') {
     if (messageNames.length) {

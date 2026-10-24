@@ -172,6 +172,20 @@ describe('analysis of the chanx fastapi sandbox', () => {
     expect(channels).toContain('threadTopic: defineTopic<AgentThreadTopicToServer');
   });
 
+  it('leaves defineTopic unimported when no channel has topics', async () => {
+    const plain: AsyncAPIDocument = {
+      asyncapi: '3.0.0',
+      channels: { chat: { address: '/ws/chat', title: 'chat' } },
+    };
+
+    const outDir = await mkdtemp(join(tmpdir(), 'chanx-codegen-'));
+    await generate(plain, { outDir, format: false });
+    const channels = await readFile(join(outDir, 'channels.ts'), 'utf-8');
+
+    // An unused import fails a project compiled with noUnusedLocals.
+    expect(channels).toContain("import { defineChannel } from '@chanx-js/client';");
+  });
+
   it('names directions from the client’s point of view', () => {
     const chat = analyze(document).find((connection) => connection.name === 'chat');
     expect(chat?.toServer).toContain('ChatMessage');
