@@ -29,7 +29,7 @@ import type {
   UserJoinedNotification,
   UserLeftNotification,
   UserMessage,
-} from './schemas';
+} from './schemas.js';
 
 export type AnalyticsToServer = AnalyticsMessage | PingMessage;
 export type AnalyticsToClient = AnalyticsNotificationMessage | PongMessage;

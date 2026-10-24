@@ -47,7 +47,9 @@ function toSpecifier(
   if (aliased) return aliased;
 
   let relativePath = relative(resolve(outDir), filePath).replace(/\\/g, '/');
-  relativePath = relativePath.replace(/\.(d\.)?tsx?$/, '');
+  // A relative import carries `.js`, as Node's ESM resolution needs; an alias is left as is,
+  // since a bundler or path mapping resolves it.
+  relativePath = relativePath.replace(/\.(d\.)?tsx?$/, '.js');
   return relativePath.startsWith('.') ? relativePath : `./${relativePath}`;
 }
 

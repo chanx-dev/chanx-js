@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { Project } from 'ts-morph';
+import { Project, ts } from 'ts-morph';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { analyze } from '../src/analyze';
@@ -324,7 +324,7 @@ describe('javascript output', () => {
     // `schemas` is declarations only, so importing it at runtime would fail.
     expect(runtime).not.toContain('./schemas');
     expect(runtime).toContain("export * from './channels.js';");
-    expect(declaration).toContain("export * from './schemas';");
+    expect(declaration).toContain("export * from './schemas.js';");
   });
 
   it('emits zod as runtime plus declarations, with resolvable specifiers', async () => {
@@ -405,6 +405,32 @@ describe('type reuse', () => {
 
     const errors = project.getPreEmitDiagnostics().map((d) => d.getMessageText());
     expect(errors).toEqual([]);
+  });
+
+  it('compiles under NodeNext, as a Node ESM project resolves it', async () => {
+    const document = await loadSchema(join(fixtures, 'fastapi-asyncapi.json'));
+    const outDir = await mkdtemp(join(tmpdir(), 'chanx-codegen-'));
+    const result = await generate(document, { outDir, format: false, validation: 'zod' });
+
+    // An ESM package, where NodeNext requires every relative import to name its file.
+    await writeFile(join(outDir, 'package.json'), '{ "type": "module" }');
+    // The compiler itself, not ts-morph, which leaves files it adds without NodeNext's module
+    // format and so never applies the ESM rules.
+    const program = ts.createProgram(result.files, {
+      noEmit: true,
+      module: ts.ModuleKind.NodeNext,
+      moduleResolution: ts.ModuleResolutionKind.NodeNext,
+    });
+
+    // Only the relative imports are under test; the packages they import are not installed
+    // here. TS2307 is a module not found, TS2834 and TS2835 a relative import without its
+    // extension.
+    const unresolved = ts
+      .getPreEmitDiagnostics(program)
+      .filter((d) => [2307, 2834, 2835].includes(d.code))
+      .map((d) => ts.flattenDiagnosticMessageText(d.messageText, '\n'))
+      .filter((message) => message.includes("'./"));
+    expect(unresolved).toEqual([]);
   });
 
   it('emits assertions that a reused type still matches the schema', async () => {

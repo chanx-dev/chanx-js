@@ -30,7 +30,7 @@ import type {
   UserJoinedNotification,
   UserLeftNotification,
   UserMessage,
-} from './schemas';
+} from './schemas.js';
 import {
   AnalyticsToServerSchema,
   AnalyticsToClientSchema,
@@ -54,7 +54,7 @@ import {
   TopicHubPresenceTopicToClientSchema,
   TopicHubRoomTopicToServerSchema,
   TopicHubRoomTopicToClientSchema,
-} from './schemas.zod';
+} from './schemas.zod.js';
 
 export type AnalyticsToServer = AnalyticsMessage | PingMessage;
 export type AnalyticsToClient = AnalyticsNotificationMessage | PongMessage;

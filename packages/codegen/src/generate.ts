@@ -190,9 +190,10 @@ export async function generate(
 
   const channelOptions = {
     withZod,
-    schemasModule: './schemas',
-    // Node's ESM resolution needs the extension on a real runtime import.
-    zodModule: isJs ? './schemas.zod.js' : './schemas.zod',
+    // With the extension, as Node's ESM resolution and TypeScript's NodeNext need; bundlers
+    // and TypeScript map `.js` to the `.ts` or `.d.ts` beside it.
+    schemasModule: './schemas.js',
+    zodModule: './schemas.zod.js',
     target,
   } as const;
 
@@ -216,7 +217,13 @@ export async function generate(
       await write(
         'schemas.zod.d.ts',
         HEADER +
-          emitZodDeclaration(schemas, connections, reuse.skip, './schemas', './channels'),
+          emitZodDeclaration(
+            schemas,
+            connections,
+            reuse.skip,
+            './schemas.js',
+            './channels.js',
+          ),
       );
     }
   }
@@ -234,12 +241,15 @@ export async function generate(
     if (withZod) runtime.push("export * from './schemas.zod.js';");
     await write('index.js', HEADER + runtime.join('\n') + '\n');
 
-    const declarations = ["export * from './schemas';", "export * from './channels';"];
-    if (withZod) declarations.push("export * from './schemas.zod';");
+    const declarations = [
+      "export * from './schemas.js';",
+      "export * from './channels.js';",
+    ];
+    if (withZod) declarations.push("export * from './schemas.zod.js';");
     await write('index.d.ts', HEADER + declarations.join('\n') + '\n');
   } else {
-    const exports = ["export * from './schemas';", "export * from './channels';"];
-    if (withZod) exports.push("export * from './schemas.zod';");
+    const exports = ["export * from './schemas.js';", "export * from './channels.js';"];
+    if (withZod) exports.push("export * from './schemas.zod.js';");
     await write('index.ts', HEADER + exports.join('\n') + '\n');
   }
 
