@@ -5,23 +5,23 @@ aside: false
 
 # Why chanx-js?
 
-Most WebSocket code in TypeScript starts on one of three paths: plain `ws`, Socket.IO, or
+WebSocket code in TypeScript usually starts on one of three paths: plain `ws`, Socket.IO, or
 tRPC's subscriptions. Each is a good tool. chanx-js takes a different path: the server
 publishes a contract, AsyncAPI, and both ends are typed from it.
 
 ## At a glance
 
-|                      | chanx-js                                                                                              | Socket.IO                                                                                                 | `ws`                  | tRPC                             |
-| -------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | --------------------- | -------------------------------- |
-| Routing              | A handler per action                                                                                  | A listener per event                                                                                      | Write it yourself     | A procedure per name             |
-| Typed messages       | Generated from the server's schema                                                                    | Event maps you share by hand                                                                              | No                    | Inferred from the router         |
-| Runtime validation   | Any Standard Schema: Zod, Valibot, ...                                                                | Not built in                                                                                              | No                    | Input parsers, such as Zod       |
-| Request and reply    | `await request()`, typed per action                                                                   | `emitWithAck()`                                                                                           | Write it yourself     | Queries and mutations            |
-| Groups (server-side) | Joined on the server; any process, workers included, broadcasts over Redis                            | Rooms, joined on the server; across servers with the Redis adapter, from other processes with its emitter | Write it yourself     | Write it yourself                |
-| Multiplexing         | Topics: many streams on one socket, each subscribed by name, authorized and resumed after a reconnect | Namespaces share one connection; joining a room needs an event of your own                                | One stream per socket | Many subscriptions on one socket |
-| API documentation    | AsyncAPI 3, served by the server                                                                      | None                                                                                                      | None                  | None                             |
-| Who can connect      | Any WebSocket client sending JSON                                                                     | Socket.IO clients                                                                                         | Any WebSocket         | tRPC clients                     |
-| Testing              | In-process client, broadcast captures                                                                 | Run a server, connect a client                                                                            | Same                  | Call procedures directly         |
+|                      | chanx-js                                                                                              | Socket.IO                                                                                                 | `ws`                           | tRPC                             |
+| -------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------ | -------------------------------- |
+| Routing              | A handler per action                                                                                  | A listener per event                                                                                      | Parse, then if/else on a field | A procedure per name             |
+| Typed messages       | Generated from the server's schema                                                                    | Event maps you share by hand                                                                              | No                             | Inferred from the router         |
+| Runtime validation   | Any Standard Schema: Zod, Valibot, ...                                                                | Not built in                                                                                              | No                             | Input parsers, such as Zod       |
+| Request and reply    | `await request()`, typed per action                                                                   | `emitWithAck()`                                                                                           | Write it yourself              | Queries and mutations            |
+| Groups (server-side) | Joined on the server; any process, workers included, broadcasts over Redis                            | Rooms, joined on the server; across servers with the Redis adapter, from other processes with its emitter | Write it yourself              | Write it yourself                |
+| Multiplexing         | Topics: many streams on one socket, each subscribed by name, authorized and resumed after a reconnect | Namespaces share one connection; joining a room needs an event of your own                                | One stream per socket          | Many subscriptions on one socket |
+| API documentation    | AsyncAPI 3, served by the server                                                                      | None                                                                                                      | None                           | None                             |
+| Who can connect      | Any WebSocket client sending JSON                                                                     | Socket.IO clients, in several languages                                                                   | Any WebSocket                  | tRPC clients                     |
+| Testing              | In-process client, broadcast captures                                                                 | Run a server, connect a client                                                                            | Same                           | Call procedures directly         |
 
 ## Compared with Socket.IO
 
