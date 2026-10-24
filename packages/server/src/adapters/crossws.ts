@@ -5,8 +5,8 @@
  */
 import type { Hooks, Peer } from 'crossws';
 
-import type { Chanx } from './app';
-import type { Session } from './session';
+import type { Chanx } from '../app';
+import type { Session } from '../session';
 
 /**
  * crossws hooks serving chanx: one adapter for Bun, Deno, Cloudflare Workers and Node,

@@ -2,7 +2,7 @@ import type { IncomingHttpHeaders } from 'node:http';
 
 import type { WebSocket } from 'ws';
 
-import type { Chanx } from './app';
+import type { Chanx } from '../app';
 
 /** Pings for one `ws` server's sockets: who answered since the last round. */
 export class Heartbeat {

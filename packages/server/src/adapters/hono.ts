@@ -6,8 +6,8 @@
 import type { MiddlewareHandler } from 'hono';
 import type { UpgradeWebSocket } from 'hono/ws';
 
-import type { Chanx } from './app';
-import type { Session } from './session';
+import type { Chanx } from '../app';
+import type { Session } from '../session';
 
 /**
  * Hono middleware serving chanx, on any runtime: pass the runtime's `upgradeWebSocket`

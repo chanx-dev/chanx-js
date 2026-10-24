@@ -9,9 +9,9 @@ import type { Duplex } from 'node:stream';
 
 import { WebSocketServer } from 'ws';
 
-import type { Chanx } from './app';
-import type { AsyncAPIServeOptions } from './asyncapi-http';
-import { asyncapiHandler } from './asyncapi-http';
+import type { Chanx } from '../app';
+import type { AsyncAPIServeOptions } from '../asyncapi-http';
+import { asyncapiHandler } from '../asyncapi-http';
 import { Heartbeat, serveWebSocket, toHeaders } from './ws-socket';
 
 type UpgradeListener = (request: IncomingMessage, socket: Duplex, head: Buffer) => void;

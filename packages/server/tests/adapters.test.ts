@@ -14,10 +14,10 @@ import { z } from 'zod';
 
 import type { Chanx } from '../src';
 import { PingMessage, PongMessage, consumer, createChanx, defineMessage } from '../src';
-import { chanxHooks } from '../src/crossws';
-import { chanxFastify } from '../src/fastify';
-import { chanxHono } from '../src/hono';
-import { attachChanx } from '../src/node';
+import { chanxHooks } from '../src/adapters/crossws';
+import { chanxFastify } from '../src/adapters/fastify';
+import { chanxHono } from '../src/adapters/hono';
+import { attachChanx } from '../src/adapters/node';
 
 const Chat = defineMessage('chat', z.object({ text: z.string() }));
 const Notice = defineMessage('notice', z.object({ text: z.string() }));

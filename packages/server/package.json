@@ -28,28 +28,28 @@
       "default": "./dist/testing.mjs"
     },
     "./node": {
-      "@chanx-js/source": "./src/node.ts",
-      "types": "./dist/node.d.mts",
-      "default": "./dist/node.mjs"
+      "@chanx-js/source": "./src/adapters/node.ts",
+      "types": "./dist/adapters/node.d.mts",
+      "default": "./dist/adapters/node.mjs"
     },
     "./crossws": {
-      "@chanx-js/source": "./src/crossws.ts",
-      "types": "./dist/crossws.d.mts",
-      "default": "./dist/crossws.mjs"
+      "@chanx-js/source": "./src/adapters/crossws.ts",
+      "types": "./dist/adapters/crossws.d.mts",
+      "default": "./dist/adapters/crossws.mjs"
     },
     "./hono": {
-      "@chanx-js/source": "./src/hono.ts",
-      "types": "./dist/hono.d.mts",
-      "default": "./dist/hono.mjs"
+      "@chanx-js/source": "./src/adapters/hono.ts",
+      "types": "./dist/adapters/hono.d.mts",
+      "default": "./dist/adapters/hono.mjs"
     },
     "./fastify": {
-      "@chanx-js/source": "./src/fastify.ts",
-      "types": "./dist/fastify.d.mts",
-      "default": "./dist/fastify.mjs"
+      "@chanx-js/source": "./src/adapters/fastify.ts",
+      "types": "./dist/adapters/fastify.d.mts",
+      "default": "./dist/adapters/fastify.mjs"
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts src/testing.ts src/node.ts src/crossws.ts src/hono.ts src/fastify.ts --format esm --dts.eager --clean",
+    "build": "tsdown src/index.ts src/testing.ts src/adapters/node.ts src/adapters/crossws.ts src/adapters/hono.ts src/adapters/fastify.ts --format esm --dts.eager --clean",
     "typecheck": "tsc -p tsconfig.json && tsc -p tests/legacy/tsconfig.json"
   },
   "dependencies": {

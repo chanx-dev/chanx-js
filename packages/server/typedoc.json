@@ -1,10 +1,10 @@
 {
   "entryPoints": [
     "src/index.ts",
-    "src/node.ts",
-    "src/crossws.ts",
-    "src/hono.ts",
-    "src/fastify.ts",
+    "src/adapters/node.ts",
+    "src/adapters/crossws.ts",
+    "src/adapters/hono.ts",
+    "src/adapters/fastify.ts",
     "src/testing.ts"
   ],
   "tsconfig": "tsconfig.json",

@@ -7,8 +7,8 @@ import type { FastifyPluginAsync } from 'fastify';
 import type {} from '@fastify/websocket';
 import type { WebSocket } from 'ws';
 
-import type { Chanx } from './app';
-import { internals } from './app';
+import type { Chanx } from '../app';
+import { internals } from '../app';
 import { Heartbeat, serveWebSocket } from './ws-socket';
 
 /** Options for `chanxFastify()`. */

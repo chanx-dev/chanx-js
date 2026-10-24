@@ -21,7 +21,7 @@ import {
   defineMessage,
   topic,
 } from '../src';
-import { attachChanx } from '../src/node';
+import { attachChanx } from '../src/adapters/node';
 
 const Post = defineMessage('post', z.object({ body: z.string() }));
 const Posted = defineMessage('posted', z.object({ body: z.string() }));

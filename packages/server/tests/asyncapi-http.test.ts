@@ -13,7 +13,7 @@ import {
   createChanx,
   defineMessage,
 } from '../src';
-import { asyncapiMiddleware } from '../src/node';
+import { asyncapiMiddleware } from '../src/adapters/node';
 
 const chat = consumer('/ws/chat', {
   name: 'chat',

@@ -20,8 +20,8 @@ import {
   defineMessage,
   topic,
 } from '../src';
-import type { Attachment } from '../src/node';
-import { attachChanx } from '../src/node';
+import type { Attachment } from '../src/adapters/node';
+import { attachChanx } from '../src/adapters/node';
 
 const Chat = defineMessage('chat', z.object({ text: z.string() }));
 const Notice = defineMessage('notice', z.object({ text: z.string() }));
