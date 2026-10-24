@@ -1,8 +1,13 @@
 # Client: getting started
 
-The client connects to any chanx server, [Node](/server/) or
-[Python](https://github.com/huynguyengl99/chanx), from a browser, a framework app or
-another service. Two packages make it up:
+Generate a WebSocket client from your server's schema, and every message you send and
+receive is typed: a misspelt action or field fails to compile, and a request resolves with
+its typed reply. It reconnects, keeps heartbeats, and multiplexes topics over one socket,
+in a browser, a framework app or another service. It works with any chanx server,
+[Node](/server/) or [Python](https://github.com/huynguyengl99/chanx); for how it compares
+with other options, see [Why chanx-js?](/introduction/why).
+
+Two packages make it up:
 
 - **`@chanx-js/client`**: the runtime. No dependencies and framework-agnostic, with
   bindings on `@chanx-js/client/react`, `@chanx-js/client/vue`, `@chanx-js/client/svelte`

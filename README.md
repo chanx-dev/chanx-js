@@ -17,6 +17,7 @@ client also talks to Python chanx servers (Django Channels, FastAPI), and Node a
 servers can share one Redis.
 
 **[Documentation](https://huynguyengl99.github.io/chanx-js/)** ·
+[Why chanx-js?](https://huynguyengl99.github.io/chanx-js/introduction/why) ·
 [Server guide](https://huynguyengl99.github.io/chanx-js/server/) ·
 [Client guide](https://huynguyengl99.github.io/chanx-js/client/) ·
 [API reference](https://huynguyengl99.github.io/chanx-js/api/)

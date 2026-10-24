@@ -1,8 +1,13 @@
 # Server: getting started
 
-`@chanx-js/server` is chanx for Node: typed WebSocket consumers that speak the same
-protocol as Python's [chanx](https://github.com/huynguyengl99/chanx). `@chanx-js/client`
-and generated clients work against either server, and the two can share one Redis.
+Write a WebSocket server where every message has a schema. Each action gets a typed,
+validated handler instead of an if/else branch; rooms broadcast across processes; and the
+server documents itself as AsyncAPI, so its clients are generated, not hand-typed. This
+page takes you from install to a running server in a few minutes; for how it compares
+with Socket.IO or `ws`, see [Why chanx-js?](/introduction/why).
+
+It speaks the protocol of Python's [chanx](https://github.com/huynguyengl99/chanx), so
+the same clients work against either, and the two can share one Redis.
 
 Three packages make up the server side:
 
