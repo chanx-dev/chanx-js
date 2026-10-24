@@ -5,9 +5,13 @@ import type { Server } from 'node:http';
 import websocket from '@fastify/websocket';
 import { serve, upgradeWebSocket } from '@hono/node-server';
 import nodeAdapter from 'crossws/adapters/node';
+import { serve as serveCrossws } from 'crossws/server/node';
+import express from 'express';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
+import { H3, defineWebSocketHandler } from 'h3';
 import { Hono } from 'hono';
+import Koa from 'koa';
 import { WebSocketServer } from 'ws';
 
 import type { Chanx } from '../src';
@@ -93,4 +97,44 @@ export const SERVERS: Array<[name: string, start: StartServer]> = [
     },
   ],
   ['fastify', (chanx, onCleanup) => startFastify(chanx, onCleanup)],
+  [
+    'node (ws) under Express',
+    async (chanx, onCleanup) => {
+      const app = express();
+      app.get('/plain', (_request, response) => void response.send('plain'));
+      const server = createServer(app);
+      const attachment = attachChanx(server, chanx);
+      onCleanup(() => attachment.close());
+      return listen(server, onCleanup);
+    },
+  ],
+  [
+    'node (ws) under Koa',
+    async (chanx, onCleanup) => {
+      const app = new Koa();
+      app.use((ctx) => void (ctx.body = 'plain'));
+      const server = createServer(app.callback());
+      const attachment = attachChanx(server, chanx);
+      onCleanup(() => attachment.close());
+      return listen(server, onCleanup);
+    },
+  ],
+  [
+    'crossws under h3',
+    async (chanx, onCleanup) => {
+      const app = new H3();
+      app.get('/ws/**', defineWebSocketHandler(chanxHooks(chanx)));
+      const server = serveCrossws({
+        fetch: app.fetch,
+        port: 0,
+        hostname: '127.0.0.1',
+        silent: true,
+        // Takes the hooks h3's defineWebSocketHandler() attaches to its response.
+        websocket: {},
+      });
+      await server.ready();
+      onCleanup(() => server.close(true));
+      return `ws://127.0.0.1:${new URL(server.url!).port}`;
+    },
+  ],
 ];
