@@ -9,16 +9,11 @@ import type { WebSocket } from 'ws';
 
 import type { AcceptedUpgrade, Chanx } from '../app';
 import { internals } from '../app';
+import type { SocketOptions } from './ws-socket';
 import { Heartbeat, serveWebSocket, toHeaders } from './ws-socket';
 
 /** Options for `chanxFastify()`. */
-export interface FastifyChanxOptions {
-  /**
-   * Ping each client this often, closing one that has not answered the previous ping.
-   * `0` turns it off. Defaults to 20 seconds.
-   */
-  pingInterval?: number;
-}
+export type FastifyChanxOptions = SocketOptions;
 
 /**
  * Serve chanx as Fastify routes, one per consumer path, after registering
@@ -33,7 +28,7 @@ export interface FastifyChanxOptions {
  */
 export function chanxFastify(
   chanx: Chanx,
-  { pingInterval = 20_000 }: FastifyChanxOptions = {},
+  { pingInterval = 20_000, maxBufferedAmount }: FastifyChanxOptions = {},
 ): FastifyPluginAsync {
   return async (fastify) => {
     if (!fastify.websocketServer) {
@@ -69,7 +64,7 @@ export function chanxFastify(
         (ws, request) => {
           sockets.add(ws);
           ws.on('close', () => sockets.delete(ws));
-          serveWebSocket(chanx, ws, upgrades.get(request)!, heartbeat);
+          serveWebSocket(chanx, ws, upgrades.get(request)!, heartbeat, maxBufferedAmount);
         },
       );
     }
@@ -78,3 +73,5 @@ export function chanxFastify(
     fastify.addHook('onClose', async () => heartbeat.stop());
   };
 }
+
+export type { SocketOptions } from './ws-socket';

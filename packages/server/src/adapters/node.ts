@@ -12,18 +12,13 @@ import { WebSocketServer } from 'ws';
 import type { Chanx } from '../app';
 import type { AsyncAPIServeOptions } from '../asyncapi-http';
 import { asyncapiHandler } from '../asyncapi-http';
+import type { SocketOptions } from './ws-socket';
 import { Heartbeat, refusalResponse, serveWebSocket, toHeaders } from './ws-socket';
 
 type UpgradeListener = (request: IncomingMessage, socket: Duplex, head: Buffer) => void;
 
 /** Options for `attachChanx()`. */
-export interface AttachOptions {
-  /**
-   * Ping each client this often, closing one that has not answered the previous ping.
-   * `0` turns it off. Defaults to 20 seconds.
-   */
-  pingInterval?: number;
-}
+export type AttachOptions = SocketOptions;
 
 /** A running `attachChanx()`. */
 export interface Attachment {
@@ -39,7 +34,7 @@ export interface Attachment {
 export function attachChanx(
   server: Server,
   chanx: Chanx,
-  { pingInterval = 20_000 }: AttachOptions = {},
+  { pingInterval = 20_000, maxBufferedAmount }: AttachOptions = {},
 ): Attachment {
   const wss = new WebSocketServer({ noServer: true });
   const heartbeat = new Heartbeat(() => wss.clients, pingInterval);
@@ -59,7 +54,7 @@ export function attachChanx(
             return;
           }
           wss.handleUpgrade(request, socket, head, (ws) =>
-            serveWebSocket(chanx, ws, upgrade, heartbeat),
+            serveWebSocket(chanx, ws, upgrade, heartbeat, maxBufferedAmount),
           );
         })
         .catch((error: unknown) => socket.destroy(error as Error));
@@ -121,3 +116,5 @@ export function asyncapiMiddleware(
       .catch((error: unknown) => (next ? next(error) : response.destroy(error as Error)));
   };
 }
+
+export type { SocketOptions } from './ws-socket';

@@ -100,11 +100,12 @@ async function startFastify(
   chanx: Chanx,
   setup?: (app: FastifyInstance) => void,
   pingInterval?: number,
+  maxBufferedAmount?: number,
 ) {
   const app = Fastify();
   await app.register(websocket);
   setup?.(app);
-  await app.register(chanxFastify(chanx, { pingInterval }));
+  await app.register(chanxFastify(chanx, { pingInterval, maxBufferedAmount }));
   await app.listen({ port: 0, host: '127.0.0.1' });
   cleanups.push(() => app.close());
   return `ws://127.0.0.1:${(app.server.address() as AddressInfo).port}`;
@@ -343,5 +344,69 @@ describe('the fastify adapter', () => {
     await expect(fastify.register(chanxFastify(app()))).rejects.toThrow(
       'Register @fastify/websocket before chanxFastify()',
     );
+  });
+});
+
+describe.each([
+  [
+    'node (ws)',
+    async (chanx: Chanx, maxBufferedAmount: number) => {
+      const server = createServer();
+      const attachment = attachChanx(server, chanx, { maxBufferedAmount });
+      cleanups.push(() => attachment.close());
+      return listen(server);
+    },
+  ],
+  [
+    'fastify',
+    (chanx: Chanx, maxBufferedAmount: number) =>
+      startFastify(chanx, undefined, undefined, maxBufferedAmount),
+  ],
+] as const)('backpressure on the %s adapter', (_name, start) => {
+  const Flood = defineMessage('flood');
+  const Chunk = defineMessage('chunk', z.object({ data: z.string() }));
+  const COUNT = 64;
+  const flooder = consumer('/ws/flood', { name: 'flood', emits: [Chunk] }).on(
+    Flood,
+    async (_m, ctx) => {
+      const data = 'x'.repeat(256 * 1024);
+      // A stream, not one burst: a reading client drains each chunk before the next.
+      for (let i = 0; i < COUNT; i++) {
+        await ctx.push(Chunk.create({ data }));
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+    },
+  );
+
+  it('drops a client that stops reading, and serves one that keeps up', async () => {
+    const logger = { error() {}, warn: vi.fn() };
+    const url = await start(createChanx({ consumers: [flooder], logger }), 1024 * 1024);
+
+    const stalled = new WebSocket(`${url}/ws/flood`);
+    const reading = new WebSocket(`${url}/ws/flood`);
+    cleanups.push(
+      () => stalled.terminate(),
+      () => reading.terminate(),
+    );
+    let received = 0;
+    reading.on('message', () => received++);
+    await Promise.all(
+      [stalled, reading].map((ws) => new Promise((resolve) => ws.once('open', resolve))),
+    );
+    const stalledClosed = new Promise<number>((resolve) => stalled.on('close', resolve));
+    stalled.pause();
+
+    stalled.send(JSON.stringify({ action: 'flood' }));
+    reading.send(JSON.stringify({ action: 'flood' }));
+
+    await vi.waitFor(() =>
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringMatching(/more than maxBufferedAmount/),
+      ),
+    );
+    // Paused, the client reads nothing, not even its socket closing: resume to see it.
+    stalled.resume();
+    expect(await stalledClosed).toBe(1006);
+    await vi.waitFor(() => expect(received).toBe(COUNT), { timeout: 5000 });
   });
 });

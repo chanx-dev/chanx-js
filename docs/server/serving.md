@@ -24,6 +24,11 @@ server.listen(8000);
 - Each client is pinged every 20 seconds and dropped when it stops answering. Set
   `pingInterval` to change it, or `0` to turn it off.
 - `attachment.close()` stops serving and closes every socket with 1001 (going away).
+- A client that stops reading is dropped once more than `maxBufferedAmount` bytes wait
+  unsent for it (16 MiB by default), with a warning through the app's logger, so it
+  cannot hold the server's memory. The limit counts bursts too: keep it above the most
+  one handler sends at once. `@chanx-js/client` reconnects and resubscribes after a
+  drop.
 
 ## Fastify
 
@@ -40,9 +45,9 @@ await app.register(chanxFastify(chanx));
 
 Fastify's hooks run before each upgrade, so an `onRequest` hook or an auth plugin can
 refuse one with an HTTP status, which a client sees before any socket opens. Register
-it without a prefix: the routes are the consumers' own paths. Clients are pinged as on
-Node (`pingInterval`); `@fastify/websocket` closes them when Fastify closes, and its
-`preClose` option sets how.
+it without a prefix: the routes are the consumers' own paths. Clients are pinged, and
+dropped once they stop reading, as on Node (`pingInterval`, `maxBufferedAmount`).
+`@fastify/websocket` closes them when Fastify closes; its `preClose` option sets how.
 
 ## Bun, Deno, Cloudflare Workers, h3, Nitro, Nuxt
 
