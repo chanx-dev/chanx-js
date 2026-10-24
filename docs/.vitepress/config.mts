@@ -85,7 +85,7 @@ const guideSidebar = [
 export default defineConfig({
   title: 'chanx-js',
   description:
-    'Type-safe WebSockets for TypeScript, end to end: typed servers, generated clients, topics and groups.',
+    'Type-safe WebSocket servers and clients for TypeScript, end to end: one schema types both sides, with topics and groups.',
   base: '/chanx-js/',
   cleanUrls: true,
   // Tutorials link to the server the reader runs, at localhost.
