@@ -1,6 +1,6 @@
 {
   "name": "@chanx-js/nestjs",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "chanx for NestJS: consumers as injectable gateways, with guards, interceptors, pipes and exception filters.",
   "license": "MIT",
   "author": "Huy Nguyen",

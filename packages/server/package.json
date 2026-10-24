@@ -1,6 +1,6 @@
 {
   "name": "@chanx-js/server",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "chanx for Node: typed WebSocket consumers with topics and groups, speaking the same protocol as Python's chanx.",
   "license": "MIT",
   "author": "Huy Nguyen",
