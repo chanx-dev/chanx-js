@@ -13,7 +13,8 @@
   "type": "module",
   "sideEffects": false,
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "bin": {
     "chanx-nestjs": "./dist/cli.mjs"
@@ -30,7 +31,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@chanx-js/server": "workspace:*"
+    "@chanx-js/server": "workspace:^"
   },
   "peerDependencies": {
     "@nestjs/common": ">=11",

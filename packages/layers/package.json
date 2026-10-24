@@ -13,7 +13,8 @@
   "type": "module",
   "sideEffects": false,
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "exports": {
     ".": {

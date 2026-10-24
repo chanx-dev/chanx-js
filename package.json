@@ -21,9 +21,12 @@
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "check": "pnpm lint && pnpm format && pnpm typecheck && pnpm test",
-    "release": "commit-and-tag-version"
+    "changeset": "changeset",
+    "version-packages": "changeset version && pnpm install --lockfile-only",
+    "release": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm check:conformance && changeset publish"
   },
   "devDependencies": {
+    "@changesets/cli": "^3.0.3",
     "@eslint/js": "^9.31.0",
     "@swc/core": "^1.16.20",
     "@testing-library/dom": "^10.4.2",
@@ -32,7 +35,6 @@
     "@types/react-dom": "^19.3.0",
     "@types/ws": "^8.18.1",
     "@vue/test-utils": "^2.5.1",
-    "commit-and-tag-version": "^13.2.1",
     "eslint": "^9.31.0",
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-react-hooks": "^7.1.1",

@@ -114,8 +114,11 @@ for (const handler of [...handlers]) safely(handler, message);
 - [Conventional Commits](https://www.conventionalcommits.org): `feat(core): ...`,
   `fix(codegen): ...`, `docs: ...`, `test: ...`, `ci: ...`. Imperative, lowercase,
   describes the change for a user.
-- Releases go through `pnpm release` (commit-and-tag-version); do not edit
-  `CHANGELOG.md` or versions by hand.
+- A change a user of a published package would notice adds a changeset
+  (`pnpm changeset`): which packages, `patch` or `minor`, and one line for their
+  changelogs. Never `major`: majors follow chanx's (see docs/design.md).
+- A release is `pnpm version-packages`, committed and pushed; do not edit versions or
+  `CHANGELOG.md` files by hand.
 
 ## Docs
 

@@ -285,24 +285,29 @@ pnpm docs:build         # the site as GitHub Pages serves it
 
 ### Releasing
 
-```bash
-git push origin main             # let CI check it first
-pnpm release                     # version from the commits, CHANGELOG.md, signed commit and tag
-git push --follow-tags origin main  # the tag publishes to npm, then the docs deploy
-```
-
-Every package shares one version, and its major follows chanx's: chanx-js 2.x speaks the
-chanx 2 protocol. A `feat` bumps the minor version and a `fix` the patch; a new chanx
-major is a new major here too (`pnpm release --release-as major`).
-
-A new package's first version is published by hand, packed as `publish.yml` packs it so
-`workspace:*` becomes a real version:
+Releases go through [Changesets](https://github.com/changesets/changesets). A change a
+user would notice comes with a changeset:
 
 ```bash
-(cd packages/<name> && npm pkg delete devDependencies && pnpm pack --pack-destination /tmp/chanx-out)
-npm publish /tmp/chanx-out/*.tgz --access public
-git checkout packages/<name>/package.json
+pnpm changeset    # pick the packages, patch or minor, and write a line for their changelogs
 ```
+
+To release, version what the changesets name and push:
+
+```bash
+pnpm version-packages    # bump the packages, write their CHANGELOG.md, use up the changesets
+git add -A && git commit -m "chore: version packages" && git push
+```
+
+The Publish workflow then checks everything, publishes each package version not yet on
+npm, tags and releases it on GitHub, and deploys the docs. Pushes with changesets still
+pending publish nothing: they wait for the next `pnpm version-packages`.
+
+A package's major version follows chanx's: chanx-js 2.x speaks the chanx 2 protocol. A
+new chanx major is a new major for every package; nothing else is.
+
+A new package's first version is published by hand, since trusted publishing needs the
+package to exist: `cd packages/<name> && pnpm publish --access public`.
 
 npm reviews new names for a few minutes before releasing them. Then add `publish.yml` as
 the package's trusted publisher on npm, and CI publishes it from there on.

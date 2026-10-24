@@ -13,7 +13,8 @@
   "bugs": "https://github.com/huynguyengl99/chanx-js/issues",
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "bin": {
     "chanx-codegen": "./dist/cli.mjs"

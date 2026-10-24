@@ -13,7 +13,8 @@
   "type": "module",
   "sideEffects": false,
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "exports": {
     ".": {
@@ -54,7 +55,7 @@
     "smoke:deno": "deno run -A tests/runtimes/smoke.mjs"
   },
   "dependencies": {
-    "@chanx-js/layers": "workspace:*",
+    "@chanx-js/layers": "workspace:^",
     "@noble/hashes": "^2.4.0"
   },
   "peerDependencies": {

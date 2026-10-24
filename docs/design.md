@@ -44,10 +44,14 @@ same as from the Python sandbox's schema.
 
 ## Versions
 
-All packages release together, on one version, one tag and one changelog: the client and
-the server share the wire protocol, `@chanx-js/nestjs` pins its `@chanx-js/server`, and the
-server its layers, so they cannot drift apart. The major version follows chanx's, which
-makes it say something a user can rely on: chanx-js 2.x speaks the chanx 2 protocol.
+The major version follows chanx's, which makes it say something a user can rely on:
+chanx-js 2.x speaks the chanx 2 protocol, so any 2.x client works with any 2.x server, Node
+or Python. Within a major, each package versions on its own with
+[Changesets](https://github.com/changesets/changesets): a release bumps only the packages
+that changed, each with its own changelog, and packages depend on each other by caret
+range (`^2.0.0`), so a fix to the server reaches `@chanx-js/nestjs` users without a Nest
+release. Everything up to 2.0.0 shipped in lockstep; the root `CHANGELOG.md` keeps that
+history.
 
 ## Why a separate repo from chanx
 

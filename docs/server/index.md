@@ -13,8 +13,8 @@ Three packages make up the server side:
 - **`@chanx-js/nestjs`**: consumers and topics as injectable NestJS gateways.
 
 ::: tip Versions
-Every chanx-js package shares one version, and its major follows chanx's: 2.x speaks the
-chanx 2 protocol, so a 2.x client works with a 2.x server, Node or Python.
+Every chanx-js package's major version follows chanx's: 2.x speaks the chanx 2 protocol,
+so any 2.x client works with any 2.x server, Node or Python.
 :::
 
 ## Install

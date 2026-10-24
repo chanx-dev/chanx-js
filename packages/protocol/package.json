@@ -1,5 +1,6 @@
 {
   "name": "@chanx-js/protocol",
+  "version": "0.0.0",
   "private": true,
   "description": "The chanx wire protocol, shared by @chanx-js/client and the server packages. Not published: bundled into each package that uses it.",
   "license": "MIT",

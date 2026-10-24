@@ -1,20 +1,27 @@
 name: Publish
 
+# A release is a push of versioned packages: `pnpm version-packages` turns the pending
+# changesets into version bumps and changelogs, and once that commit reaches main, this
+# publishes every package version not on npm yet, then tags and releases it on GitHub.
 on:
   push:
-    tags:
-      - 'v*.*.*'
+    branches: [main]
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
 
 jobs:
-  publish:
-    # Only the commit `pnpm release` makes; a stray tag publishes nothing.
-    if: "startsWith(github.event.head_commit.message, 'chore(release): ')"
+  release:
     name: Publish to npm
     runs-on: ubuntu-latest
+    # The environment npm's trusted publishers name.
     environment: deploy
     permissions:
-      contents: read
+      contents: write
       id-token: write
+    outputs:
+      published: ${{ steps.changesets.outputs.published }}
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -23,61 +30,32 @@ jobs:
           node-version: 24
           cache: pnpm
           registry-url: https://registry.npmjs.org
-      # Trusted publishing needs npm 11.5.1 or later.
+      # Trusted publishing needs npm 11.5.1 or later; pnpm publishes through it.
       - run: npm install -g npm@11
       - run: pnpm install --frozen-lockfile
-
-      - name: Check the tag matches every package version
+      # Pending changesets mean the packages are not versioned yet: nothing to publish.
+      - id: pending
         run: |
-          tag="${GITHUB_REF_NAME#v}"
-          for dir in client codegen layers server nestjs; do
-            version=$(node -p "require('./packages/$dir/package.json').version")
-            if [ "$version" != "$tag" ]; then
-              echo "::error::packages/$dir is $version but the tag is $GITHUB_REF_NAME"
-              exit 1
-            fi
-          done
-
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm build
-      - run: pnpm check:conformance
-
-      # Trusted publishing (OIDC): no token is set. It needs a package to exist, so a new
-      # package's first version is published by hand, held for npm's review of new names,
-      # and only then given this workflow as its trusted publisher.
-      - name: Publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          # Dependencies first: server needs layers, nestjs needs server.
-          for dir in client codegen layers server nestjs; do
-            pkg=$(node -p "require('./packages/$dir/package.json').name")
-            version=$(node -p "require('./packages/$dir/package.json').version")
-            if npm view "$pkg@$version" version > /dev/null 2>&1; then
-              echo "$pkg@$version is already on npm; skipping"
-              continue
-            fi
-            # pnpm pack rewrites workspace: dependencies to real versions; npm publishes the
-            # tarball, for trusted publishing. devDependencies go first: consumers never
-            # install them, and the private protocol package has no version to rewrite to.
-            (cd "packages/$dir" && npm pkg delete devDependencies && pnpm pack --pack-destination "$RUNNER_TEMP/$dir")
-            npm publish "$RUNNER_TEMP/$dir"/*.tgz --provenance --access public
-          done
-
-  release:
-    needs: publish
-    name: Release on GitHub
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v7
-      # The release commit puts this version's section at the top of CHANGELOG.md.
-      - name: Extract this version's changelog
-        run: awk '/^## / { n++; if (n == 2) exit; next } n == 1' CHANGELOG.md > release-notes.md
-      - uses: softprops/action-gh-release@v3
+          if find .changeset -name '*.md' ! -name README.md | grep -q .; then
+            echo "changesets=true" >> "$GITHUB_OUTPUT"
+          fi
+      # With no changesets pending, the action only publishes: `pnpm release` checks,
+      # builds and runs `changeset publish`, which skips versions already on npm. A new
+      # package's first version is published by hand: trusted publishing needs it to exist.
+      - id: changesets
+        if: steps.pending.outputs.changesets != 'true'
+        uses: changesets/action@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          body_path: release-notes.md
+          publish: pnpm release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
+
+  docs:
+    needs: release
+    if: needs.release.outputs.published == 'true'
+    uses: ./.github/workflows/docs.yml
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
