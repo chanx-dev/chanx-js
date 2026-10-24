@@ -109,8 +109,25 @@ export default defineConfig({
   cleanUrls: true,
   // Tutorials link to the server the reader runs, at localhost.
   ignoreDeadLinks: 'localhostLinks',
-  head: [['meta', { name: 'theme-color', content: '#3f51b5' }]],
+  // Without its own icon, a browser falls back to the domain root's favicon.ico, which
+  // belongs to the github.io site this one lives under. Head links are not prefixed with
+  // `base`, so they carry it.
+  head: [
+    ['meta', { name: 'theme-color', content: '#3f51b5' }],
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/chanx-js/logo.svg' }],
+    [
+      'link',
+      {
+        rel: 'icon',
+        type: 'image/png',
+        sizes: '32x32',
+        href: '/chanx-js/favicon-32.png',
+      },
+    ],
+    ['link', { rel: 'apple-touch-icon', href: '/chanx-js/apple-touch-icon.png' }],
+  ],
   themeConfig: {
+    logo: '/logo.svg',
     nav: [
       {
         text: 'Guide',
