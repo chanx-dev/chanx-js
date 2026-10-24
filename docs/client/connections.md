@@ -10,22 +10,22 @@ import { createClient } from '@chanx-js/client';
 const client = createClient({ baseUrl: 'wss://api.example.com' });
 ```
 
-| Option              | Default                      | Effect                                                                   |
-| ------------------- | ---------------------------- | ------------------------------------------------------------------------ |
-| `baseUrl`           | the page's origin            | Server origin; relative addresses resolve against it                     |
-| `share`             | topic channels only          | Share one socket per URL and subprotocols; see [Sharing](./sharing)      |
-| `reconnectAttempts` | `10`                         | Give up after this many consecutive failures                             |
-| `reconnectInterval` | backoff, capped at 30s       | A fixed delay, or `(attempt) => ms`                                      |
-| `shouldReconnect`   | always                       | `(closeEvent) => boolean`                                                |
-| `retryOnError`      | `false`                      | Close and reconnect on a socket error                                    |
-| `onReconnectStop`   |                              | Called when reconnecting gives up                                        |
-| `heartbeat`         | automatic                    | See [Heartbeat](#heartbeat)                                              |
-| `queryParams`       |                              | Appended to every URL; per-connection values merge over these            |
-| `protocols`         |                              | WebSocket subprotocols                                                   |
-| `maxQueuedFrames`   | `100`                        | Frames buffered before the socket opens; past this the oldest is dropped |
-| `closeDelay`        | `100` ms                     | Grace period before an unused socket closes                              |
-| `validate`          | outbound always, inbound dev | See [Validation](./codegen#validation)                                   |
-| `socketFactory`     | global `WebSocket`           | Supply a WebSocket, e.g. from `ws` on older Node                         |
+| Option              | Default                      | Effect                                                                    |
+| ------------------- | ---------------------------- | ------------------------------------------------------------------------- |
+| `baseUrl`           | the page's origin            | Server origin; relative addresses resolve against it                      |
+| `share`             | topic channels only          | Share one socket per URL and subprotocols; see [Sharing](/client/sharing) |
+| `reconnectAttempts` | `10`                         | Give up after this many consecutive failures                              |
+| `reconnectInterval` | backoff, capped at 30s       | A fixed delay, or `(attempt) => ms`                                       |
+| `shouldReconnect`   | always                       | `(closeEvent) => boolean`                                                 |
+| `retryOnError`      | `false`                      | Close and reconnect on a socket error                                     |
+| `onReconnectStop`   |                              | Called when reconnecting gives up                                         |
+| `heartbeat`         | automatic                    | See [Heartbeat](#heartbeat)                                               |
+| `queryParams`       |                              | Appended to every URL; per-connection values merge over these             |
+| `protocols`         |                              | WebSocket subprotocols                                                    |
+| `maxQueuedFrames`   | `100`                        | Frames buffered before the socket opens; past this the oldest is dropped  |
+| `closeDelay`        | `100` ms                     | Grace period before an unused socket closes                               |
+| `validate`          | outbound always, inbound dev | See [Validation](/client/codegen#validation)                              |
+| `socketFactory`     | global `WebSocket`           | Supply a WebSocket, e.g. from `ws` on older Node                          |
 
 Every option except `baseUrl` can also be passed per connection. Address `params` are URL-encoded, so a value never adds a path segment or a query.
 
@@ -42,6 +42,8 @@ Frames sent before the socket opens are queued and flushed on open, so there is 
 ```ts
 await connection.ready({ timeout: 5000 });
 ```
+
+`ready()` resolves once the socket opens, and rejects once it gives up reconnecting, or after `timeout`.
 
 ## Receiving
 
@@ -67,11 +69,11 @@ To await a single message, or consume them in a loop:
 const first = await connection.once('chat_notification', { timeout: 5000 });
 
 for await (const message of connection) {
-  // ends when the connection closes
+  // ends when the connection closes, or once the socket gives up reconnecting
 }
 ```
 
-`connection.stream({ limit, signal })` is the configurable form of the loop. It holds at most `limit` messages (default 1024) while your loop body is busy, dropping the oldest, and stops when the signal aborts or the socket is terminated.
+`connection.stream({ limit, signal })` is the configurable form of the loop. It holds at most `limit` messages (default 1024) while your loop body is busy, dropping the oldest, and stops when the signal aborts or the socket closes for good.
 
 ## Sending and requests
 
@@ -84,7 +86,7 @@ const reply = await connection.request({ action: 'ping', payload: null });
 `request()` stamps the frame with a `ref` and resolves with the reply carrying the same `ref`. It rejects on the server's `error` reply, on timeout (10 seconds by default), or when the connection closes first. Any later frame carrying the same `ref`, such as a reply that arrives after its request timed out, is delivered to the handlers like any other message.
 
 ::: warning chanx 2.11.2 or later
-chanx echoes the `ref` on replies to plain (untopiced) frames from 2.11.2. Against an older server, `request()` on a channel times out; requests on a [topic](./topics) work on any version with topics.
+chanx echoes the `ref` on replies to plain (untopiced) frames from 2.11.2. Against an older server, `request()` on a channel times out; requests on a [topic](/client/topics) work on any version with topics.
 :::
 
 ## Reconnecting
@@ -117,4 +119,4 @@ connection.close(); // give up this consumer's claim on the socket
 connection.terminate(); // close the socket for every consumer sharing it
 ```
 
-The difference matters when a socket is shared; see [Sharing and closing](./sharing).
+The difference matters when a socket is shared; see [Sharing and closing](/client/sharing).

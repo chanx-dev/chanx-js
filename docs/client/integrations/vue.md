@@ -33,7 +33,7 @@ const { status, lastMessage, send } = useChannel(chat, { params: room });
 
 `status`, `lastMessage`, `messages` and `connection` are refs. `params` and `queryParams` may themselves be refs: changing one reconnects without remounting.
 
-Delivery options (`buffer`, `only`, `on`) work as described in [Delivery modes](../guide/delivery).
+Delivery options (`buffer`, `only`, `on`) work as described in [Delivery modes](/client/delivery).
 
 ## `useTopic`
 

@@ -105,7 +105,7 @@ test a refusal.
 ## Groups and broadcasts
 
 Connections join groups, and a broadcast reaches every connection in them, in every
-process sharing the [channel layer](./layers).
+process sharing the [channel layer](/server/layers).
 
 ```ts
 consumer('/ws/room/{name}', {

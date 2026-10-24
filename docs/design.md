@@ -1,10 +1,10 @@
 # Design notes
 
-Why chanx-js is built the way it is. For how to use it, see the [guide](./guide/getting-started).
+Why chanx-js is built the way it is. For how to use it, start with [What is chanx-js?](/introduction/).
 
 ## Scope
 
-This repo is the JavaScript home for [chanx](https://github.com/huynguyengl99/chanx), not only a client: `@chanx-js/client` (runtime) and `@chanx-js/codegen` (CLI) today, with a Node.js server (`@chanx-js/server`) and a channel layer (`@chanx-js/layers`) in development, all speaking the same protocol as the Python server.
+This repo is the JavaScript home for [chanx](https://github.com/huynguyengl99/chanx), not only a client: `@chanx-js/client` (runtime), `@chanx-js/codegen` (CLI), a Node.js server (`@chanx-js/server`), channel layers (`@chanx-js/layers`) and a NestJS integration (`@chanx-js/nestjs`), all speaking the same protocol as the Python server.
 
 The wire format lives in one private workspace package, `@chanx-js/protocol`: envelope v1, the reserved keys, the framework actions, topic patterns and group naming. It is never published. Each package that needs it lists it as a dev dependency, so the build bundles the parts it uses: the client stays a single, zero-dependency install, and what only a server needs (group naming and its hash) is tree-shaken out of it. The client's public API re-exports the protocol values it always has.
 
@@ -72,7 +72,7 @@ So chanx-js takes the design, not the dependency, and adds what that library can
 
 ## When to share a socket
 
-Sharing is on by default only for channels that carry topics. There, frames are routed per topic and requests matched by `ref`, so consumers stay isolated, and multiplexing is the reason topics exist. A shared plain socket is one inbox, where a reply to one consumer's `send()` reaches all of them: a silent correctness bug, so plain channels get a socket each unless they opt in. It is the same split as Socket.IO, which shares its multiplexed connection, and react-use-websocket, which defaults `share` to `false`. The remaining cost of sharing topics is the second subscriber's initial state; see [State pushed on join](./guide/topics#state-pushed-on-join).
+Sharing is on by default only for channels that carry topics. There, frames are routed per topic and requests matched by `ref`, so consumers stay isolated, and multiplexing is the reason topics exist. A shared plain socket is one inbox, where a reply to one consumer's `send()` reaches all of them: a silent correctness bug, so plain channels get a socket each unless they opt in. It is the same split as Socket.IO, which shares its multiplexed connection, and react-use-websocket, which defaults `share` to `false`. The remaining cost of sharing topics is the second subscriber's initial state; see [State pushed on join](/client/topics#state-pushed-on-join).
 
 ## Errors in user code
 
@@ -96,7 +96,7 @@ The client relies on these server behaviours. Each was checked against a real ch
 - **Replies echo the request's `ref`**: on topic frames always, on plain frames since chanx 2.11.2. Pushes carry none. Every connection on a shared socket sees every frame, so refs are prefixed per connection and a reply with another connection's prefix is ignored.
 - **Subscriptions are per socket.** An `unsubscribe` from one consumer would cut off every other consumer of that topic on the socket, so the client counts subscribers on the socket and only unsubscribes when the last one leaves.
 - **Disconnecting leaves every topic.** The server runs `on_unsubscribe` for each subscription when a socket closes, so terminating sends no `unsubscribe` frames of its own.
-- **A duplicate subscribe does not rerun `on_subscribe`.** A second consumer joining a topic already subscribed on its socket gets no initial state; see [Topics](./guide/topics#state-pushed-on-join).
+- **A duplicate subscribe does not rerun `on_subscribe`.** A second consumer joining a topic already subscribed on its socket gets no initial state; see [Topics](/client/topics#state-pushed-on-join).
 - **There is no built-in ping handler.** A consumer that declares none answers each ping with an `error` frame, so the heartbeat only runs on channels whose schema declares ping and pong.
 - **The `action` constant is not in `required`**, because it also has a default. The generator treats a constant as always present, or the discriminated unions would admit `undefined`.
 

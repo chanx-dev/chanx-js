@@ -5,69 +5,122 @@ import apiSidebar from '../api/typedoc-sidebar.json';
 
 const repo = 'https://github.com/huynguyengl99/chanx-js';
 
+const guideSidebar = [
+  {
+    text: 'Introduction',
+    items: [
+      { text: 'What is chanx-js?', link: '/introduction/' },
+      { text: 'Quick start', link: '/introduction/quick-start' },
+    ],
+  },
+  {
+    text: 'Tutorials',
+    items: [
+      { text: 'Build a chat server', link: '/tutorials/chat-server' },
+      { text: 'Build a chat UI in React', link: '/tutorials/chat-ui' },
+    ],
+  },
+  {
+    text: 'Server',
+    items: [
+      { text: 'Getting started', link: '/server/' },
+      { text: 'Consumers', link: '/server/consumers' },
+      { text: 'Topics', link: '/server/topics' },
+      { text: 'AsyncAPI', link: '/server/asyncapi' },
+      { text: 'Testing', link: '/server/testing' },
+    ],
+  },
+  {
+    text: 'Server integrations',
+    collapsed: false,
+    items: [
+      { text: 'Overview', link: '/server/integrations/' },
+      { text: 'Node, Express, Koa', link: '/server/integrations/node' },
+      { text: 'Fastify', link: '/server/integrations/fastify' },
+      { text: 'Hono', link: '/server/integrations/hono' },
+      { text: 'Bun, Deno and crossws', link: '/server/integrations/crossws' },
+      { text: 'NestJS', link: '/server/integrations/nestjs' },
+    ],
+  },
+  {
+    text: 'Client',
+    items: [
+      { text: 'Getting started', link: '/client/' },
+      { text: 'Code generation', link: '/client/codegen' },
+      { text: 'Connections', link: '/client/connections' },
+      { text: 'Topics', link: '/client/topics' },
+    ],
+  },
+  {
+    text: 'Client integrations',
+    collapsed: false,
+    items: [
+      { text: 'React', link: '/client/integrations/react' },
+      { text: 'Vue', link: '/client/integrations/vue' },
+      { text: 'Svelte', link: '/client/integrations/svelte' },
+      { text: 'Solid', link: '/client/integrations/solid' },
+      { text: 'Node services and scripts', link: '/client/integrations/node' },
+    ],
+  },
+  {
+    text: 'Advanced',
+    items: [
+      { text: 'Channel layers', link: '/server/layers' },
+      { text: 'Python and Node together', link: '/advanced/python' },
+      { text: 'Delivery modes', link: '/client/delivery' },
+      { text: 'Sharing and closing', link: '/client/sharing' },
+    ],
+  },
+  {
+    text: 'Reference',
+    items: [
+      { text: 'API', link: '/api/' },
+      { text: 'Changelog', link: '/reference/changelog' },
+      { text: 'Design notes', link: '/design' },
+      { text: 'Ecosystem', link: '/ecosystem' },
+    ],
+  },
+];
+
 export default defineConfig({
   title: 'chanx-js',
   description:
     'Type-safe WebSockets for TypeScript, end to end: typed servers, generated clients, topics and groups.',
   base: '/chanx-js/',
   cleanUrls: true,
+  // Tutorials link to the server the reader runs, at localhost.
+  ignoreDeadLinks: 'localhostLinks',
   head: [['meta', { name: 'theme-color', content: '#3f51b5' }]],
   themeConfig: {
     nav: [
-      { text: 'Guide', link: '/guide/getting-started', activeMatch: '/guide/' },
-      { text: 'Frameworks', link: '/frameworks/react', activeMatch: '/frameworks/' },
-      { text: 'Server', link: '/server/', activeMatch: '/server/' },
-      { text: 'API', link: '/api/', activeMatch: '/api/' },
-      { text: 'Design', link: '/design' },
+      {
+        text: 'Guide',
+        link: '/introduction/',
+        activeMatch: '^/(introduction|tutorials|advanced)/',
+      },
+      { text: 'Server', link: '/server/', activeMatch: '^/server/' },
+      { text: 'Client', link: '/client/', activeMatch: '^/client/' },
+      {
+        text: 'Reference',
+        activeMatch: '^/(api|reference)/|^/design',
+        items: [
+          { text: 'API', link: '/api/' },
+          { text: 'Changelog', link: '/reference/changelog' },
+          { text: 'Design notes', link: '/design' },
+        ],
+      },
       {
         text: 'Ecosystem',
         items: [
+          { text: 'Overview', link: '/ecosystem' },
           { text: 'chanx', link: 'https://github.com/huynguyengl99/chanx' },
           { text: 'chanx-kit', link: 'https://huynguyengl99.github.io/chanx-kit/' },
         ],
       },
     ],
     sidebar: {
-      '/guide/': [
-        {
-          text: 'Guide',
-          items: [
-            { text: 'Getting started', link: '/guide/getting-started' },
-            { text: 'Code generation', link: '/guide/codegen' },
-            { text: 'Connections', link: '/guide/connections' },
-            { text: 'Topics', link: '/guide/topics' },
-            { text: 'Delivery modes', link: '/guide/delivery' },
-            { text: 'Sharing and closing', link: '/guide/sharing' },
-          ],
-        },
-      ],
-      '/frameworks/': [
-        {
-          text: 'Frameworks',
-          items: [
-            { text: 'React', link: '/frameworks/react' },
-            { text: 'Vue', link: '/frameworks/vue' },
-            { text: 'Svelte', link: '/frameworks/svelte' },
-            { text: 'Solid', link: '/frameworks/solid' },
-            { text: 'Plain JS and Node', link: '/frameworks/vanilla' },
-          ],
-        },
-      ],
-      '/server/': [
-        {
-          text: 'Server',
-          items: [
-            { text: 'Getting started', link: '/server/' },
-            { text: 'Consumers', link: '/server/consumers' },
-            { text: 'Topics', link: '/server/topics' },
-            { text: 'Serving', link: '/server/serving' },
-            { text: 'Channel layers', link: '/server/layers' },
-            { text: 'AsyncAPI', link: '/server/asyncapi' },
-            { text: 'Testing', link: '/server/testing' },
-            { text: 'NestJS', link: '/server/nestjs' },
-          ],
-        },
-      ],
+      // One sidebar for the guide, in reading order; the API reference keeps its own.
+      '/': guideSidebar,
       '/api/': [{ text: 'API reference', items: apiSidebar }],
     },
     search: { provider: 'local' },

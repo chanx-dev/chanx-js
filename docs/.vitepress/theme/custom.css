@@ -20,3 +20,53 @@
     max-width: 820px;
   }
 }
+
+/* Code in a table is a name or a call, read as one word: never break it. Wide tables
+   scroll sideways instead. */
+.vp-doc td code {
+  white-space: nowrap;
+}
+
+/* The left-to-right pipeline on "What is chanx-js?", stacked on narrow screens. */
+.flow {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.flow-step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  background: var(--vp-c-bg-soft);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.flow-step strong {
+  color: var(--vp-c-brand-1);
+}
+
+.flow-step span {
+  color: var(--vp-c-text-2);
+}
+
+.flow-arrow {
+  align-self: center;
+  color: var(--vp-c-text-3);
+}
+
+@media (max-width: 640px) {
+  .flow {
+    flex-direction: column;
+  }
+
+  .flow-arrow {
+    transform: rotate(90deg);
+  }
+}

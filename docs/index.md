@@ -11,7 +11,7 @@ hero:
       link: /server/
     - theme: alt
       text: Connect a client
-      link: /guide/getting-started
+      link: /client/
     - theme: alt
       text: GitHub
       link: https://github.com/huynguyengl99/chanx-js
@@ -93,4 +93,4 @@ connection.send({ action: 'chat', payload: { text: 'hello' } });
 
 Run the server, then the client: it prints `hello`, broadcast back to everyone in
 `lobby`. From here, [build out the server](/server/) or
-[use the client in your framework](/guide/getting-started).
+[use the client in your framework](/client/).

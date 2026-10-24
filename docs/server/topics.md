@@ -2,7 +2,7 @@
 
 A topic is a stream a client subscribes to by name, such as `room:lobby`, with its own
 handlers and authorization. One connection can hold many, which is what
-[topics on the client](../guide/topics) build on.
+[topics on the client](/client/topics) build on.
 
 ## Define a topic
 

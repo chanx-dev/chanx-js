@@ -18,7 +18,7 @@ servers can share one Redis.
 
 **[Documentation](https://huynguyengl99.github.io/chanx-js/)** ·
 [Server guide](https://huynguyengl99.github.io/chanx-js/server/) ·
-[Client guide](https://huynguyengl99.github.io/chanx-js/guide/getting-started) ·
+[Client guide](https://huynguyengl99.github.io/chanx-js/client/) ·
 [API reference](https://huynguyengl99.github.io/chanx-js/api/)
 
 ## Why chanx-js

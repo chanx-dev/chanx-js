@@ -59,7 +59,7 @@ chanx gives every message's `action` a constant _and_ a default, so the schema l
 
 ### Heartbeat detection
 
-chanx has no built-in ping handler. A channel is marked `heartbeat: true` only when its schema declares both sending `ping` and receiving `pong`, and the runtime only runs a heartbeat on marked channels. See [Connections](./connections#heartbeat).
+chanx has no built-in ping handler. A channel is marked `heartbeat: true` only when its schema declares both sending `ping` and receiving `pong`, and the runtime only runs a heartbeat on marked channels. See [Connections](/client/connections#heartbeat).
 
 ## JavaScript output
 
@@ -86,7 +86,7 @@ createClient({ validate: { outbound: true, inbound: false } });
 
 The default validates outbound messages always (cheap, and it catches real bugs) and inbound messages only in development, where a token stream's cost does not matter. Development means `process.env.NODE_ENV` is not `production`, which Vite, webpack and Next.js all set at build time.
 
-Validation checks a message and never changes it: your handlers get the message exactly as the server sent it, whether validation ran or not. An outbound message that fails throws from `send()`, since that is a bug at the call site. An inbound one that fails is reported (see [Receiving](./connections#receiving)) and not delivered.
+Validation checks a message and never changes it: your handlers get the message exactly as the server sent it, whether validation ran or not. An outbound message that fails throws from `send()`, since that is a bug at the call site. An inbound one that fails is reported (see [Receiving](/client/connections#receiving)) and not delivered.
 
 ## Reusing existing types
 
@@ -131,7 +131,7 @@ It is purely type-level, so it works as a `.d.ts` under `--emit js` too, and run
 
 ## Your own hooks
 
-Codegen emits framework-neutral descriptors, not hooks: a descriptor already carries the address, params, topics and message types, so `useChannel(notifications)` is fully typed as it is. The hooks worth having carry your app's defaults (a token, when to connect, how to buffer), which a generator cannot know. Write them as thin wrappers; see [React](../frameworks/react#your-own-hooks), [Vue](../frameworks/vue#your-own-composables), [Svelte](../frameworks/svelte#your-own-stores) and [Solid](../frameworks/solid#your-own-primitives).
+Codegen emits framework-neutral descriptors, not hooks: a descriptor already carries the address, params, topics and message types, so `useChannel(notifications)` is fully typed as it is. The hooks worth having carry your app's defaults (a token, when to connect, how to buffer), which a generator cannot know. Write them as thin wrappers; see [React](/client/integrations/react#your-own-hooks), [Vue](/client/integrations/vue#your-own-composables), [Svelte](/client/integrations/svelte#your-own-stores) and [Solid](/client/integrations/solid#your-own-primitives).
 
 ## Name clashes
 

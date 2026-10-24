@@ -1,7 +1,7 @@
 # AsyncAPI
 
 `chanx.asyncapi()` documents every consumer and topic as an AsyncAPI 3 document, laid
-out as Python's chanx lays it out. [`@chanx-js/codegen`](../guide/codegen) turns it
+out as Python's chanx lays it out. [`@chanx-js/codegen`](/client/codegen) turns it
 into a typed client exactly as it would a Python server's.
 
 ## Serve it

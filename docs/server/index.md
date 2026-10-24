@@ -6,8 +6,8 @@ and generated clients work against either server, and the two can share one Redi
 
 Three packages make up the server side:
 
-- **`@chanx-js/server`**: messages, consumers, topics, AsyncAPI, and adapters for Node,
-  crossws and Hono.
+- **`@chanx-js/server`**: messages, consumers, topics, AsyncAPI, testing helpers, and
+  adapters for Node, Fastify, Hono and crossws.
 - **`@chanx-js/layers`**: channel layers, so broadcasts reach every process. The Redis
   layer is wire-compatible with Python's.
 - **`@chanx-js/nestjs`**: consumers and topics as injectable NestJS gateways.
@@ -89,7 +89,10 @@ Connect a client to `ws://localhost:8000/ws/chat/lobby` and send
 
 ## Next
 
+- [Build a chat server](/tutorials/chat-server): the same pieces, step by step, with
+  authentication, groups and tests.
 - [Consumers](./consumers): replies, state, authentication, groups and events.
 - [Topics](./topics): many subscribable streams over one connection.
-- [Serving](./serving): Express, Fastify, Koa, Bun, Deno, Hono and more.
+- [Integrations](/server/integrations/): Express, Fastify, Koa, Hono, Bun, Deno and
+  NestJS.
 - [AsyncAPI](./asyncapi): document the server and generate its client.

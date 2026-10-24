@@ -14,6 +14,9 @@ const pong = await client.request({ action: 'ping' });
 expect(pong).toMatchObject({ action: 'pong' });
 ```
 
+Pass `{ headers }` as a third argument to test a consumer that authenticates by header:
+`connect(chanx, '/ws/ingest', { headers: { authorization: 'Bearer key' } })`.
+
 | Method                      | What it does                                              |
 | --------------------------- | --------------------------------------------------------- |
 | `ready`                     | Resolves once connected; `false` if refused.              |
@@ -27,7 +30,7 @@ expect(pong).toMatchObject({ action: 'pong' });
 | `subscribe(topic)`          | Subscribe; resolves with the reply.                       |
 | `unsubscribe(topic)`        | Unsubscribe; resolves with the reply.                     |
 | `close()`                   | Close; resolves once the server tore the connection down. |
-| `closed`                    | Resolves with the close code when the server closes.      |
+| `closed`                    | Resolves with `{ code, reason }` when the server closes.  |
 
 `receive` and `request` wait up to a second, `receiveAll` and `receiveNothing` 100 ms;
 pass `{ timeout }` to change it.

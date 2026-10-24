@@ -1,11 +1,14 @@
-# Getting started
+# Client: getting started
 
-chanx-js is the JavaScript side of [chanx](https://github.com/huynguyengl99/chanx). On the client, it has two packages:
+The client connects to any chanx server, [Node](/server/) or
+[Python](https://github.com/huynguyengl99/chanx), from a browser, a framework app or
+another service. Two packages make it up:
 
-- **`@chanx-js/client`**: the runtime. Zero dependencies and framework-agnostic, with optional bindings on `@chanx-js/client/react`, `@chanx-js/client/vue`, `@chanx-js/client/svelte` and `@chanx-js/client/solid`.
-- **`@chanx-js/codegen`**: a CLI that turns a chanx AsyncAPI 3 schema into typed channel descriptors.
-
-The client talks to Python's chanx or to the Node server, [`@chanx-js/server`](../server/), alike.
+- **`@chanx-js/client`**: the runtime. No dependencies and framework-agnostic, with
+  bindings on `@chanx-js/client/react`, `@chanx-js/client/vue`, `@chanx-js/client/svelte`
+  and `@chanx-js/client/solid`.
+- **`@chanx-js/codegen`**: a CLI that turns the server's AsyncAPI 3 schema into typed
+  channel descriptors.
 
 ## Install
 
@@ -46,7 +49,7 @@ This writes three files:
 | `channels.ts` | A descriptor per channel, with topics nested under the connection they use |
 | `index.ts`    | Re-exports both                                                            |
 
-Commit the output and regenerate whenever the server's schema changes. See [Code generation](./codegen) for every option, including JavaScript output and reusing types you already have.
+Commit the output and regenerate whenever the server's schema changes. See [Code generation](/client/codegen) for every option, including JavaScript output and reusing types you already have.
 
 ## Connect
 
@@ -102,11 +105,13 @@ const channel = createChannel(chat, { params: { room: 'lobby' } });
 
 :::
 
-Components on a channel that carries topics share one socket, which closes when the last of them unmounts. A plain channel gives each component its own socket unless you pass `share: true`; see [Sharing and closing](./sharing).
+Components on a channel that carries topics share one socket, which closes when the last of them unmounts. A plain channel gives each component its own socket unless you pass `share: true`; see [Sharing and closing](/client/sharing).
 
 ## Next
 
-- [Connections](./connections): options, requests, reconnects and the heartbeat.
-- [Topics](./topics): many streams over one socket.
-- [Delivery modes](./delivery): `lastMessage`, accumulating buffers, and callbacks for hot streams.
-- [Sharing and closing](./sharing): how shared sockets behave, and how to close one for everyone.
+- [Build a chat UI in React](/tutorials/chat-ui): a whole client, step by step.
+- [Connections](/client/connections): options, requests, reconnects and the heartbeat.
+- [Topics](/client/topics): many streams over one socket.
+- Your framework: [React](/client/integrations/react), [Vue](/client/integrations/vue),
+  [Svelte](/client/integrations/svelte), [Solid](/client/integrations/solid), or
+  [a Node service](/client/integrations/node).

@@ -56,7 +56,7 @@ export class AppModule {}
 `ChanxModule` finds every `@ChanxConsumer` and `@ChanxTopic` provider when the app
 starts, and serves them on the app's HTTP server, on Express or Fastify. `forRoot()`
 takes `createChanx`'s options (`layers`, `camelize`, ...) plus `pingInterval`, and
-`asyncapi` to serve the [AsyncAPI](./asyncapi) docs page and document:
+`asyncapi` to serve the [AsyncAPI](/server/asyncapi) docs page and document:
 
 ````ts
 ChanxModule.forRoot({ asyncapi: { title: 'Chat API' } }); // /asyncapi, .json, .yaml
@@ -175,7 +175,7 @@ Mount it in a consumer's options: `@ChanxConsumer('/ws/hub', { name: 'hub', topi
 ## AsyncAPI in CI
 
 `chanx-nestjs asyncapi` writes the document from the compiled module, without serving
-it, to commit it or hand it to [`@chanx-js/codegen`](../guide/codegen):
+it, to commit it or hand it to [`@chanx-js/codegen`](/client/codegen):
 
 ```bash
 npx chanx-nestjs asyncapi dist/app.module.js -o asyncapi.json --title "Chat API"

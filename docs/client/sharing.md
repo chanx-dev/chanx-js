@@ -33,7 +33,7 @@ Every consumer of a shared plain socket sees every message, so use `request()` f
 ## Consumers sharing a socket
 
 - A request's reply reaches only the consumer that made it.
-- One unsubscribing from a topic, or unmounting, never unsubscribes the others; see [Topics](./topics#leaving).
+- One unsubscribing from a topic, or unmounting, never unsubscribes the others; see [Topics](/client/topics#leaving).
 - Socket options (reconnect, heartbeat, protocols) belong to the socket, so the **first** consumer to open a shared socket sets them. Later consumers joining it inherit them.
 
 ## Closing

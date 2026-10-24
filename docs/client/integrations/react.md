@@ -50,7 +50,7 @@ It returns:
 | `terminate`                 | Close the socket for every component sharing it  |
 | `connection`                | The underlying connection, once open             |
 
-Options: everything a [connection](../guide/connections) takes, plus `enabled`, `buffer`, `only`, `on`, `onError` and `onUnhandled`; see [Delivery modes](../guide/delivery).
+Options: everything a [connection](/client/connections) takes, plus `enabled`, `buffer`, `only`, `on`, `onError` and `onUnhandled`; see [Delivery modes](/client/delivery).
 
 The connection is rebuilt only when an option that shapes it changes: `params`, `queryParams` (a refreshed token, say), `protocols`, `share` or `enabled`. An inline `on` map changes every render and does not reconnect.
 
@@ -80,7 +80,7 @@ const { subscribed, lastMessage } = useTopics(topicHub, {
 });
 ```
 
-See [Topics](../guide/topics).
+See [Topics](/client/topics).
 
 ## Your own hooks
 
@@ -121,4 +121,4 @@ While disabled, `status` is `closed` and nothing connects.
 
 ## StrictMode
 
-Supported. The development double-mount rejoins the same socket instead of reconnecting; see [Sharing](../guide/sharing#react-strictmode).
+Supported. The development double-mount rejoins the same socket instead of reconnecting; see [Sharing](/client/sharing#react-strictmode).
