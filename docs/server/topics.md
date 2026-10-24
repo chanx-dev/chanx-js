@@ -65,32 +65,8 @@ const room = roomTopic.asConsumer('/ws/room/{room_name}');
 
 ## Classes
 
-One instance serves one subscription. The class name names the layer group, so two
-servers sharing a layer must use the same name:
-
-```ts
-import { On, Topic } from '@chanx-js/server';
-
-class RoomTopic extends Topic {
-  static override pattern = 'room:{room_name}';
-  static override passthrough = [RoomEvent];
-
-  override authorize() {
-    return this.params.room_name !== 'secret';
-  }
-
-  @On(Post, { output: Posted })
-  async post(m: MessageOf<typeof Post>) {
-    await this.publish(RoomEvent.create(m.payload));
-    return Posted.create(m.payload);
-  }
-}
-
-consumer('/ws/hub', { name: 'hub', topics: [RoomTopic] });
-```
-
-`topicConsumer(RoomTopic, '/ws/room/{room_name}')` serves a class topic on its own
-route.
+A topic can be a class too, one instance per subscription. See
+[Classes](/server/classes#topics).
 
 ## Group names
 

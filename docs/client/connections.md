@@ -25,7 +25,7 @@ const client = createClient({ baseUrl: 'wss://api.example.com' });
 | `headers`           |                              | Sent on the upgrade; Node, Bun and Deno only. Merge like `queryParams`    |
 | `maxQueuedFrames`   | `100`                        | Frames buffered before the socket opens; past this the oldest is dropped  |
 | `closeDelay`        | `100` ms                     | Grace period before an unused socket closes                               |
-| `validate`          | outbound always, inbound dev | See [Validation](/client/codegen#validation)                              |
+| `validate`          | outbound always, inbound dev | See [Validation](/client/validation)                                      |
 | `socketFactory`     | global `WebSocket`           | Supply a WebSocket, e.g. from `ws` on older Node                          |
 
 Every option except `baseUrl` can also be passed per connection. Address `params` are URL-encoded, so a value never adds a path segment or a query.

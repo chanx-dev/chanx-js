@@ -67,6 +67,7 @@ const serverSidebar = [
     text: 'Advanced',
     items: [
       { text: 'Channel layers', link: '/server/layers' },
+      { text: 'Classes', link: '/server/classes' },
       { text: 'Python and Node together', link: '/advanced/python' },
     ],
   },
@@ -98,6 +99,8 @@ const clientSidebar = [
     items: [
       { text: 'Delivery modes', link: '/client/delivery' },
       { text: 'Sharing and closing', link: '/client/sharing' },
+      { text: 'Validation', link: '/client/validation' },
+      { text: 'Reusing existing types', link: '/client/reusing-types' },
     ],
   },
 ];

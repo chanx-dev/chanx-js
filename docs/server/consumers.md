@@ -195,44 +195,5 @@ consumer('/ws/chat', {
 
 ## Classes
 
-The same consumer as a class, for shared logic, base classes and hooks to override. One
-instance serves one connection, so its fields are per-connection state:
-
-```ts
-import {
-  AsyncJsonWebsocketConsumer,
-  Consumer,
-  On,
-} from '@chanx-js/server';
-
-@Consumer('/ws/chat/{room}', { name: 'chat', emits: [Notice] })
-class ChatConsumer extends AsyncJsonWebsocketConsumer<User> {
-  messages = 0;
-
-  @On(PingMessage, { output: PongMessage })
-  ping() {
-    return PongMessage.create();
-  }
-
-  @On(Chat)
-  async chat(m: MessageOf<typeof Chat>) {
-    this.messages++;
-    await this.push(
-      Notice.create({
-        text: `${this.params.room}: ${m.payload.text}`,
-      }),
-    );
-  }
-
-  override onConnect() {
-    console.log(`${this.conn.user.name} joined`);
-  }
-}
-
-createChanx({ consumers: [ChatConsumer] });
-```
-
-The decorators work with standard decorators and with `experimentalDecorators`. A
-subclass method overrides the handler of the same name, decorated or not, and two
-methods handling one action are an error. `@OnEvent` handles events; the error hooks
-are methods to override.
+The same consumer can be a class instead, for shared logic, base classes and hooks to
+override. See [Classes](/server/classes).
