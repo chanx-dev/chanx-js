@@ -18,7 +18,7 @@ env:
 
 jobs:
   check:
-    name: Lint, typecheck and test
+    name: Lint, typecheck and build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -31,8 +31,25 @@ jobs:
       - run: pnpm lint
       - run: pnpm format
       - run: pnpm typecheck
-      - run: pnpm test
       - run: pnpm build
+
+  test:
+    name: Test ${{ matrix.project }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The Vitest projects in vitest.config.ts, one per package.
+        project: [client, 'client:solid', codegen, layers, protocol, server, nestjs]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test --project ${{ matrix.project }}
 
   conformance:
     name: Conformance
@@ -76,7 +93,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test packages/layers packages/server
+      - run: pnpm test --project layers --project server
 
   runtimes:
     name: Server on ${{ matrix.runtime }}
