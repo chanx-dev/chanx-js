@@ -12,7 +12,7 @@ import { WebSocketServer } from 'ws';
 import type { Chanx } from '../app';
 import type { AsyncAPIServeOptions } from '../asyncapi-http';
 import { asyncapiHandler } from '../asyncapi-http';
-import { Heartbeat, serveWebSocket, toHeaders } from './ws-socket';
+import { Heartbeat, refusalResponse, serveWebSocket, toHeaders } from './ws-socket';
 
 type UpgradeListener = (request: IncomingMessage, socket: Duplex, head: Buffer) => void;
 
@@ -50,9 +50,19 @@ export function attachChanx(
   const onUpgrade = (request: IncomingMessage, socket: Duplex, head: Buffer) => {
     const path = new URL(request.url ?? '/', 'ws://localhost').pathname;
     if (chanx.match(path)) {
-      wss.handleUpgrade(request, socket, head, (ws) =>
-        serveWebSocket(chanx, ws, request, heartbeat),
-      );
+      chanx
+        .upgrade({ url: request.url ?? '/', headers: toHeaders(request.headers) })
+        .then((upgrade) => {
+          if (!upgrade?.accepted) {
+            if (upgrade) socket.end(refusalResponse(upgrade));
+            else socket.destroy();
+            return;
+          }
+          wss.handleUpgrade(request, socket, head, (ws) =>
+            serveWebSocket(chanx, ws, upgrade, heartbeat),
+          );
+        })
+        .catch((error: unknown) => socket.destroy(error as Error));
       return;
     }
     for (const listener of others) listener.call(server, request, socket, head);

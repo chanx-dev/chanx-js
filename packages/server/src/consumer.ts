@@ -139,6 +139,12 @@ export interface ConsumerOptions<
   authenticate?: (
     request: ConnectRequest<Path>,
   ) => User | false | null | undefined | Promise<User | false | null | undefined>;
+  /**
+   * Run `authenticate` before accepting the socket, and refuse it with an HTTP status
+   * instead of an `authentication` message: for server-to-server clients, or to hold no
+   * socket for anonymous traffic. A browser cannot read why its upgrade failed.
+   */
+  rejectBeforeUpgrade?: boolean;
   /** Runs once authenticated and the groups are joined. */
   onConnect?: (ctx: Context<Path, State, User, MessageOf<Emits>>) => void | Promise<void>;
   /** Runs when the socket closes, before the groups are left. */

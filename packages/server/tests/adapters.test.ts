@@ -134,7 +134,7 @@ function open(
   };
 }
 
-describe.each(ADAPTERS)('the %s adapter', (_name, start) => {
+describe.each(ADAPTERS)('the %s adapter', (name, start) => {
   const app = () => createChanx({ consumers: [chat], logger: { error() {}, warn() {} } });
 
   it('serves a consumer: authentication, path params, ref echo', async () => {
@@ -167,6 +167,43 @@ describe.each(ADAPTERS)('the %s adapter', (_name, start) => {
     await client.next(1);
     client.ws.close();
     await vi.waitFor(() => expect(disconnected).toHaveBeenCalledOnce());
+  });
+
+  it('refuses an upgrade with an HTTP status first, given rejectBeforeUpgrade', async () => {
+    const guarded = consumer('/ws/guarded', {
+      name: 'guarded',
+      authenticate: ({ headers }) =>
+        headers.get('authorization') === 'Bearer ok' ? { id: 1 } : false,
+      rejectBeforeUpgrade: true,
+    });
+    const url = await start(createChanx({ consumers: [guarded] }));
+
+    const refused = new WebSocket(`${url}/ws/guarded`);
+    // Closing a handshake the server refused reports it as an error: expected here.
+    refused.on('error', () => {});
+    cleanups.push(() => refused.terminate());
+    const response = await new Promise<{ status?: number; body: string }>((resolve) =>
+      refused.on('unexpected-response', (_request, res) => {
+        let body = '';
+        res.on('data', (chunk: Buffer) => (body += chunk.toString()));
+        res.on('end', () => resolve({ status: res.statusCode, body }));
+      }),
+    );
+    expect(response).toEqual({
+      status: 401,
+      // @hono/node-server answers a refused upgrade with its status alone.
+      body:
+        name === 'hono'
+          ? ''
+          : JSON.stringify({ detail: 'Authentication credentials were not provided.' }),
+    });
+
+    const client = open(`${url}/ws/guarded`);
+    await client.next(1);
+    expect(client.frames[0]).toMatchObject({
+      action: 'authentication',
+      payload: { status_code: 200 },
+    });
   });
 
   it('refuses a path no consumer serves', async () => {

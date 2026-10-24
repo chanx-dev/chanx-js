@@ -6,7 +6,7 @@ import {
   safeGroupName,
 } from '@chanx-js/protocol';
 
-import type { ResolvedOptions, Transport } from './app';
+import type { Logger, ResolvedOptions, Transport } from './app';
 import { camelize, decamelize } from './case';
 import type {
   BroadcastOptions,
@@ -92,11 +92,43 @@ function handlersOf(definition: ConsumerDefinition | TopicDefinition) {
   return found;
 }
 
+export type AuthenticationResult =
+  | { user: unknown }
+  | { status: number; statusText: string; data: unknown }
+  | { crashed: unknown };
+
+/** Run a consumer's authenticate, as the `authentication` message and an HTTP refusal report it. */
+export async function authenticateRequest(
+  consumer: { authenticate?: (request: never) => unknown },
+  request: ConnectRequest,
+  logger: Logger,
+): Promise<AuthenticationResult> {
+  try {
+    const user = await (consumer.authenticate as (request: ConnectRequest) => unknown)(
+      request,
+    );
+    if (user === false || user === null || user === undefined) {
+      return {
+        status: 401,
+        statusText: 'Unauthorized',
+        data: { detail: 'Authentication credentials were not provided.' },
+      };
+    }
+    return { user };
+  } catch (error) {
+    if (error instanceof AuthenticationError) {
+      return { status: error.status, statusText: error.statusText, data: error.data };
+    }
+    logger.error('chanx: authentication raised', error);
+    return { crashed: error };
+  }
+}
 export function openSession(
   definition: ConsumerDefinition,
   request: ConnectRequest,
   transport: Transport,
   options: ResolvedOptions & { layer: ChannelLayer },
+  authenticated?: { user: unknown },
 ): Session {
   const { logger, layer } = options;
   const consumer = definition.options;
@@ -118,33 +150,38 @@ export function openSession(
     return channel;
   };
 
-  const conn: Connection<string, unknown> = {
-    ...request,
-    id: crypto.randomUUID(),
-    user: undefined,
-    get channelName() {
-      return requireChannel().name;
-    },
-    groups,
-    async join(group) {
-      if (isClosed || groups.includes(group)) return;
-      await layer.groupAdd(group, requireChannel().name);
-      groups.push(group);
-    },
-    async leave(group) {
-      const index = groups.indexOf(group);
-      if (index === -1) return;
-      groups.splice(index, 1);
-      await layer.groupDiscard(group, requireChannel().name);
-    },
-    push: async (message) => write(message, {}),
-    broadcast: (message, options) => broadcast(message, options),
-    close(code, reason) {
-      if (isClosed) return;
-      isClosed = true;
-      transport.close(code, reason);
-    },
-  };
+  // Built on the request object itself: authenticate, before or after the upgrade, gets
+  // the very object every hook later sees as ctx.conn.
+  const conn = Object.defineProperties(
+    request,
+    Object.getOwnPropertyDescriptors({
+      id: crypto.randomUUID(),
+      user: undefined,
+      get channelName() {
+        return requireChannel().name;
+      },
+      groups,
+      async join(group: string) {
+        if (isClosed || groups.includes(group)) return;
+        await layer.groupAdd(group, requireChannel().name);
+        groups.push(group);
+      },
+      async leave(group: string) {
+        const index = groups.indexOf(group);
+        if (index === -1) return;
+        groups.splice(index, 1);
+        await layer.groupDiscard(group, requireChannel().name);
+      },
+      push: async (message: Message) => write(message, {}),
+      broadcast: (message: Message, options?: BroadcastOptions) =>
+        broadcast(message, options),
+      close(code?: number, reason?: string) {
+        if (isClosed) return;
+        isClosed = true;
+        transport.close(code, reason);
+      },
+    } satisfies Omit<Connection<string, unknown>, keyof ConnectRequest>),
+  ) as Connection<string, unknown>;
 
   const write = (message: object, envelope: Envelope) => {
     if (isClosed) return;
@@ -227,7 +264,10 @@ export function openSession(
   }
 
   const ready = (async () => {
-    if (consumer.authenticate && !(await authenticate())) {
+    if (authenticated) {
+      (conn as { user: unknown }).user = authenticated.user;
+      replyAuthentication(200, 'OK', { detail: 'OK' });
+    } else if (consumer.authenticate && !(await authenticate())) {
       conn.close();
       return false;
     }
@@ -255,29 +295,21 @@ export function openSession(
     return false;
   });
 
+  function replyAuthentication(status_code: number, status_text: string, data: unknown) {
+    write(AuthenticationMessage.create({ status_code, status_text, data }), {});
+  }
+
   async function authenticate(): Promise<boolean> {
-    const reply = (status_code: number, status_text: string, data: unknown) =>
-      write(AuthenticationMessage.create({ status_code, status_text, data }), {});
-    try {
-      const user = await consumer.authenticate!(conn);
-      if (user === false || user === null || user === undefined) {
-        reply(401, 'Unauthorized', {
-          detail: 'Authentication credentials were not provided.',
-        });
-        return false;
-      }
-      (conn as { user: unknown }).user = user;
-      reply(200, 'OK', { detail: 'OK' });
+    const result = await authenticateRequest(consumer, conn, logger);
+    if ('user' in result) {
+      (conn as { user: unknown }).user = result.user;
+      replyAuthentication(200, 'OK', { detail: 'OK' });
       return true;
-    } catch (error) {
-      if (error instanceof AuthenticationError) {
-        reply(error.status, error.statusText, error.data);
-      } else {
-        // As chanx: an unexpected failure is logged and the client told nothing.
-        logger.error('chanx: authentication raised', error);
-      }
-      return false;
     }
+    // As chanx: an unexpected failure is logged and the client told nothing.
+    if ('status' in result)
+      replyAuthentication(result.status, result.statusText, result.data);
+    return false;
   }
 
   async function handleFrame(data: string | BinaryFrame) {

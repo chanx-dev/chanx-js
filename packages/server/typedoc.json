@@ -26,6 +26,7 @@
     "Returned",
     "NeedsOf",
     "CreateArgs",
-    "SchemaResult"
+    "SchemaResult",
+    "Route"
   ]
 }

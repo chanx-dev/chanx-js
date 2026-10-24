@@ -83,7 +83,8 @@ DI, `attachChanx(app.getHttpServer(), chanx)` works too.
 - Binary frames are answered with an `error` (`json_invalid`), as chanx answers them;
   the connection stays open. crossws's uWebSockets adapter drops the binary flag, so
   every frame there looks binary: chanx cannot run on it.
-- A path no consumer serves is refused.
+- A path no consumer serves is refused, and so, with HTTP status, is an unauthenticated
+  upgrade to a consumer with [`rejectBeforeUpgrade`](./consumers#refusing-before-the-upgrade).
 - The crossws and Hono adapters leave pings to the runtime.
 
 ::: info Tested on

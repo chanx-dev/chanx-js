@@ -81,6 +81,27 @@ This is chanx's flow: the socket is accepted first, so a browser client can read
 was refused. `onConnect` runs once authenticated and the groups are joined;
 `onDisconnect` runs when the socket closes, before the groups are left.
 
+### Refusing before the upgrade
+
+`rejectBeforeUpgrade: true` runs `authenticate` before the socket is accepted, and
+refuses with an HTTP status instead: 401, or an `AuthenticationError`'s status, with the
+`authentication` message's data as a JSON body; 500 when `authenticate` throws. A
+successful client still gets the `authentication` message.
+
+```ts
+consumer('/ws/ingest', {
+  name: 'ingest',
+  authenticate: byApiKey,
+  rejectBeforeUpgrade: true,
+});
+```
+
+Use it for server-to-server clients, or to hold no socket for anonymous traffic. Not for
+browsers: a browser's `WebSocket` sees only that the connection failed, never why, and
+`@chanx-js/client` keeps retrying. On `@hono/node-server` the refusal carries its status
+but no body. The in-process test client always accepts first; call `chanx.upgrade()` to
+test a refusal.
+
 ## Groups and broadcasts
 
 Connections join groups, and a broadcast reaches every connection in them, in every

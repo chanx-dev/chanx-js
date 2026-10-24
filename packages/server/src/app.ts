@@ -4,12 +4,23 @@ import { InMemoryChannelLayer } from '@chanx-js/layers';
 import type { AsyncAPIDocument, AsyncAPIOptions } from './asyncapi';
 import { generateAsyncAPI } from './asyncapi';
 import type { AsyncJsonWebsocketConsumer } from './classes';
-import type { ConsumerDefinition, ConsumerSource, EventsOf } from './consumer';
+import type {
+  ConnectRequest,
+  ConsumerDefinition,
+  ConsumerSource,
+  EventsOf,
+} from './consumer';
 import { definitionOf } from './consumer';
 import type { PublishOptions, TopicLike } from './topic';
 import { topicDefinitionOf } from './topic';
 import type { Session } from './session';
-import { CHANNEL_EVENT, TOPIC_EVENT, openSession, topicGroup } from './session';
+import {
+  CHANNEL_EVENT,
+  TOPIC_EVENT,
+  authenticateRequest,
+  openSession,
+  topicGroup,
+} from './session';
 
 /** Where chanx reports handler failures and development warnings. */
 export interface Logger {
@@ -51,12 +62,44 @@ export interface ResolvedOptions {
 }
 
 /** A chanx app: serves consumers through an adapter, and sends to them from anywhere. */
+/** What an adapter hands chanx about a WebSocket upgrade. */
+export interface UpgradeRequest {
+  url: string | URL;
+  headers?: HeadersInit;
+}
+
+const ACCEPTED = Symbol('chanx.accepted');
+
+/** An upgrade chanx accepts: complete it, then pass this to `connect()`. */
+export interface AcceptedUpgrade {
+  readonly accepted: true;
+  readonly [ACCEPTED]: {
+    route: Route;
+    request: ConnectRequest;
+    user?: { value: unknown };
+  };
+}
+
+/** An upgrade chanx refuses, as the HTTP response to send instead. */
+export interface RefusedUpgrade {
+  readonly accepted: false;
+  readonly status: number;
+  readonly statusText: string;
+  /** The `authentication` message's data, as JSON. */
+  readonly body: string;
+}
+
 export interface Chanx {
   /** Whether a path belongs to a consumer, so an adapter can leave other upgrades alone. */
   match(path: string): boolean;
+  /**
+   * Decide on an upgrade before completing it: `undefined` when no consumer serves the URL,
+   * else accepted or, for a consumer with `rejectBeforeUpgrade`, possibly refused.
+   */
+  upgrade(request: UpgradeRequest): Promise<AcceptedUpgrade | RefusedUpgrade | undefined>;
   /** Serve an accepted socket. Returns `undefined` when no consumer serves the URL. */
   connect(
-    request: { url: string | URL; headers?: HeadersInit },
+    request: UpgradeRequest | AcceptedUpgrade,
     transport: Transport,
   ): Session | undefined;
   /**
@@ -131,17 +174,61 @@ export function createChanx(options: ChanxOptions): Chanx {
     return undefined;
   };
 
+  const accept = (request: UpgradeRequest): AcceptedUpgrade | undefined => {
+    const url = new URL(request.url, 'ws://localhost');
+    const found = find(url.pathname);
+    if (!found) return undefined;
+    const connectRequest = {
+      url,
+      headers: new Headers(request.headers),
+      params: found.params,
+    };
+    return {
+      accepted: true,
+      [ACCEPTED]: { route: found.route, request: connectRequest },
+    };
+  };
+
   const app: Chanx = {
     match: (path) => find(path) !== undefined,
+    async upgrade(request) {
+      const accepted = accept(request);
+      if (!accepted) return undefined;
+      const { route, request: connectRequest } = accepted[ACCEPTED];
+      const { options } = route.definition;
+      if (!options.rejectBeforeUpgrade || !options.authenticate) return accepted;
+      const result = await authenticateRequest(options, connectRequest, resolved.logger);
+      if ('user' in result) {
+        return {
+          ...accepted,
+          [ACCEPTED]: { ...accepted[ACCEPTED], user: { value: result.user } },
+        };
+      }
+      const refused =
+        'status' in result
+          ? result
+          : {
+              status: 500,
+              statusText: 'Internal Server Error',
+              data: { detail: 'Internal Server Error' },
+            };
+      return {
+        accepted: false,
+        status: refused.status,
+        statusText: refused.statusText,
+        body: JSON.stringify(refused.data),
+      };
+    },
     connect(request, transport) {
-      const url = new URL(request.url, 'ws://localhost');
-      const found = find(url.pathname);
-      if (!found) return undefined;
+      const accepted = 'accepted' in request ? request : accept(request);
+      if (!accepted) return undefined;
+      const { route, request: connectRequest, user } = accepted[ACCEPTED];
       return openSession(
-        found.route.definition,
-        { url, headers: new Headers(request.headers), params: found.params },
+        route.definition,
+        connectRequest,
         transport,
-        { ...resolved, layer: layerOf(found.route.definition) },
+        { ...resolved, layer: layerOf(route.definition) },
+        user && { user: user.value },
       );
     },
     async broadcastEvent(consumer, event, groups) {

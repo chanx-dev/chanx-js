@@ -5,7 +5,7 @@
  */
 import type { Hooks, Peer } from 'crossws';
 
-import type { Chanx } from '../app';
+import type { AcceptedUpgrade, Chanx } from '../app';
 import type { Session } from '../session';
 
 /**
@@ -16,19 +16,23 @@ import type { Session } from '../session';
 export function chanxHooks(chanx: Chanx): Partial<Hooks> {
   const sessions = new WeakMap<Peer, Session>();
   return {
-    upgrade(request) {
-      if (!chanx.match(new URL(request.url).pathname)) {
-        throw new Response('No consumer serves this path', { status: 404 });
+    async upgrade(request) {
+      const upgrade = await chanx.upgrade({ url: request.url, headers: request.headers });
+      if (!upgrade) throw new Response('No consumer serves this path', { status: 404 });
+      if (!upgrade.accepted) {
+        throw new Response(upgrade.body, {
+          status: upgrade.status,
+          statusText: upgrade.statusText,
+          headers: { 'content-type': 'application/json' },
+        });
       }
+      return { context: { chanx: upgrade } };
     },
     open(peer) {
-      const session = chanx.connect(
-        { url: peer.request.url, headers: peer.request.headers },
-        {
-          send: (data) => void peer.send(data),
-          close: (code = 1000, reason) => peer.close(code, reason),
-        },
-      );
+      const session = chanx.connect(peer.context.chanx as AcceptedUpgrade, {
+        send: (data) => void peer.send(data),
+        close: (code = 1000, reason) => peer.close(code, reason),
+      });
       if (!session) return peer.close(1008, 'No consumer serves this path');
       sessions.set(peer, session);
     },

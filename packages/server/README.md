@@ -91,6 +91,13 @@ Binary frames are refused with an error, as chanx refuses them. crossws drops
 uWebSockets' binary flag, so every frame there looks binary: chanx cannot run on
 crossws' uWebSockets adapter.
 
+## Authentication
+
+`authenticate` returns the user, or `false` to refuse. As in chanx, the socket is accepted
+first and the client gets an `authentication` message, so a browser can show why. With
+`rejectBeforeUpgrade: true`, `authenticate` runs before the upgrade and a refusal is an
+HTTP status instead, for server-to-server clients.
+
 ## Groups and events
 
 Connections join groups through a [channel layer](https://github.com/huynguyengl99/chanx-js/tree/main/packages/layers): in-memory by default, or

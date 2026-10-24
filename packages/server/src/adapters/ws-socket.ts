@@ -2,7 +2,7 @@ import type { IncomingHttpHeaders } from 'node:http';
 
 import type { WebSocket } from 'ws';
 
-import type { Chanx } from '../app';
+import type { AcceptedUpgrade, Chanx, RefusedUpgrade } from '../app';
 
 /** Pings for one `ws` server's sockets: who answered since the last round. */
 export class Heartbeat {
@@ -38,16 +38,13 @@ export class Heartbeat {
 export function serveWebSocket(
   chanx: Chanx,
   ws: WebSocket,
-  request: { url?: string; headers: IncomingHttpHeaders },
+  upgrade: AcceptedUpgrade,
   heartbeat: Heartbeat,
 ): void {
-  const session = chanx.connect(
-    { url: request.url ?? '/', headers: toHeaders(request.headers) },
-    {
-      send: (data) => ws.send(data),
-      close: (code = 1000, reason) => ws.close(code, reason),
-    },
-  );
+  const session = chanx.connect(upgrade, {
+    send: (data) => ws.send(data),
+    close: (code = 1000, reason) => ws.close(code, reason),
+  });
   if (!session) return ws.close(1008, 'No consumer serves this path');
   heartbeat.watch(ws);
   // A Buffer whether the frame was text or binary: ws's default binaryType.
@@ -60,5 +57,16 @@ export function serveWebSocket(
 export function toHeaders(headers: IncomingHttpHeaders): [string, string][] {
   return Object.entries(headers).flatMap(([name, value]) =>
     value === undefined ? [] : [[name, Array.isArray(value) ? value.join(', ') : value]],
+  );
+}
+
+/** A refused upgrade as raw HTTP, for a socket that was never upgraded. */
+export function refusalResponse(refused: RefusedUpgrade): string {
+  return (
+    `HTTP/1.1 ${refused.status} ${refused.statusText}\r\n` +
+    'Content-Type: application/json\r\n' +
+    `Content-Length: ${Buffer.byteLength(refused.body)}\r\n` +
+    'Connection: close\r\n\r\n' +
+    refused.body
   );
 }

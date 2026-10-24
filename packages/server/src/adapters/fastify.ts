@@ -7,9 +7,9 @@ import type { FastifyPluginAsync } from 'fastify';
 import type {} from '@fastify/websocket';
 import type { WebSocket } from 'ws';
 
-import type { Chanx } from '../app';
+import type { AcceptedUpgrade, Chanx } from '../app';
 import { internals } from '../app';
-import { Heartbeat, serveWebSocket } from './ws-socket';
+import { Heartbeat, serveWebSocket, toHeaders } from './ws-socket';
 
 /** Options for `chanxFastify()`. */
 export interface FastifyChanxOptions {
@@ -43,14 +43,33 @@ export function chanxFastify(
     const sockets = new Set<WebSocket>();
     const heartbeat = new Heartbeat(() => sockets, pingInterval);
 
+    const upgrades = new WeakMap<object, AcceptedUpgrade>();
+
     for (const path of internals.get(chanx)!.paths) {
       fastify.get(
         path.replace(/\{(\w+)\}/g, ':$1'),
-        { websocket: true },
+        {
+          websocket: true,
+          // After Fastify's own hooks, before the upgrade: a refusal is an HTTP response.
+          preHandler: async (request, reply) => {
+            const upgrade = await chanx.upgrade({
+              url: request.url,
+              headers: toHeaders(request.headers),
+            });
+            if (!upgrade) return reply.code(404).send();
+            if (!upgrade.accepted) {
+              return reply
+                .code(upgrade.status)
+                .header('content-type', 'application/json')
+                .send(upgrade.body);
+            }
+            upgrades.set(request, upgrade);
+          },
+        },
         (ws, request) => {
           sockets.add(ws);
           ws.on('close', () => sockets.delete(ws));
-          serveWebSocket(chanx, ws, request.raw, heartbeat);
+          serveWebSocket(chanx, ws, upgrades.get(request)!, heartbeat);
         },
       );
     }

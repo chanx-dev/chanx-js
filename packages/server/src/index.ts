@@ -4,7 +4,16 @@
  * @module core
  */
 export { createChanx } from './app';
-export type { Chanx, ChanxOptions, ConsumerLike, Logger, Transport } from './app';
+export type {
+  AcceptedUpgrade,
+  Chanx,
+  ChanxOptions,
+  ConsumerLike,
+  Logger,
+  RefusedUpgrade,
+  Transport,
+  UpgradeRequest,
+} from './app';
 export { asyncapiHandler } from './asyncapi-http';
 export type { AsyncAPIHandler, AsyncAPIServeOptions } from './asyncapi-http';
 export type {
