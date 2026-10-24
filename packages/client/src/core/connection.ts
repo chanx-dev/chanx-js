@@ -91,6 +91,13 @@ export class ChannelConnection<
     this.unsubscribers.push(socket.onFrame((frame) => this.route(frame)));
     this.unsubscribers.push(socket.onOpen(() => void this.resubscribe()));
     this.unsubscribers.push(socket.onTerminate(() => this.handleTerminated()));
+    // A socket that gave up opens again only for a new `connect()`: end the streams, or
+    // a `for await` loop would wait on it forever.
+    this.unsubscribers.push(
+      socket.onStatus((status) => {
+        if (status === 'closed') this.endStreams();
+      }),
+    );
   }
 
   get status(): SocketStatus {
@@ -375,8 +382,12 @@ export class ChannelConnection<
     // The server dropped these with the socket; there is nothing left to unsubscribe.
     for (const { handle } of this.topics.values()) {
       handle.subscribed = false;
-      handle.endStreams();
     }
+    this.endStreams();
+  }
+
+  private endStreams(): void {
+    for (const { handle } of this.topics.values()) handle.endStreams();
     for (const stream of [...this.streams]) stream.close();
   }
 

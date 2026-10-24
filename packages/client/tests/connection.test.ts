@@ -886,4 +886,30 @@ describe('streams', () => {
 
     expect(streams.size).toBe(0);
   });
+
+  it('ends channel and topic streams once reconnecting gives up', async () => {
+    const connection = makeClient({ reconnectAttempts: 0 }).connect(hub);
+    const room = connection.topic(roomTopic.with({ room_name: 'lobby' }));
+    FakeSocket.last.accept();
+    const channelNext = connection.stream().next();
+    const topicNext = room.stream().next();
+
+    FakeSocket.last.close(1006);
+
+    await expect(channelNext).resolves.toEqual({ value: undefined, done: true });
+    await expect(topicNext).resolves.toEqual({ value: undefined, done: true });
+  });
+
+  it('keeps streams open while reconnecting', async () => {
+    const connection = makeClient({ reconnectInterval: 1 }).connect(hub);
+    FakeSocket.last.accept();
+    const next = connection.stream().next();
+
+    FakeSocket.last.close(1006);
+    await wait(10);
+    FakeSocket.last.accept();
+    FakeSocket.last.receive({ version: 1, action: 'pong', payload: null });
+
+    await expect(next).resolves.toMatchObject({ value: { action: 'pong' }, done: false });
+  });
 });
