@@ -20,7 +20,7 @@ const lobby = client.connect(chat, {
 });
 
 await lobby.ready(); // open, or throw once it gives up
-const pong = await lobby.request({ action: 'ping' }); // the reply to this message
+const pong = await lobby.request({ action: 'ping' }); // the reply, typed PongMessage
 const first = await lobby.once('said', { timeout: 5000 }); // the next `said`
 
 for await (const message of lobby) {

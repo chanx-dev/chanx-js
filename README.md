@@ -65,7 +65,8 @@ What it takes off your hands:
   Python's.
 - **Topics**: many subscriptions over one socket, reference counted, restored on
   reconnect.
-- **Requests**: `await connection.request(...)` gets the reply to that message.
+- **Requests**: `await connection.request(...)` gets the reply to that message, typed
+  from the server's schema.
 - **Docs and clients**: AsyncAPI 3 from your code, and a typed client generated from it.
 - **Testing**: helpers to send, receive and capture broadcasts in your test runner.
 
@@ -123,7 +124,7 @@ const client = createClient({ baseUrl: 'ws://localhost:8000' });
 const connection = client.connect(chat, { params: { room: 'lobby' } });
 
 connection.on('notice', (message) => console.log(message.payload.text));
-await connection.request({ action: 'ping', payload: null }); // resolves with the pong
+const pong = await connection.request({ action: 'ping' }); // typed: PongMessage
 connection.send({ action: 'chat', payload: { text: 'hello' } });
 ```
 

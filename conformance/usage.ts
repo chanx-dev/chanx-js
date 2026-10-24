@@ -82,8 +82,13 @@ topicHub.topics.roomTopic.with();
 export async function script() {
   await chatConnection.ready({ timeout: 5000 });
 
+  // A request resolves with the reply its handler declares, not any message.
   const pong = await chatConnection.request({ action: 'ping', payload: null });
-  void pong;
+  const pongAction: 'pong' = pong.action;
+  void pongAction;
+
+  const echoed = await room.request({ action: 'echo', payload: { body: 'hi' } });
+  console.log(echoed.payload.body);
 
   const notification = await chatConnection.once('chat_notification', { timeout: 5000 });
   // `once` narrows to the single message type, so the payload is known.
@@ -143,7 +148,7 @@ export function RoomPanel() {
 
 export function SingleRoom() {
   // One topic: everything typed from it, no union to narrow and no topic name to pass.
-  const { lastMessage, send, subscribed } = useTopic(
+  const { lastMessage, send, request, subscribed } = useTopic(
     topicHub,
     topicHub.topics.roomTopic.with({ room_name: 'lobby' }),
   );
@@ -152,6 +157,10 @@ export function SingleRoom() {
   send({ action: 'post', payload: { body: 'hi' } });
   // @ts-expect-error `posted` is inbound only.
   send({ action: 'posted', payload: { body: 'no' } });
+  void request({ action: 'echo', payload: { body: 'hi' } }).then((reply) => {
+    const action: 'posted' = reply.action;
+    return action;
+  });
   return subscribed;
 }
 

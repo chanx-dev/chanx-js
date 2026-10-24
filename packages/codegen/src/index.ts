@@ -1,5 +1,5 @@
 export { analyze } from './analyze';
-export type { ChannelInfo, ConnectionInfo } from './analyze';
+export type { ChannelInfo, ConnectionInfo, Reply } from './analyze';
 export { emitChannels, emitChannelsDeclaration } from './emit-channels';
 export type { ChannelEmitOptions } from './emit-channels';
 export { declareType, emitSchemas, tsType } from './emit-types';

@@ -24,10 +24,10 @@ A handle has the same helpers as a connection: `on`, `onAny`, `once`, `stream`, 
 ```ts
 room.send({ action: 'post', payload: { body: 'hello' } });
 
-const reply = await room.request({ action: 'post', payload: { body: 'hi' } });
+const posted = await room.request({ action: 'post', payload: { body: 'hi' } });
 ```
 
-A topic request resolves with the reply carrying its `ref`, on any chanx version with topics.
+A topic request resolves with the reply carrying its `ref`, typed as the topic's handler declares it, on any chanx version with topics.
 
 ## In a component
 

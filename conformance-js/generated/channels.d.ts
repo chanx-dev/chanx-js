@@ -33,10 +33,18 @@ import type {
 
 export type AnalyticsToServer = AnalyticsMessage | PingMessage;
 export type AnalyticsToClient = AnalyticsNotificationMessage | PongMessage;
+export type AnalyticsReplies = {
+  analytics: AnalyticsNotificationMessage;
+  ping: PongMessage;
+};
 
 export type BackgroundJobsToServer = JobMessage | PingMessage;
 export type BackgroundJobsToClient =
   ExtraResponseMessage | JobStatusMessage | PongMessage;
+export type BackgroundJobsReplies = {
+  job: JobStatusMessage;
+  ping: PongMessage;
+};
 
 export type ChatToServer = ChatMessage | ExtraRequestMessage | PingMessage;
 export type ChatToClient =
@@ -46,27 +54,57 @@ export type ChatToClient =
   | PongMessage
   | UserJoinedNotification
   | UserLeftNotification;
+export type ChatReplies = {
+  chat: ChatNotificationMessage;
+  extra_request: ExtraResponseMessage;
+  ping: PongMessage;
+};
 
 export type NotificationsToServer = NotificationMessage | PingMessage;
 export type NotificationsToClient = NotificationBroadcastMessage | PongMessage;
+export type NotificationsReplies = {
+  notification: NotificationBroadcastMessage;
+  ping: PongMessage;
+};
 
 export type ReliableChatToServer = PingMessage | ReliableChatMessage;
 export type ReliableChatToClient =
   ChatNotificationMessage | PongMessage | ReliableChatNotificationMessage;
+export type ReliableChatReplies = {
+  ping: PongMessage;
+  reliable_chat: ReliableChatNotificationMessage;
+};
 
 export type RoomChatToServer = PingMessage | RoomChatMessage;
 export type RoomChatToClient = PongMessage | RoomNotificationMessage;
+export type RoomChatReplies = {
+  ping: PongMessage;
+  room_chat: RoomNotificationMessage;
+};
 
 export type RoomTopicToServer = EchoMessage | PostMessage;
 export type RoomTopicToClient = PostedMessage | RoomEvent;
+export type RoomTopicReplies = {
+  echo: PostedMessage;
+};
 
 export type SystemToServer = PingMessage | UserMessage;
 export type SystemToClient = PongMessage | SystemEchoMessage;
+export type SystemReplies = {
+  ping: PongMessage;
+  user_message: SystemEchoMessage;
+};
 
 export type TopicHubToServer = PingMessage;
 export type TopicHubToClient = PongMessage;
+export type TopicHubReplies = {
+  ping: PongMessage;
+};
 export type TopicHubRoomTopicToServer = EchoMessage | PostMessage;
 export type TopicHubRoomTopicToClient = PostedMessage | RoomEvent;
+export type TopicHubRoomTopicReplies = {
+  echo: PostedMessage;
+};
 export type TopicHubPresenceTopicToServer = never;
 export type TopicHubPresenceTopicToClient = PresenceChanged;
 
@@ -75,7 +113,8 @@ export declare const analytics: ChannelDescriptor<
   AnalyticsToServer,
   AnalyticsToClient,
   '/ws/analytics',
-  Record<never, never>
+  Record<never, never>,
+  AnalyticsReplies
 >;
 
 /** Background Jobs Consumer - Real background job processing with ARQ */
@@ -83,7 +122,8 @@ export declare const backgroundJobs: ChannelDescriptor<
   BackgroundJobsToServer,
   BackgroundJobsToClient,
   '/ws/background_jobs',
-  Record<never, never>
+  Record<never, never>,
+  BackgroundJobsReplies
 >;
 
 /** Basic Chat Consumer using centralized chat layer */
@@ -91,7 +131,8 @@ export declare const chat: ChannelDescriptor<
   ChatToServer,
   ChatToClient,
   '/ws/chat',
-  Record<never, never>
+  Record<never, never>,
+  ChatReplies
 >;
 
 /** Notification Consumer for real-time notifications */
@@ -99,7 +140,8 @@ export declare const notifications: ChannelDescriptor<
   NotificationsToServer,
   NotificationsToClient,
   '/ws/notifications',
-  Record<never, never>
+  Record<never, never>,
+  NotificationsReplies
 >;
 
 /** Reliable Chat Consumer using queue-based layer */
@@ -107,7 +149,8 @@ export declare const reliableChat: ChannelDescriptor<
   ReliableChatToServer,
   ReliableChatToClient,
   '/ws/reliable',
-  Record<never, never>
+  Record<never, never>,
+  ReliableChatReplies
 >;
 
 /** Room Chat Consumer - Dynamic room-based messaging */
@@ -115,7 +158,8 @@ export declare const roomChat: ChannelDescriptor<
   RoomChatToServer,
   RoomChatToClient,
   '/ws/room/{room_name}',
-  Record<never, never>
+  Record<never, never>,
+  RoomChatReplies
 >;
 
 /** A chat room, addressed as room:<room_name>. */
@@ -124,8 +168,14 @@ export declare const roomTopic: ChannelDescriptor<
   RoomTopicToClient,
   '/ws/topics/room/{room_name}',
   {
-    roomTopic: TopicDescriptor<RoomTopicToServer, RoomTopicToClient, 'room:{room_name}'>;
-  }
+    roomTopic: TopicDescriptor<
+      RoomTopicToServer,
+      RoomTopicToClient,
+      'room:{room_name}',
+      RoomTopicReplies
+    >;
+  },
+  RoomTopicReplies
 >;
 
 /** System Messages Consumer - Direct WebSocket without channel layers */
@@ -133,7 +183,8 @@ export declare const system: ChannelDescriptor<
   SystemToServer,
   SystemToClient,
   '/ws/system',
-  Record<never, never>
+  Record<never, never>,
+  SystemReplies
 >;
 
 /** Several topics multiplexed over a single connection */
@@ -145,14 +196,16 @@ export declare const topicHub: ChannelDescriptor<
     roomTopic: TopicDescriptor<
       TopicHubRoomTopicToServer,
       TopicHubRoomTopicToClient,
-      'room:{room_name}'
+      'room:{room_name}',
+      TopicHubRoomTopicReplies
     >;
     presenceTopic: TopicDescriptor<
       TopicHubPresenceTopicToServer,
       TopicHubPresenceTopicToClient,
       'presence:{user}'
     >;
-  }
+  },
+  TopicHubReplies
 >;
 
 export declare const channels: {

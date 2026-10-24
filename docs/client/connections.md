@@ -80,10 +80,10 @@ for await (const message of connection) {
 ```ts
 connection.send({ action: 'chat', payload: { message: 'hello' } });
 
-const reply = await connection.request({ action: 'ping', payload: null });
+const pong = await connection.request({ action: 'ping' }); // PongMessage
 ```
 
-`request()` stamps the frame with a `ref` and resolves with the reply carrying the same `ref`. It rejects on the server's `error` reply, on timeout (10 seconds by default), or when the connection closes first. Any later frame carrying the same `ref`, such as a reply that arrives after its request timed out, is delivered to the handlers like any other message.
+`request()` stamps the frame with a `ref` and resolves with the reply carrying the same `ref`. The reply is typed from the action you send: codegen records which message answers each one, so `pong` above is a `PongMessage`. An action whose handler declares no reply resolves to a plain `ChanxMessage`. It rejects on the server's `error` reply, on timeout (10 seconds by default), or when the connection closes first. Any later frame carrying the same `ref`, such as a reply that arrives after its request timed out, is delivered to the handlers like any other message.
 
 ::: warning chanx 2.11.2 or later
 chanx echoes the `ref` on replies to plain (untopiced) frames from 2.11.2. Against an older server, `request()` on a channel times out; requests on a [topic](/client/topics) work on any version with topics.

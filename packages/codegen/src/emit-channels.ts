@@ -13,6 +13,14 @@ function unionType(name: string, members: string[]): string {
   return `export type ${name} = ${members.length ? members.join(' | ') : 'never'};\n`;
 }
 
+/** What answers each request action, which types `request()`'s result. */
+function repliesType(name: string, channel: ChannelInfo): string {
+  const entries = channel.replies.map(
+    ({ action, messages }) => `  ${propertyKey(action)}: ${messages.join(' | ')};\n`,
+  );
+  return `export type ${name} = {\n${entries.join('')}};\n`;
+}
+
 function validatorsLiteral(prefix: string, indent: string): string {
   return (
     `${indent}validators: {\n` +
@@ -22,9 +30,16 @@ function validatorsLiteral(prefix: string, indent: string): string {
   );
 }
 
+/** The type arguments every descriptor takes: its unions, and its replies if any. */
+function messageTypes(channel: ChannelInfo): string {
+  const prefix = pascalCase(channel.name);
+  const replies = channel.replies.length ? `, ${prefix}Replies` : '';
+  return `${prefix}ToServer, ${prefix}ToClient${replies}`;
+}
+
 /** Type arguments are erased in JS, so the runtime file calls the plain form. */
-function typeArgs(prefix: string, target: 'ts' | 'js'): string {
-  return target === 'ts' ? `<${prefix}ToServer, ${prefix}ToClient>` : '';
+function typeArgs(channel: ChannelInfo, target: 'ts' | 'js'): string {
+  return target === 'ts' ? `<${messageTypes(channel)}>` : '';
 }
 
 function renderTopic(
@@ -37,7 +52,7 @@ function renderTopic(
   const inner = `${indent}  `;
   return (
     docComment(topic.description, indent) +
-    `${indent}${propertyKey(key)}: defineTopic${typeArgs(prefix, options.target)}()({\n` +
+    `${indent}${propertyKey(key)}: defineTopic${typeArgs(topic, options.target)}()({\n` +
     `${inner}name: ${JSON.stringify(topic.topic?.name ?? topic.name)},\n` +
     `${inner}pattern: ${JSON.stringify(topic.topic?.pattern ?? '')},\n` +
     (options.withZod ? validatorsLiteral(prefix, inner) : '') +
@@ -69,6 +84,7 @@ function unions(connections: ConnectionInfo[]): string {
       declared.add(prefix);
       lines.push(unionType(`${prefix}ToServer`, channel.toServer));
       lines.push(unionType(`${prefix}ToClient`, channel.toClient));
+      if (channel.replies.length) lines.push(repliesType(`${prefix}Replies`, channel));
     }
     lines.push('\n');
   }
@@ -104,7 +120,7 @@ export function emitChannels(
 
     lines.push(docComment(connection.description));
     lines.push(
-      `export const ${constName} = defineChannel${typeArgs(prefix, options.target)}()({\n`,
+      `export const ${constName} = defineChannel${typeArgs(connection, options.target)}()({\n`,
     );
     lines.push(`  name: ${JSON.stringify(connection.name)},\n`);
     lines.push(`  address: ${JSON.stringify(connection.address)},\n`);
@@ -161,7 +177,8 @@ export function emitChannelsDeclaration(
         const topicPrefix = pascalCase(topic.name);
         const key = camelCase(topic.topic?.name ?? topic.name);
         const pattern = JSON.stringify(topic.topic?.pattern ?? '');
-        return `  ${propertyKey(key)}: TopicDescriptor<${topicPrefix}ToServer, ${topicPrefix}ToClient, ${pattern}>;`;
+        const replies = topic.replies.length ? `, ${topicPrefix}Replies` : '';
+        return `  ${propertyKey(key)}: TopicDescriptor<${topicPrefix}ToServer, ${topicPrefix}ToClient, ${pattern}${replies}>;`;
       })
       .join('\n');
 
@@ -169,9 +186,10 @@ export function emitChannelsDeclaration(
       ? `{\n${topics}\n}`
       : 'Record<never, never>';
 
+    const replies = connection.replies.length ? `, ${prefix}Replies` : '';
     lines.push(docComment(connection.description));
     lines.push(
-      `export declare const ${constName}: ChannelDescriptor<${prefix}ToServer, ${prefix}ToClient, ${address}, ${topicsType}>;\n\n`,
+      `export declare const ${constName}: ChannelDescriptor<${prefix}ToServer, ${prefix}ToClient, ${address}, ${topicsType}${replies}>;\n\n`,
     );
   }
 

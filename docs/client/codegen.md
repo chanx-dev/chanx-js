@@ -23,13 +23,17 @@ The schema can be a URL or a local file, in JSON or YAML.
 
 ## What it generates
 
-For each channel, a descriptor and the two message unions, named from the client's side:
+For each channel, a descriptor, the two message unions named from the client's side, and
+what answers each request:
 
 ```ts
 export type ChatToServer = ChatMessage | PingMessage;
 export type ChatToClient = ChatNotificationMessage | PongMessage;
+export type ChatReplies = {
+  ping: PongMessage;
+};
 
-export const chat = defineChannel<ChatToServer, ChatToClient>()({
+export const chat = defineChannel<ChatToServer, ChatToClient, ChatReplies>()({
   name: 'chat',
   address: '/ws/chat/{room}/',
   heartbeat: true,
@@ -50,6 +54,11 @@ export const topicHub = defineChannel<TopicHubToServer, TopicHubToClient>()({
   },
 });
 ```
+
+`ChatReplies` comes from each handler's `reply` in the schema: the `output` of a
+chanx-js handler, or the return type of a chanx one. It types what
+[`request()`](/client/connections#sending-and-requests) resolves with. A channel or
+topic whose handlers reply to nothing gets no replies type.
 
 When a consumer declares only topics, it has no plain channel. Its topics still get a connection named after the consumer, carrying no messages of its own: `agent.topics.threadTopic`. A topic served on its own route is emitted as a connection that carries itself as its only topic.
 

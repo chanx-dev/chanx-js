@@ -58,10 +58,18 @@ import {
 
 export type AnalyticsToServer = AnalyticsMessage | PingMessage;
 export type AnalyticsToClient = AnalyticsNotificationMessage | PongMessage;
+export type AnalyticsReplies = {
+  analytics: AnalyticsNotificationMessage;
+  ping: PongMessage;
+};
 
 export type BackgroundJobsToServer = JobMessage | PingMessage;
 export type BackgroundJobsToClient =
   ExtraResponseMessage | JobStatusMessage | PongMessage;
+export type BackgroundJobsReplies = {
+  job: JobStatusMessage;
+  ping: PongMessage;
+};
 
 export type ChatToServer = ChatMessage | ExtraRequestMessage | PingMessage;
 export type ChatToClient =
@@ -71,32 +79,66 @@ export type ChatToClient =
   | PongMessage
   | UserJoinedNotification
   | UserLeftNotification;
+export type ChatReplies = {
+  chat: ChatNotificationMessage;
+  extra_request: ExtraResponseMessage;
+  ping: PongMessage;
+};
 
 export type NotificationsToServer = NotificationMessage | PingMessage;
 export type NotificationsToClient = NotificationBroadcastMessage | PongMessage;
+export type NotificationsReplies = {
+  notification: NotificationBroadcastMessage;
+  ping: PongMessage;
+};
 
 export type ReliableChatToServer = PingMessage | ReliableChatMessage;
 export type ReliableChatToClient =
   ChatNotificationMessage | PongMessage | ReliableChatNotificationMessage;
+export type ReliableChatReplies = {
+  ping: PongMessage;
+  reliable_chat: ReliableChatNotificationMessage;
+};
 
 export type RoomChatToServer = PingMessage | RoomChatMessage;
 export type RoomChatToClient = PongMessage | RoomNotificationMessage;
+export type RoomChatReplies = {
+  ping: PongMessage;
+  room_chat: RoomNotificationMessage;
+};
 
 export type RoomTopicToServer = EchoMessage | PostMessage;
 export type RoomTopicToClient = PostedMessage | RoomEvent;
+export type RoomTopicReplies = {
+  echo: PostedMessage;
+};
 
 export type SystemToServer = PingMessage | UserMessage;
 export type SystemToClient = PongMessage | SystemEchoMessage;
+export type SystemReplies = {
+  ping: PongMessage;
+  user_message: SystemEchoMessage;
+};
 
 export type TopicHubToServer = PingMessage;
 export type TopicHubToClient = PongMessage;
+export type TopicHubReplies = {
+  ping: PongMessage;
+};
 export type TopicHubRoomTopicToServer = EchoMessage | PostMessage;
 export type TopicHubRoomTopicToClient = PostedMessage | RoomEvent;
+export type TopicHubRoomTopicReplies = {
+  echo: PostedMessage;
+};
 export type TopicHubPresenceTopicToServer = never;
 export type TopicHubPresenceTopicToClient = PresenceChanged;
 
 /** Analytics Consumer for reliable event delivery */
-export const analytics = defineChannel<AnalyticsToServer, AnalyticsToClient>()({
+export const analytics = defineChannel<
+  AnalyticsToServer,
+  AnalyticsToClient,
+  AnalyticsReplies
+>()({
   name: 'analytics',
   address: '/ws/analytics',
   heartbeat: true,
@@ -109,7 +151,8 @@ export const analytics = defineChannel<AnalyticsToServer, AnalyticsToClient>()({
 /** Background Jobs Consumer - Real background job processing with ARQ */
 export const backgroundJobs = defineChannel<
   BackgroundJobsToServer,
-  BackgroundJobsToClient
+  BackgroundJobsToClient,
+  BackgroundJobsReplies
 >()({
   name: 'background_jobs',
   address: '/ws/background_jobs',
@@ -121,7 +164,7 @@ export const backgroundJobs = defineChannel<
 });
 
 /** Basic Chat Consumer using centralized chat layer */
-export const chat = defineChannel<ChatToServer, ChatToClient>()({
+export const chat = defineChannel<ChatToServer, ChatToClient, ChatReplies>()({
   name: 'chat',
   address: '/ws/chat',
   heartbeat: true,
@@ -134,7 +177,8 @@ export const chat = defineChannel<ChatToServer, ChatToClient>()({
 /** Notification Consumer for real-time notifications */
 export const notifications = defineChannel<
   NotificationsToServer,
-  NotificationsToClient
+  NotificationsToClient,
+  NotificationsReplies
 >()({
   name: 'notifications',
   address: '/ws/notifications',
@@ -146,7 +190,11 @@ export const notifications = defineChannel<
 });
 
 /** Reliable Chat Consumer using queue-based layer */
-export const reliableChat = defineChannel<ReliableChatToServer, ReliableChatToClient>()({
+export const reliableChat = defineChannel<
+  ReliableChatToServer,
+  ReliableChatToClient,
+  ReliableChatReplies
+>()({
   name: 'reliable_chat',
   address: '/ws/reliable',
   heartbeat: true,
@@ -157,7 +205,11 @@ export const reliableChat = defineChannel<ReliableChatToServer, ReliableChatToCl
 });
 
 /** Room Chat Consumer - Dynamic room-based messaging */
-export const roomChat = defineChannel<RoomChatToServer, RoomChatToClient>()({
+export const roomChat = defineChannel<
+  RoomChatToServer,
+  RoomChatToClient,
+  RoomChatReplies
+>()({
   name: 'room_chat',
   address: '/ws/room/{room_name}',
   heartbeat: true,
@@ -168,7 +220,11 @@ export const roomChat = defineChannel<RoomChatToServer, RoomChatToClient>()({
 });
 
 /** A chat room, addressed as room:<room_name>. */
-export const roomTopic = defineChannel<RoomTopicToServer, RoomTopicToClient>()({
+export const roomTopic = defineChannel<
+  RoomTopicToServer,
+  RoomTopicToClient,
+  RoomTopicReplies
+>()({
   name: 'room_topic',
   address: '/ws/topics/room/{room_name}',
   validators: {
@@ -177,7 +233,7 @@ export const roomTopic = defineChannel<RoomTopicToServer, RoomTopicToClient>()({
   },
   topics: {
     /** A chat room, addressed as room:<room_name>. */
-    roomTopic: defineTopic<RoomTopicToServer, RoomTopicToClient>()({
+    roomTopic: defineTopic<RoomTopicToServer, RoomTopicToClient, RoomTopicReplies>()({
       name: 'room_topic',
       pattern: 'room:{room_name}',
       validators: {
@@ -189,7 +245,7 @@ export const roomTopic = defineChannel<RoomTopicToServer, RoomTopicToClient>()({
 });
 
 /** System Messages Consumer - Direct WebSocket without channel layers */
-export const system = defineChannel<SystemToServer, SystemToClient>()({
+export const system = defineChannel<SystemToServer, SystemToClient, SystemReplies>()({
   name: 'system',
   address: '/ws/system',
   heartbeat: true,
@@ -200,7 +256,11 @@ export const system = defineChannel<SystemToServer, SystemToClient>()({
 });
 
 /** Several topics multiplexed over a single connection */
-export const topicHub = defineChannel<TopicHubToServer, TopicHubToClient>()({
+export const topicHub = defineChannel<
+  TopicHubToServer,
+  TopicHubToClient,
+  TopicHubReplies
+>()({
   name: 'topic_hub',
   address: '/ws/topics',
   heartbeat: true,
@@ -210,7 +270,11 @@ export const topicHub = defineChannel<TopicHubToServer, TopicHubToClient>()({
   },
   topics: {
     /** A chat room, addressed as room:<room_name>. */
-    roomTopic: defineTopic<TopicHubRoomTopicToServer, TopicHubRoomTopicToClient>()({
+    roomTopic: defineTopic<
+      TopicHubRoomTopicToServer,
+      TopicHubRoomTopicToClient,
+      TopicHubRoomTopicReplies
+    >()({
       name: 'room_topic',
       pattern: 'room:{room_name}',
       validators: {

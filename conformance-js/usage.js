@@ -48,6 +48,12 @@ export async function script() {
   const notification = await connection.once('chat_notification', { timeout: 5000 });
   console.log(notification.payload.message);
 
+  // Replies are typed from JavaScript too: `echo` is answered with `posted`.
+  const echoed = await room.request({ action: 'echo', payload: { body: 'hi' } });
+  /** @type {'posted'} */
+  const echoedAction = echoed.action;
+  void echoedAction;
+
   for await (const message of connection) {
     if (message.action === 'chat_notification') console.log(message.payload.message);
   }

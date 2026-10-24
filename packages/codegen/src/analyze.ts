@@ -13,18 +13,30 @@ export interface ChannelInfo {
   topic?: TopicExtension;
   /** Sends `ping` and receives `pong`, so the runtime may heartbeat it. */
   heartbeat: boolean;
+  /** What answers a request, per action sent, from each operation's `reply`. */
+  replies: Reply[];
+}
+
+/** The messages that answer a request with this action. */
+export interface Reply {
+  action: string;
+  messages: string[];
+}
+
+interface Bucket {
+  toServer: Set<string>;
+  toClient: Set<string>;
+  replies: Map<string, Set<string>>;
 }
 
 export interface ConnectionInfo extends ChannelInfo {
   topics: ChannelInfo[];
 }
 
-function directions(
-  document: AsyncAPIDocument,
-): Map<string, { toServer: Set<string>; toClient: Set<string> }> {
-  const result = new Map<string, { toServer: Set<string>; toClient: Set<string> }>();
+function directions(document: AsyncAPIDocument): Map<string, Bucket> {
+  const result = new Map<string, Bucket>();
   for (const key of Object.keys(document.channels ?? {})) {
-    result.set(key, { toServer: new Set(), toClient: new Set() });
+    result.set(key, { toServer: new Set(), toClient: new Set(), replies: new Map() });
   }
 
   for (const operation of Object.values(document.operations ?? {})) {
@@ -39,9 +51,18 @@ function directions(
       const name = messageSchemaName(document, message.$ref);
       if (name) target.add(name);
     }
-    for (const message of operation.reply?.messages ?? []) {
-      const name = messageSchemaName(document, message.$ref);
-      if (name) bucket.toClient.add(name);
+    const replies = (operation.reply?.messages ?? [])
+      .map((message) => messageSchemaName(document, message.$ref))
+      .filter((name): name is string => Boolean(name));
+    for (const name of replies) bucket.toClient.add(name);
+    if (operation.action === 'send' || !replies.length) continue;
+
+    for (const message of operation.messages ?? []) {
+      const action = actionOf(document, messageSchemaName(document, message.$ref) ?? '');
+      if (typeof action !== 'string') continue;
+      const answers = bucket.replies.get(action) ?? new Set<string>();
+      for (const name of replies) answers.add(name);
+      bucket.replies.set(action, answers);
     }
   }
 
@@ -57,7 +78,7 @@ function describe(
   document: AsyncAPIDocument,
   key: string,
   channel: ChannelObject,
-  buckets: Map<string, { toServer: Set<string>; toClient: Set<string> }>,
+  buckets: Map<string, Bucket>,
 ): ChannelInfo {
   const bucket = buckets.get(key);
   const toServer = [...(bucket?.toServer ?? [])].sort();
@@ -73,6 +94,9 @@ function describe(
     heartbeat:
       toServer.some((name) => actionOf(document, name) === 'ping') &&
       toClient.some((name) => actionOf(document, name) === 'pong'),
+    replies: [...(bucket?.replies ?? [])]
+      .map(([action, messages]) => ({ action, messages: [...messages].sort() }))
+      .sort((a, b) => a.action.localeCompare(b.action)),
   };
   if (channel.description) info.description = channel.description;
   if (channel['x-topic']) info.topic = channel['x-topic'];
@@ -128,6 +152,7 @@ export function analyze(document: AsyncAPIDocument): ConnectionInfo[] {
           toServer: [],
           toClient: [],
           heartbeat: false,
+          replies: [],
           topics: [topic],
         }
       : { ...topic, topics: [topic] };

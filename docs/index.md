@@ -24,7 +24,7 @@ features:
   - title: Groups and topics
     details: 'Broadcast to groups across processes over Redis. Clients subscribe to many topics over one socket, restored after a reconnect.'
   - title: Requests that await
-    details: 'await connection.request(...) resolves with the reply to that message, matched by ref, even on a socket shared by many components.'
+    details: "await connection.request(...) resolves with the reply to that message, typed from the server's schema and matched by ref, even on a socket shared by many components."
   - title: Runs where you do
     details: 'Serve from Node, Fastify, Hono, NestJS, Bun or Deno. Connect from React, Vue, Svelte, Solid, plain JavaScript or a Node service.'
   - title: Compatible with Python chanx
@@ -85,7 +85,7 @@ const client = createClient({ baseUrl: 'ws://localhost:8000' });
 const connection = client.connect(chat, { params: { room: 'lobby' } });
 
 connection.on('notice', (message) => console.log(message.payload.text));
-await connection.request({ action: 'ping', payload: null }); // resolves with the pong
+const pong = await connection.request({ action: 'ping' }); // typed: PongMessage
 connection.send({ action: 'chat', payload: { text: 'hello' } });
 ```
 

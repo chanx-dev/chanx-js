@@ -90,7 +90,7 @@ const client = createClient({ baseUrl: 'ws://localhost:8000' });
 const connection = client.connect(chat, { params: { room: 'lobby' } });
 
 connection.on('notice', (message) => console.log(message.payload.text));
-await connection.request({ action: 'ping' }); // resolves with the pong
+const pong = await connection.request({ action: 'ping' }); // typed: PongMessage
 connection.send({ action: 'chat', payload: { text: 'hello' } });
 ```
 

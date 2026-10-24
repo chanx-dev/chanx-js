@@ -194,6 +194,44 @@ describe('analysis of the chanx fastapi sandbox', () => {
   });
 });
 
+describe('replies', () => {
+  let document: AsyncAPIDocument;
+
+  beforeAll(async () => {
+    document = await loadSchema(join(fixtures, 'fastapi-asyncapi.json'));
+  });
+
+  it('maps each request action to the messages its handler replies with', () => {
+    const chat = analyze(document).find((connection) => connection.name === 'chat');
+    expect(chat?.replies).toEqual([
+      { action: 'chat', messages: ['ChatNotificationMessage'] },
+      { action: 'extra_request', messages: ['ExtraResponseMessage'] },
+      { action: 'ping', messages: ['PongMessage'] },
+    ]);
+  });
+
+  it('types each descriptor with its replies, and leaves them out where none are declared', async () => {
+    const outDir = await mkdtemp(join(tmpdir(), 'chanx-codegen-'));
+    await generate(document, { outDir, format: false });
+    const channels = await readFile(join(outDir, 'channels.ts'), 'utf-8');
+
+    expect(channels).toContain(
+      'export type ChatReplies = {\n  chat: ChatNotificationMessage;\n  extra_request: ExtraResponseMessage;\n  ping: PongMessage;\n};',
+    );
+    expect(channels).toContain(
+      'defineChannel<ChatToServer, ChatToClient, ChatReplies>()',
+    );
+    expect(channels).toContain(
+      'roomTopic: defineTopic<TopicHubRoomTopicToServer, TopicHubRoomTopicToClient, TopicHubRoomTopicReplies>()',
+    );
+    // The presence topic only pushes: no requests, so no third type argument.
+    expect(channels).not.toContain('TopicHubPresenceTopicReplies');
+    expect(channels).toContain(
+      'presenceTopic: defineTopic<TopicHubPresenceTopicToServer, TopicHubPresenceTopicToClient>()',
+    );
+  });
+});
+
 describe('heartbeat detection', () => {
   it('marks a channel that sends ping and receives pong', async () => {
     const document = await loadSchema(join(fixtures, 'fastapi-asyncapi.json'));
@@ -326,7 +364,7 @@ describe('javascript output', () => {
     // The address literal must survive, or param checking is lost.
     expect(declaration).toContain('"/ws/chat"');
     expect(declaration).toMatch(
-      /roomTopic: TopicDescriptor<[\s\S]*?"room:\{room_name\}">/,
+      /roomTopic: TopicDescriptor<[\s\S]*?"room:\{room_name\}",\s*TopicHubRoomTopicReplies\s*>/,
     );
   });
 
