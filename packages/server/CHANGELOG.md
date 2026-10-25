@@ -1,5 +1,11 @@
 # @chanx-js/server
 
+## 2.1.1
+
+### Patch Changes
+
+- 460ab29: List the supported runtimes in the package README: Node with ws, Express, Koa, Fastify, Hono, NestJS, Bun and Deno.
+
 ## 2.1.0
 
 ### Minor Changes
