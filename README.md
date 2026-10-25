@@ -1,7 +1,7 @@
 <h1>
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/huynguyengl99/chanx-js/main/docs/public/brand/chanx-js-wordmark-dark.svg">
-    <img alt="chanx-js" src="https://raw.githubusercontent.com/huynguyengl99/chanx-js/main/docs/public/brand/chanx-js-wordmark.svg" height="72">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/huynguyengl99/chanx-js/main/docs/public/brand/chanx-js-wordmark-dark.svg?v=4">
+    <img alt="chanx-js" src="https://raw.githubusercontent.com/huynguyengl99/chanx-js/main/docs/public/brand/chanx-js-wordmark.svg?v=4" height="72">
   </picture>
 </h1>
 
