@@ -1,4 +1,9 @@
-# chanx-js
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/huynguyengl99/chanx-js/main/docs/public/brand/chanx-js-wordmark-dark.svg">
+    <img alt="chanx-js" src="https://raw.githubusercontent.com/huynguyengl99/chanx-js/main/docs/public/brand/chanx-js-wordmark.svg" height="72">
+  </picture>
+</h1>
 
 [![@chanx-js/server](https://img.shields.io/npm/v/@chanx-js/server?label=%40chanx-js%2Fserver)](https://www.npmjs.com/package/@chanx-js/server)
 [![@chanx-js/client](https://img.shields.io/npm/v/@chanx-js/client?label=%40chanx-js%2Fclient)](https://www.npmjs.com/package/@chanx-js/client)

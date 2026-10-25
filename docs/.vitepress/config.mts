@@ -117,7 +117,22 @@ export default defineConfig({
   // belongs to the github.io site this one lives under. Head links are not prefixed with
   // `base`, so they carry it.
   head: [
-    ['meta', { name: 'theme-color', content: '#3f51b5' }],
+    ['meta', { name: 'theme-color', content: '#1e3a8a' }],
+    [
+      'meta',
+      {
+        property: 'og:image',
+        content: 'https://huynguyengl99.github.io/chanx-js/brand/social-card.png',
+      },
+    ],
+    [
+      'meta',
+      {
+        property: 'og:image:alt',
+        content: 'chanx-js: type-safe WebSockets for TypeScript, end to end',
+      },
+    ],
+    ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/chanx-js/logo.svg' }],
     [
       'link',
@@ -131,7 +146,13 @@ export default defineConfig({
     ['link', { rel: 'apple-touch-icon', href: '/chanx-js/apple-touch-icon.png' }],
   ],
   themeConfig: {
-    logo: '/logo.svg',
+    // The wordmark already spells the name, so the text title is hidden.
+    logo: {
+      light: '/brand/chanx-js-wordmark.svg',
+      dark: '/brand/chanx-js-wordmark-dark.svg',
+      alt: 'chanx-js',
+    },
+    siteTitle: false,
     nav: [
       {
         text: 'Guide',
