@@ -5,6 +5,8 @@ validated, typed handler, groups broadcast across processes, and the whole API i
 documented as AsyncAPI, from which [`@chanx-js/codegen`](https://huynguyengl99.github.io/chanx-js/client/codegen) generates
 a typed client.
 
+Runs on Node with `ws`, Express, Koa, Fastify, Hono, NestJS, Bun and Deno.
+
 **[Documentation](https://huynguyengl99.github.io/chanx-js/)** · [Getting started](https://huynguyengl99.github.io/chanx-js/server/) ·
 [Why chanx-js?](https://huynguyengl99.github.io/chanx-js/introduction/why) · [API](https://huynguyengl99.github.io/chanx-js/api/)
 

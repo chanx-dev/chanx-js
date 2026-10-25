@@ -29,6 +29,10 @@ and `@chanx-js/nestjs` hosts consumers as NestJS gateways.
 | `@chanx-js/layers`  | Carries groups and broadcasts between processes, over Redis.               |
 | `@chanx-js/nestjs`  | Consumers and topics as NestJS gateways, with DI, guards and pipes.        |
 
+The server runs on Node with `ws`, Express, Koa, Fastify, Hono, NestJS, Bun and Deno (see
+[Server integrations](/server/integrations/)). The client runs in the browser, React, Vue,
+Svelte, Solid and Node services.
+
 You can use any part alone. The client and codegen work against a Python chanx server
 with no Node server at all; the server works with any WebSocket client that sends JSON.
 

@@ -12,10 +12,14 @@
 
 **Type-safe WebSockets for TypeScript, end to end.**
 
-A batteries-included WebSocket framework for Node and the browser. Declare your messages
-once; chanx-js routes them by action, validates them, broadcasts to groups, documents
-them as AsyncAPI, and generates a typed client for the browser, React, Vue, Svelte,
-Solid or another Node service.
+Declare your messages once, and chanx-js types both ends of the socket:
+
+- **Server** (`@chanx-js/server`): routes each message by action to a validated, typed
+  handler, broadcasts to groups (across processes over Redis), and documents the API as
+  AsyncAPI. Runs on Node with `ws`, Express, Koa, Fastify, Hono, NestJS, Bun and Deno.
+- **Client** (`@chanx-js/client` and `@chanx-js/codegen`): generated from the server's
+  AsyncAPI, so a message the server does not accept fails to compile. Works in the
+  browser, React, Vue, Svelte, Solid and Node services.
 
 It speaks the [chanx](https://github.com/huynguyengl99/chanx) protocol, so a chanx-js
 client also talks to Python chanx servers (Django Channels, FastAPI), and Node and Python
@@ -26,6 +30,8 @@ servers can share one Redis.
 [Server guide](https://huynguyengl99.github.io/chanx-js/server/) ·
 [Client guide](https://huynguyengl99.github.io/chanx-js/client/) ·
 [API reference](https://huynguyengl99.github.io/chanx-js/api/)
+
+![A chanx-js consumer, the AsyncAPI docs generated from it, and a generated TypeScript client catching a typo](https://raw.githubusercontent.com/huynguyengl99/chanx-js/main/docs/public/chanx-js-demo.gif)
 
 ## Why chanx-js
 
