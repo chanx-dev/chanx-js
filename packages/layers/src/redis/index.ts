@@ -3,8 +3,8 @@
  *
  * @module redis
  */
-import type { RedisClientOptions } from 'redis';
-import { createClient } from 'redis';
+import type { RedisClientOptions, RedisSentinelOptions } from 'redis';
+import { createClient, createSentinel } from 'redis';
 
 import { LocalChannels } from '../channels';
 import { assertChannelName, assertGroupName } from '../names';
@@ -23,8 +23,20 @@ import { createSerializer } from './serializer';
 export { InvalidToken } from './fernet';
 export type { SerializerFormat } from './serializer';
 
-/** A Redis URL, or node-redis client options for TLS, auth and the rest. */
-export type RedisHost = string | RedisClientOptions;
+/** A Redis URL, node-redis client options for TLS, auth and the rest, or a Sentinel. */
+export type RedisHost = string | RedisClientOptions | RedisSentinelHost;
+
+/**
+ * A master found through Redis Sentinel, as Python's `{"sentinels": [...], "master_name": ...}`
+ * host. The rest are node-redis Sentinel options, such as `nodeClientOptions` for auth.
+ */
+export interface RedisSentinelHost extends Omit<
+  RedisSentinelOptions,
+  'name' | 'sentinelRootNodes'
+> {
+  sentinels: Array<{ host: string; port: number }>;
+  masterName: string;
+}
 
 export interface RedisPubSubChannelLayerOptions extends LayerOptions {
   /** Shards, in the same order as the Python side's `hosts`. */
@@ -155,7 +167,34 @@ export class RedisPubSubChannelLayer implements ChannelLayer {
   }
 }
 
-type Client = ReturnType<typeof createClient>;
+// The slice of node-redis a shard uses, which a plain client and a Sentinel one share.
+interface Client {
+  readonly isOpen: boolean;
+  connect(): Promise<unknown>;
+  publish(channel: string, message: Buffer): Promise<unknown>;
+  subscribe(channel: string, listener: Listener, bufferMode: true): Promise<unknown>;
+  unsubscribe(channel: string, listener: Listener, bufferMode: true): Promise<unknown>;
+  close(): Promise<void>;
+  destroy(): unknown;
+  duplicate(): Client;
+  on(event: 'error', listener: (error: unknown) => void): unknown;
+}
+
+type Listener = (message: Buffer, channel: Buffer) => void;
+
+function clientFor(host: RedisHost): Client {
+  if (typeof host === 'string') return createClient({ url: host });
+  if ('sentinels' in host) {
+    const { sentinels, masterName, ...options } = host;
+    // Its unsubscribe types the listener for either buffer mode; the shard only uses buffers.
+    return createSentinel({
+      ...options,
+      name: masterName,
+      sentinelRootNodes: sentinels,
+    }) as unknown as Client;
+  }
+  return createClient(host);
+}
 
 /**
  * One Redis server: a publishing connection and a subscribing one, opened on first use.
@@ -169,7 +208,7 @@ class Shard {
 
   constructor(
     private readonly host: RedisHost,
-    private readonly listener: (message: Buffer, channel: Buffer) => void,
+    private readonly listener: Listener,
     private readonly onError: (error: unknown) => void,
   ) {}
 
@@ -213,8 +252,7 @@ class Shard {
 
   private connect() {
     if (this.clients) return this.clients;
-    const options = typeof this.host === 'string' ? { url: this.host } : this.host;
-    const publisher = createClient(options) as Client;
+    const publisher = clientFor(this.host);
     const subscriber = publisher.duplicate();
     // Without a listener, node-redis turns a dropped connection into a crash.
     publisher.on('error', this.onError);

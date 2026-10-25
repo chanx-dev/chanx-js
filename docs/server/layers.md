@@ -44,6 +44,33 @@ hosts, channels and groups are spread across them by a CRC-32 hash.
 Delivery is at most once, as with any pub/sub: a message published while nobody is
 subscribed is gone.
 
+## Redis Sentinel
+
+A host can be a Sentinel instead of a server: the layer asks the sentinels for the
+current master, and follows it when Sentinel fails over.
+
+```ts
+new RedisPubSubChannelLayer({
+  hosts: [
+    {
+      sentinels: [{ host: 'sentinel-1', port: 26379 }],
+      masterName: 'mymaster',
+    },
+  ],
+});
+```
+
+It mirrors Python's Sentinel host, with the same master on both sides:
+
+```python
+{"sentinels": [("sentinel-1", 26379)], "master_name": "mymaster"}
+```
+
+The rest are node-redis Sentinel options: `nodeClientOptions` for the password or TLS to
+the Redis servers, `sentinelClientOptions` for the sentinels', and `nodeAddressMap` when
+the sentinels report addresses the client cannot reach, as from inside Docker. Neither
+Python layer supports Redis Cluster, so neither does this one.
+
 ## Several layers
 
 Name layers in `createChanx({ layers })`, then pick one per consumer or topic with its

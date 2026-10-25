@@ -24,6 +24,9 @@ await layer.groupSend('room.lobby', { type: 'chat.message', text: 'hi' });
 `new InMemoryChannelLayer()` from `@chanx-js/layers` does the same within one process,
 for development and tests. Both are named after their Python counterparts.
 
+A host can also be a Sentinel, `{ sentinels: [{ host, port }], masterName }`, as in
+Python's `{"sentinels": [...], "master_name": ...}`; the layer follows failovers.
+
 ## Sharing Redis with Python
 
 Use the same settings on both sides:

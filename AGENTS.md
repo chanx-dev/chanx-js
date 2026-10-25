@@ -38,6 +38,9 @@ docker compose up -d
 REDIS_URL=redis://localhost:6389 REDIS_URL_2=redis://localhost:6390 pnpm test --project layers --project server
 ```
 
+Sentinel tests run only with `REDIS_SENTINEL` set, after
+`docker compose --profile sentinel up -d`.
+
 ## Code that speaks for itself
 
 The code is the documentation. Reach for a better name, a smaller function or a type

@@ -67,7 +67,7 @@ jobs:
       - run: pnpm check:conformance
 
   layers:
-    name: Layers and server on Redis
+    name: Layers and server on Redis and Sentinel
     runs-on: ubuntu-latest
     services:
       redis:
@@ -85,6 +85,7 @@ jobs:
     env:
       REDIS_URL: redis://localhost:6389
       REDIS_URL_2: redis://localhost:6390
+      REDIS_SENTINEL: localhost:26379
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -93,6 +94,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # A master, a replica and a sentinel, which services cannot express.
+      - run: docker compose --profile sentinel up -d --wait sentinel-master sentinel-replica sentinel
       - run: pnpm test --project layers --project server
 
   runtimes:

@@ -40,6 +40,14 @@ docker compose up -d
 REDIS_URL=redis://localhost:6389 REDIS_URL_2=redis://localhost:6390 pnpm test --project layers --project server
 ```
 
+**Redis Sentinel.** The Sentinel tests, failover included, need a master, a replica and a
+sentinel, behind a Compose profile so the usual `up` skips them:
+
+```bash
+docker compose --profile sentinel up -d
+REDIS_SENTINEL=localhost:26379 pnpm test --project layers
+```
+
 **Bun and Deno.** A smoke script runs the built packages on each runtime, through its
 crossws and Hono adapters:
 
@@ -52,7 +60,7 @@ pnpm --filter @chanx-js/server smoke:bun    # or smoke:deno
 AsyncAPI), expected values come from running chanx, not from reading its source.
 
 CI runs all of these on every pull request and push to `main`: lint and typecheck, one
-test job per package, Redis, Bun and Deno, conformance, and the docs build.
+test job per package, Redis and Sentinel, Bun and Deno, conformance, and the docs build.
 
 ## Making a change
 
