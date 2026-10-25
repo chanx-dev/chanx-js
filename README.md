@@ -31,7 +31,7 @@ servers can share one Redis.
 [Client guide](https://huynguyengl99.github.io/chanx-js/client/) ·
 [API reference](https://huynguyengl99.github.io/chanx-js/api/)
 
-![A chanx-js consumer, the AsyncAPI docs generated from it, and a generated TypeScript client catching a typo](https://raw.githubusercontent.com/huynguyengl99/chanx-js/main/docs/public/chanx-js-demo.gif)
+![A chanx-js consumer, the AsyncAPI docs generated from it, generating the client, and that client catching a typo](https://raw.githubusercontent.com/huynguyengl99/chanx-js/main/docs/public/chanx-js-demo.gif)
 
 ## Why chanx-js
 
