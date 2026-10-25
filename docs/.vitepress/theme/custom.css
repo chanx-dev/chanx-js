@@ -76,12 +76,33 @@
   height: 30px;
 }
 
-/* The hero icon is a rounded tile, so drop the default glow behind it. */
-.VPHero .image-bg {
-  display: none;
+/* The demo GIF under the hero, padded and capped like the hero itself. */
+.home-demo {
+  padding: 0 24px 48px;
 }
 
-.VPHero .image-src {
-  border-radius: 22%;
-  max-width: 240px;
+.home-demo .container {
+  max-width: 1152px;
+  margin: 0 auto;
+}
+
+.home-demo img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.22);
+}
+
+@media (min-width: 640px) {
+  .home-demo {
+    padding: 0 48px 56px;
+  }
+}
+
+@media (min-width: 960px) {
+  .home-demo {
+    padding: 0 64px 64px;
+  }
 }

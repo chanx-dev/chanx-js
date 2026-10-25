@@ -2,12 +2,8 @@
 layout: home
 
 hero:
-  name: chanx-js
   text: Type-safe WebSockets for TypeScript, end to end.
   tagline: Declare your messages once. chanx-js routes, validates, broadcasts and documents them on the server, and generates a typed client for the browser, your framework or another Node service.
-  image:
-    src: /brand/cx-app-icon.svg
-    alt: chanx-js
   actions:
     - theme: brand
       text: Build a server
