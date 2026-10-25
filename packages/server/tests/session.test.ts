@@ -1,3 +1,4 @@
+import { InMemoryChannelLayer } from '@chanx-js/layers';
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
@@ -492,5 +493,37 @@ describe('dev warning', () => {
     client.send({ action: 'undeclared' });
     await client.receive();
     expect(logger.warn).not.toHaveBeenCalled();
+  });
+});
+
+describe('a client that leaves while connecting', () => {
+  it('closes the layer channel it was given, and never connects', async () => {
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    const closed = vi.fn();
+    class Slow extends InMemoryChannelLayer {
+      override async newChannel(...args: Parameters<InMemoryChannelLayer['newChannel']>) {
+        await held;
+        const channel = await super.newChannel(...args);
+        const close = channel.close.bind(channel);
+        channel.close = async () => {
+          closed();
+          await close();
+        };
+        return channel;
+      }
+    }
+    const onConnect = vi.fn();
+    const leaving = consumer('/ws/leaving', { name: 'leaving', onConnect });
+    const client = connect(
+      createChanx({ consumers: [leaving], layers: { default: new Slow() } }),
+      '/ws/leaving',
+    );
+
+    await client.close();
+    release();
+
+    await vi.waitFor(() => expect(closed).toHaveBeenCalledOnce());
+    expect(onConnect).not.toHaveBeenCalled();
   });
 });

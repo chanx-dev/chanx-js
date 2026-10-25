@@ -253,3 +253,28 @@ describe('class handler types', () => {
     expect(Checked).toBeDefined();
   });
 });
+
+describe('Class consumers broadcasting', () => {
+  const Shout = defineMessage('shout', z.object({ text: z.string() }));
+  const Heard = defineMessage('heard', z.object({ text: z.string() }));
+
+  @Consumer('/ws/room/{name}', { name: 'room', emits: [Heard], groups: ['room'] })
+  class RoomConsumer extends AsyncJsonWebsocketConsumer {
+    @On(Shout)
+    async shout(m: { payload: { text: string } }) {
+      await this.broadcast(Heard.create(m.payload), { excludeCurrent: true });
+    }
+  }
+
+  it('reach the other connections in their groups, not themselves when asked', async () => {
+    const chanx = createChanx({ consumers: [RoomConsumer] });
+    const ann = connect(chanx, '/ws/room/a');
+    const bob = connect(chanx, '/ws/room/a');
+    await Promise.all([ann.ready, bob.ready]);
+
+    await ann.sendMessage(Shout.create({ text: 'hi' }));
+
+    expect(await bob.receive()).toEqual({ action: 'heard', payload: { text: 'hi' } });
+    expect(await ann.receiveNothing()).toBe(true);
+  });
+});

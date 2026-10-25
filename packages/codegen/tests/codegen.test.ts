@@ -232,6 +232,25 @@ describe('replies', () => {
   });
 });
 
+describe('formatting', () => {
+  it("formats the output with prettier, under the project's own config", async () => {
+    const document = await loadSchema(join(fixtures, 'fastapi-asyncapi.json'));
+    const outDir = await mkdtemp(join(tmpdir(), 'chanx-codegen-'));
+    await writeFile(
+      join(outDir, '.prettierrc'),
+      '{ "semi": false, "singleQuote": true }',
+    );
+
+    await generate(document, { outDir });
+    const channels = await readFile(join(outDir, 'channels.ts'), 'utf-8');
+
+    expect(channels).toContain(
+      "import { defineChannel, defineTopic } from '@chanx-js/client'\n",
+    );
+    expect(channels).not.toMatch(/;\n/);
+  });
+});
+
 describe('heartbeat detection', () => {
   it('marks a channel that sends ping and receives pong', async () => {
     const document = await loadSchema(join(fixtures, 'fastapi-asyncapi.json'));

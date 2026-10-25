@@ -70,6 +70,9 @@ const Posted = defineMessage('posted', z.object({ body: z.string() }));
 const RoomEvent = defineMessage('room_event', z.object({ body: z.string() }));
 const Refuse = defineMessage('refuse');
 const Strict = defineMessage('strict', z.object({ name: z.unknown() }));
+const Crash = defineMessage('crash');
+const WhereAmI = defineMessage('where_am_i');
+const Here = defineMessage('here', z.object({ channel: z.string() }));
 
 @Injectable()
 class GreetingService {
@@ -172,6 +175,16 @@ class ChatGateway {
   @On(Refuse)
   refuse() {
     throw new WsException({ reason: 'closed' });
+  }
+
+  @On(Crash)
+  crash() {
+    throw new Error('database down');
+  }
+
+  @On(WhereAmI, { output: Here })
+  whereAmI(@Ctx() ctx: Context<'/ws/chat/{room}', unknown, unknown, never>) {
+    return Here.create({ channel: ctx.conn.channelName });
   }
 
   @On(Strict, { output: Notice })
@@ -291,6 +304,18 @@ describe('ChanxModule', () => {
     });
   });
 
+  it('answers any other thrown error with a generic error frame, not its message', async () => {
+    const { url } = await start();
+    const client = open(`${url}/ws/chat/lobby?token=ok`);
+    const reply = await client.request({ action: 'crash' });
+
+    expect(reply).toMatchObject({
+      action: 'error',
+      payload: { detail: 'Failed to process message for crash' },
+    });
+    expect(JSON.stringify(reply)).not.toContain('database down');
+  });
+
   it("runs Nest's pipes: ValidationPipe on a class-validator DTO", async () => {
     const { url } = await start();
     const client = open(`${url}/ws/chat/lobby?token=ok`);
@@ -329,6 +354,29 @@ describe('ChanxModule', () => {
           }),
         ]),
       ),
+    );
+  });
+
+  it('sends an event to one connection through ChanxService', async () => {
+    const { app, url } = await start();
+    const ann = open(`${url}/ws/chat/lobby?token=ok`);
+    const bob = open(`${url}/ws/chat/lobby?token=ok`);
+    const { payload } = (await ann.request({ action: 'where_am_i' })) as {
+      payload: { channel: string };
+    };
+    await bob.request({ action: 'ping' });
+
+    await app
+      .get(ChanxService)
+      .sendEvent(ChatGateway, Joined.create({ user: 'carol' }), payload.channel);
+
+    await vi.waitFor(() =>
+      expect(ann.frames).toContainEqual(
+        expect.objectContaining({ payload: { text: 'carol joined' } }),
+      ),
+    );
+    expect(bob.frames).not.toContainEqual(
+      expect.objectContaining({ payload: { text: 'carol joined' } }),
     );
   });
 
