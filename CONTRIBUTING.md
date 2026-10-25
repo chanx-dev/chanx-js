@@ -25,6 +25,7 @@ source through the `@chanx-js/source` export condition.
 | `pnpm check`                  | Lint, format, typecheck and test: run it before you push           |
 | `pnpm test --project server`  | One package's tests (`client:solid` holds the Solid binding)       |
 | `pnpm test <path>`            | One test file or directory                                         |
+| `pnpm coverage`               | Tests with coverage; the HTML report lands in `coverage/`          |
 | `pnpm lint:fix`, `format:fix` | Fix what ESLint and Prettier can                                   |
 | `pnpm build`                  | Build every package, and the docs site                             |
 | `pnpm check:conformance`      | Regenerate the clients from chanx's sandbox schema; fails on drift |

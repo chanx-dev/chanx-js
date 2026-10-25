@@ -45,6 +45,13 @@ const tests = (pkg: string) => [
 
 export default defineConfig({
   test: {
+    // `pnpm coverage`; set REDIS_URL, REDIS_URL_2 and REDIS_SENTINEL to count the Redis paths.
+    coverage: {
+      provider: 'v8',
+      include: ['packages/*/src/**'],
+      exclude: ['**/*.d.ts'],
+      reporter: ['text-summary', 'html'],
+    },
     projects: [
       project('client', tests('client')),
       project(
