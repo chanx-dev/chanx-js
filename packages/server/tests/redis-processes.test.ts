@@ -9,7 +9,6 @@ import { Posted, Said, chat, redisApp, roomTopic } from './fixtures/redis-app';
 const url = process.env.REDIS_URL;
 const fixture = fileURLToPath(new URL('./fixtures/redis-app.ts', import.meta.url));
 
-/** A server process of its own, as in production behind a load balancer. */
 async function startServer(): Promise<{ port: number; process: ChildProcess }> {
   const child = spawn(
     process.execPath,
@@ -31,7 +30,6 @@ async function startServer(): Promise<{ port: number; process: ChildProcess }> {
   return { port, process: child };
 }
 
-/** A raw WebSocket client: whatever the server sends, in order. */
 async function join(port: number, path: string) {
   const frames: Array<Record<string, unknown>> = [];
   const socket = new WebSocket(`ws://127.0.0.1:${port}${path}`);
