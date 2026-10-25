@@ -1,0 +1,166 @@
+{
+  "asyncapi": "3.0.0",
+  "info": {
+    "title": "AsyncAPI Documentation",
+    "version": "1.0.0",
+    "description": ""
+  },
+  "servers": {
+    "development": {
+      "host": "localhost:8000",
+      "protocol": "ws"
+    }
+  },
+  "channels": {
+    "secure_room": {
+      "address": "/ws/secure",
+      "title": "secure_room",
+      "messages": {
+        "secure_answer": {
+          "$ref": "#/components/messages/secure_answer"
+        },
+        "secure_ask": {
+          "$ref": "#/components/messages/secure_ask"
+        }
+      },
+      "bindings": {
+        "ws": {
+          "query": {
+            "type": "object",
+            "properties": {
+              "token": {
+                "type": "string",
+                "description": "Access token"
+              }
+            }
+          },
+          "headers": {
+            "type": "object",
+            "properties": {
+              "Authorization": {
+                "type": "string"
+              }
+            }
+          },
+          "bindingVersion": "0.1.0"
+        }
+      }
+    }
+  },
+  "operations": {
+    "handle_secure_ask": {
+      "action": "receive",
+      "channel": {
+        "$ref": "#/channels/secure_room"
+      },
+      "description": "",
+      "summary": "",
+      "security": [
+        {
+          "$ref": "#/components/securitySchemes/query_token"
+        },
+        {
+          "$ref": "#/components/securitySchemes/header_authorization"
+        },
+        {
+          "$ref": "#/components/securitySchemes/cookie_sessionid"
+        }
+      ],
+      "messages": [
+        {
+          "$ref": "#/channels/secure_room/messages/secure_ask"
+        }
+      ],
+      "reply": {
+        "channel": {
+          "$ref": "#/channels/secure_room"
+        },
+        "messages": [
+          {
+            "$ref": "#/channels/secure_room/messages/secure_answer"
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "messages": {
+      "secure_answer": {
+        "payload": {
+          "$ref": "#/components/schemas/SecureAnswer"
+        },
+        "correlationId": {
+          "$ref": "#/components/correlationIds/ref"
+        }
+      },
+      "secure_ask": {
+        "payload": {
+          "$ref": "#/components/schemas/SecureAsk"
+        },
+        "correlationId": {
+          "$ref": "#/components/correlationIds/ref"
+        }
+      }
+    },
+    "schemas": {
+      "SecureAnswer": {
+        "properties": {
+          "action": {
+            "const": "secure_answer",
+            "default": "secure_answer",
+            "title": "Action",
+            "type": "string"
+          },
+          "payload": {
+            "title": "Payload",
+            "type": "string"
+          }
+        },
+        "required": ["payload"],
+        "title": "SecureAnswer",
+        "type": "object"
+      },
+      "SecureAsk": {
+        "properties": {
+          "action": {
+            "const": "secure_ask",
+            "default": "secure_ask",
+            "title": "Action",
+            "type": "string"
+          },
+          "payload": {
+            "title": "Payload",
+            "type": "string"
+          }
+        },
+        "required": ["payload"],
+        "title": "SecureAsk",
+        "type": "object"
+      }
+    },
+    "correlationIds": {
+      "ref": {
+        "description": "A reply carries the `ref` of the request it answers.",
+        "location": "$message.payload#/ref"
+      }
+    },
+    "securitySchemes": {
+      "query_token": {
+        "type": "httpApiKey",
+        "name": "token",
+        "in": "query",
+        "description": "Access token"
+      },
+      "header_authorization": {
+        "type": "httpApiKey",
+        "name": "Authorization",
+        "in": "header"
+      },
+      "cookie_sessionid": {
+        "type": "httpApiKey",
+        "name": "sessionid",
+        "in": "cookie"
+      }
+    }
+  }
+}

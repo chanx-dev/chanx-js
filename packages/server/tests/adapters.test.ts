@@ -83,9 +83,9 @@ describe.each(SERVERS)('the %s adapter', (name, startServer) => {
     ]);
   });
 
-  it('closes after a failed authentication', async () => {
+  it('closes with 4401 after a failed authentication', async () => {
     const client = open(`${await start(app())}/ws/chat/lobby`, {});
-    expect(await client.closed).toBe(1000);
+    expect(await client.closed).toBe(4401);
     expect(client.frames).toMatchObject([
       { action: 'authentication', payload: { status_code: 401 } },
     ]);

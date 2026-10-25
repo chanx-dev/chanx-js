@@ -108,6 +108,13 @@ interface HandlerSetDefinition {
   readonly passthrough: readonly AnyMessageDefinition[];
 }
 
+/** Where a consumer's `authenticate` reads a credential from, for the AsyncAPI document. */
+export interface Credential {
+  name: string;
+  location: 'query' | 'header' | 'cookie';
+  description?: string;
+}
+
 /** Options for `consumer()`. */
 export interface ConsumerOptions<
   Path extends string,
@@ -145,6 +152,8 @@ export interface ConsumerOptions<
    * socket for anonymous traffic. A browser cannot read why its upgrade failed.
    */
   rejectBeforeUpgrade?: boolean;
+  /** Where `authenticate` reads credentials, documented as AsyncAPI security schemes. */
+  credentials?: readonly Credential[];
   /** Runs once authenticated and the groups are joined. */
   onConnect?: (ctx: Context<Path, State, User, MessageOf<Emits>>) => void | Promise<void>;
   /** Runs when the socket closes, before the groups are left. */

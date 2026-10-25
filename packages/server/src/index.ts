@@ -15,7 +15,11 @@ export type {
   UpgradeRequest,
 } from './app';
 export { asyncapiHandler } from './asyncapi-http';
-export type { AsyncAPIHandler, AsyncAPIServeOptions } from './asyncapi-http';
+export type {
+  AsyncAPIDocsAssets,
+  AsyncAPIHandler,
+  AsyncAPIServeOptions,
+} from './asyncapi-http';
 export type {
   AsyncAPIChannel,
   AsyncAPIDocument,
@@ -23,7 +27,10 @@ export type {
   AsyncAPIInfo,
   AsyncAPIOperation,
   AsyncAPIOptions,
+  AsyncAPISecurityScheme,
+  AsyncAPIServer,
   AsyncAPITag,
+  WebSocketBinding,
 } from './asyncapi';
 export {
   AsyncJsonWebsocketConsumer,
@@ -48,6 +55,7 @@ export type {
   ConsumerOptions,
   ConsumerSource,
   Context,
+  Credential,
   ErrorHooks,
   EventsOf,
   HandlerOptions,

@@ -68,6 +68,7 @@ your own way.
 - **An operation per handler.** A message handler is `receive`, with a `reply` listing
   its `output`. An event or a consumer's `emits` is `send`.
 - **A component per message,** under its `title` (`ChatMessage` for `chat` by default).
+  Request and reply messages carry a `correlationId` pointing at the frame's `ref`.
 
 Operations are named `handle_<action>`, or after the method for a class handler. Set
 `name` in a handler's options to choose one. Handlers take `summary`,
@@ -80,6 +81,31 @@ Zod 4 and ArkType natively, Valibot through `toStandardJsonSchema`. Give a paylo
 title, such as Zod's `.meta({ title: 'ChatPayload' })`, to document it as a named
 component, as pydantic models are. Two different schemas under one title are an error.
 
+## Security
+
+A consumer's `credentials` each become a security scheme named `<location>_<name>`, such
+as `query_token`. Its operations list them (any one is enough), and query and header ones
+go in the channel's WebSocket binding, which describes the handshake. Topics take their
+host's.
+
+```ts
+chanx.asyncapi({
+  servers: {
+    production: {
+      host: 'api.example.com',
+      protocol: 'wss',
+      security: [
+        { $ref: '#/components/securitySchemes/query_token' },
+      ],
+    },
+  },
+  securitySchemes: { oauth: { type: 'oauth2' } },
+});
+```
+
+`servers` replaces the one built from `serverUrl` and `serverProtocol`. A declared scheme
+with the same name as a credential's replaces it.
+
 ## Options
 
 | Option           | Default                  |
@@ -91,7 +117,26 @@ component, as pydantic models are. Two different schemas under one title are an 
 | `serverProtocol` | `ws`                     |
 
 `termsOfService`, `contact`, `license`, `tags` and `externalDocs` go into the
-document's `info` when given.
+document's `info` when given; `servers` and `securitySchemes` are described
+[above](#security).
+
+The docs page loads `@asyncapi/react-component` from unpkg, pinned to one release and
+checked by [Subresource Integrity](https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity)
+hashes. To serve it without a CDN, point `docs` at your own copies; a custom URL drops
+the pinned hash, so pass your own:
+
+```ts
+asyncapiHandler(chanx, {
+  docs: {
+    jsUrl: '/static/asyncapi/index.js',
+    cssUrl: '/static/asyncapi/default.min.css',
+    jsIntegrity: 'sha384-...',
+  },
+});
+```
+
+The component evaluates code at runtime, so a Content Security Policy must allow
+`unsafe-eval` on the docs page.
 
 With `createChanx({ camelize: true })`, names and properties are camelCased as chanx
 does, while schema names keep their titles.

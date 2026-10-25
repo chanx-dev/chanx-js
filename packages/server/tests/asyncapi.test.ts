@@ -170,6 +170,7 @@ function subset(document: AsyncAPIDocument): AsyncAPIDocument {
       schemas: Object.fromEntries(
         [...schemas].sort().map((name) => [name, document.components.schemas[name]!]),
       ),
+      correlationIds: document.components.correlationIds,
     },
   };
 }
@@ -200,6 +201,7 @@ describe('AsyncAPI, against chanx', () => {
 
   it('documents the same messages and message schemas', () => {
     expect(node.components.messages).toEqual(python.components.messages);
+    expect(node.components.correlationIds).toEqual(python.components.correlationIds);
     for (const name of [
       'PingMessage',
       'PongMessage',

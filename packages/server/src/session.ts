@@ -92,6 +92,11 @@ function handlersOf(definition: ConsumerDefinition | TopicDefinition) {
   return found;
 }
 
+// As chanx: 4000 + a 4xx or 5xx status, so a client can tell a refusal from a drop.
+export function authenticationCloseCode(status: number): number {
+  return status >= 400 && status < 600 ? 4000 + status : 4401;
+}
+
 export type AuthenticationResult =
   | { user: unknown }
   | { status: number; statusText: string; data: unknown }
@@ -267,9 +272,12 @@ export function openSession(
     if (authenticated) {
       (conn as { user: unknown }).user = authenticated.user;
       replyAuthentication(200, 'OK', { detail: 'OK' });
-    } else if (consumer.authenticate && !(await authenticate())) {
-      conn.close();
-      return false;
+    } else if (consumer.authenticate) {
+      const refused = await authenticate();
+      if (refused) {
+        conn.close(refused);
+        return false;
+      }
     }
     channel = await layer.newChannel(onLayerMessage);
     if (abort.signal.aborted) {
@@ -299,17 +307,17 @@ export function openSession(
     write(AuthenticationMessage.create({ status_code, status_text, data }), {});
   }
 
-  async function authenticate(): Promise<boolean> {
+  async function authenticate(): Promise<number | undefined> {
     const result = await authenticateRequest(consumer, conn, logger);
     if ('user' in result) {
       (conn as { user: unknown }).user = result.user;
       replyAuthentication(200, 'OK', { detail: 'OK' });
-      return true;
+      return undefined;
     }
     // As chanx: an unexpected failure is logged and the client told nothing.
-    if ('status' in result)
-      replyAuthentication(result.status, result.statusText, result.data);
-    return false;
+    if ('crashed' in result) return authenticationCloseCode(500);
+    replyAuthentication(result.status, result.statusText, result.data);
+    return authenticationCloseCode(result.status);
   }
 
   async function handleFrame(data: string | BinaryFrame) {

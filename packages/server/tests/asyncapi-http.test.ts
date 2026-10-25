@@ -91,6 +91,35 @@ describe('asyncapiHandler', () => {
     expect(page).toContain('\\u003c/script>');
   });
 
+  it('loads a pinned release of the docs page assets, checked by their hashes', async () => {
+    const page = await (await asyncapiHandler(app())(
+      get('http://localhost/asyncapi'),
+    ))!.text();
+
+    expect(page).toContain(
+      '<script src="https://unpkg.com/@asyncapi/react-component@3.2.2/browser/standalone/index.js" integrity="sha384-/OTzBCE2fCs+wXFZecqj96eHeOnof8fcoSA2OVEHTmV/BeGnpOpolyhDGduFU9xE" crossorigin="anonymous"></script>',
+    );
+    expect(page).toContain(
+      '<link rel="stylesheet" href="https://unpkg.com/@asyncapi/react-component@3.2.2/styles/default.min.css" integrity="sha384-oo9RoQcacP++XdMX6CjTucTvASEORHX3chFik0/V2kHcsHiVboGyWZztGeq/0bum" crossorigin="anonymous">',
+    );
+  });
+
+  it('loads assets from other URLs, with the hashes given for them', async () => {
+    const handler = asyncapiHandler(app(), {
+      docs: {
+        jsUrl: '/static/asyncapi.js',
+        cssUrl: '/static/asyncapi.css',
+        jsIntegrity: 'sha384-mine',
+      },
+    });
+    const page = await (await handler(get('http://localhost/asyncapi')))!.text();
+
+    expect(page).toContain(
+      '<script src="/static/asyncapi.js" integrity="sha384-mine" crossorigin="anonymous"></script>',
+    );
+    expect(page).toContain('<link rel="stylesheet" href="/static/asyncapi.css">');
+  });
+
   it('serves under another path, and leaves other paths and methods alone', async () => {
     const handle = asyncapiHandler(app(), { path: '/docs/ws' });
 

@@ -1,7 +1,7 @@
 import { patternParams } from '@chanx-js/protocol';
 
 import { camelize, camelizeKey, decamelizeKey } from './case';
-import type { ConsumerDefinition, HandlerDefinition } from './consumer';
+import type { ConsumerDefinition, Credential, HandlerDefinition } from './consumer';
 import { eventHandlersOf } from './consumer';
 import type { AnyMessageDefinition } from './messages';
 import type { JsonSchema, StandardSchemaV1 } from './standard-schema';
@@ -22,6 +22,32 @@ export interface AsyncAPIOptions extends Partial<
   serverUrl?: string;
   /** `ws` or `wss`. Defaults to `ws`. */
   serverProtocol?: string;
+  /** AsyncAPI Server Objects by name, in place of `serverUrl` and `serverProtocol`. */
+  servers?: Record<string, AsyncAPIServer>;
+  /** AsyncAPI Security Scheme Objects by name; one replaces a `credentials` one of its name. */
+  securitySchemes?: Record<string, AsyncAPISecurityScheme>;
+}
+
+/** A server the API is served from. */
+export interface AsyncAPIServer {
+  host: string;
+  protocol: string;
+  pathname?: string;
+  description?: string;
+  title?: string;
+  summary?: string;
+  security?: Ref[];
+  tags?: AsyncAPITag[];
+  bindings?: Record<string, unknown>;
+}
+
+/** How a client authenticates, such as an API key in the query. */
+export interface AsyncAPISecurityScheme {
+  type: string;
+  description?: string;
+  name?: string;
+  in?: string;
+  [field: string]: unknown;
 }
 
 interface Ref {
@@ -58,12 +84,14 @@ export interface AsyncAPIInfo {
 export interface AsyncAPIDocument {
   asyncapi: string;
   info: AsyncAPIInfo;
-  servers: Record<string, { host: string; protocol: string }>;
+  servers: Record<string, AsyncAPIServer>;
   channels: Record<string, AsyncAPIChannel>;
   operations: Record<string, AsyncAPIOperation>;
   components: {
-    messages: Record<string, { payload: Ref }>;
+    messages: Record<string, { payload: Ref; correlationId?: Ref }>;
     schemas: Record<string, JsonSchema>;
+    correlationIds?: Record<string, { description: string; location: string }>;
+    securitySchemes?: Record<string, AsyncAPISecurityScheme>;
   };
 }
 
@@ -76,7 +104,16 @@ export interface AsyncAPIChannel {
   /** chanx's extension marking a topic channel. */
   'x-topic'?: { name: string; pattern: string; parameters: string[] };
   messages: Record<string, Ref>;
+  /** The handshake's query and headers, for consumers that declare `credentials`. */
+  bindings?: { ws: WebSocketBinding };
   tags?: AsyncAPITag[];
+}
+
+/** AsyncAPI's WebSocket channel binding: what the handshake carries. */
+export interface WebSocketBinding {
+  query?: { type: 'object'; properties: Record<string, JsonSchema> };
+  headers?: { type: 'object'; properties: Record<string, JsonSchema> };
+  bindingVersion: string;
 }
 
 /** A handler (`receive`), or what the server sends unprompted (`send`). */
@@ -85,6 +122,7 @@ export interface AsyncAPIOperation {
   channel: Ref;
   summary: string;
   description: string;
+  security?: Ref[];
   tags?: AsyncAPITag[];
   messages?: Ref[];
   reply?: { channel: Ref; messages: Ref[] };
@@ -98,6 +136,7 @@ interface Entry {
   path: string;
   description?: string;
   tags?: readonly string[];
+  credentials: readonly Credential[];
   topic?: TopicDefinition;
   handlers: ReadonlyMap<string, HandlerDefinition>;
   events: ReadonlyMap<string, HandlerDefinition>;
@@ -116,6 +155,8 @@ export function generateAsyncAPI(
     description = '',
     serverUrl = 'localhost:8000',
     serverProtocol = 'ws',
+    servers,
+    securitySchemes: declaredSchemes = {},
     ...metadata
   }: AsyncAPIOptions = {},
   { camelize: camel = false }: { camelize?: boolean } = {},
@@ -124,8 +165,13 @@ export function generateAsyncAPI(
   const components = new Components();
   const channels: AsyncAPIDocument['channels'] = {};
   const operations: AsyncAPIDocument['operations'] = {};
+  const securitySchemes: Record<string, AsyncAPISecurityScheme> = { ...declaredSchemes };
 
   for (const entry of entries) {
+    const security = entry.credentials.map((credential) => ({
+      $ref: `#/components/securitySchemes/${addSecurityScheme(securitySchemes, credential)}`,
+    }));
+    const binding = wsBinding(entry.credentials);
     const messages = new Map<string, AnyMessageDefinition>();
     const add = (message: AnyMessageDefinition) =>
       messages.set(messageKey(message), message);
@@ -162,6 +208,7 @@ export function generateAsyncAPI(
           .sort(([a], [b]) => (a < b ? -1 : 1))
           .map(([key, message]) => [key, { $ref: components.message(message) }]),
       ),
+      ...(binding && { bindings: { ws: binding } }),
       ...(entry.tags?.length && { tags: entry.tags.map((name) => ({ name })) }),
     };
 
@@ -171,13 +218,16 @@ export function generateAsyncAPI(
     const operation = (
       name: string,
       action: 'receive' | 'send',
-      body: Omit<AsyncAPIOperation, 'action' | 'channel'>,
+      { description, summary, ...rest }: Omit<AsyncAPIOperation, 'action' | 'channel'>,
     ) => {
       const key = name in operations ? `${entry.owner}_${name}` : name;
       operations[key] = {
         action,
         channel: { $ref: `#/channels/${entry.channel}` },
-        ...body,
+        description,
+        summary,
+        ...(security.length && { security }),
+        ...rest,
       };
     };
     for (const handler of entry.handlers.values()) {
@@ -211,7 +261,9 @@ export function generateAsyncAPI(
   const document: AsyncAPIDocument = {
     asyncapi: '3.0.0',
     info: { title, version, description, ...metadata },
-    servers: { [environment(serverUrl)]: { host: serverUrl, protocol: serverProtocol } },
+    servers: servers ?? {
+      [environment(serverUrl)]: { host: serverUrl, protocol: serverProtocol },
+    },
     channels,
     operations,
     components: {
@@ -219,6 +271,10 @@ export function generateAsyncAPI(
       schemas: sorted(components.schemas),
     },
   };
+  addCorrelationIds(document);
+  if (Object.keys(securitySchemes).length) {
+    document.components.securitySchemes = securitySchemes;
+  }
   return camel ? camelizeDocument(document) : document;
 }
 
@@ -230,6 +286,7 @@ function entriesOf(definition: ConsumerDefinition): Entry[] {
     path: definition.path,
     description: options.description,
     tags: options.tags,
+    credentials: options.credentials ?? [],
     handlers: definition.handlers,
     events: eventHandlersOf(definition),
     emits: options.emits ?? [],
@@ -239,6 +296,8 @@ function entriesOf(definition: ConsumerDefinition): Entry[] {
     owner: snakeName(topic.name),
     path: definition.path,
     description: topic.options.description,
+    // A topic is reached through its host's handshake, so it needs the host's credentials.
+    credentials: options.credentials ?? [],
     topic,
     handlers: topic.handlers,
     events: eventHandlersOf(topic),
@@ -255,6 +314,70 @@ function entriesOf(definition: ConsumerDefinition): Entry[] {
   );
   const ownHandlers = definition.handlers.size > 0 || definition.topics.length === 0;
   return ownHandlers ? [consumerEntry, ...hosted] : hosted;
+}
+
+const WS_BINDING_VERSION = '0.1.0';
+
+function addCorrelationIds(document: AsyncAPIDocument): void {
+  const correlated = new Set<string>();
+  for (const operation of Object.values(document.operations)) {
+    if (!operation.reply) continue;
+    for (const { $ref } of [...(operation.messages ?? []), ...operation.reply.messages]) {
+      const [, , channel, , message] = $ref.split('/');
+      const target = document.channels[channel!]!.messages[message!]!.$ref;
+      correlated.add(target.split('/').at(-1)!);
+    }
+  }
+  if (!correlated.size) return;
+
+  const { messages } = document.components;
+  for (const name of correlated) {
+    messages[name] = {
+      ...messages[name]!,
+      correlationId: { $ref: '#/components/correlationIds/ref' },
+    };
+  }
+  document.components.correlationIds = {
+    ref: {
+      description: 'A reply carries the `ref` of the request it answers.',
+      location: '$message.payload#/ref',
+    },
+  };
+}
+
+function addSecurityScheme(
+  schemes: Record<string, AsyncAPISecurityScheme>,
+  { name, location, description }: Credential,
+): string {
+  const key = `${location}_${name}`.toLowerCase().replaceAll('-', '_');
+  schemes[key] ??= {
+    type: 'httpApiKey',
+    name,
+    in: location,
+    ...(description !== undefined && { description }),
+  };
+  return key;
+}
+
+function wsBinding(credentials: readonly Credential[]): WebSocketBinding | undefined {
+  const binding: Omit<WebSocketBinding, 'bindingVersion'> = {};
+  for (const [key, location] of [
+    ['query', 'query'],
+    ['headers', 'header'],
+  ] as const) {
+    const properties = Object.fromEntries(
+      credentials
+        .filter((credential) => credential.location === location)
+        .map(({ name, description }) => [
+          name,
+          { type: 'string', ...(description !== undefined && { description }) },
+        ]),
+    );
+    if (Object.keys(properties).length) binding[key] = { type: 'object', properties };
+  }
+  return Object.keys(binding).length
+    ? { ...binding, bindingVersion: WS_BINDING_VERSION }
+    : undefined;
 }
 
 function operationName(handler: HandlerDefinition): string {
@@ -386,15 +509,13 @@ function camelizeDocument(document: AsyncAPIDocument): AsyncAPIDocument {
   >;
   for (const channel of Object.values(channels))
     channel.messages = renameKeys(channel.messages);
-  const components = document.components as {
-    messages: unknown;
-    schemas: Record<string, JsonSchema>;
-  };
+  const components = document.components;
   return fixRefs({
     ...document,
     channels,
     operations: renameKeys(document.operations),
     components: {
+      ...components,
       messages: renameKeys(components.messages),
       schemas: Object.fromEntries(
         Object.entries(components.schemas).map(([name, schema]) => [
@@ -418,12 +539,12 @@ function camelizeSchema(schema: JsonSchema): JsonSchema {
 
 function camelizeRef(ref: string): string {
   const parts = ref.split('/');
-  const schemaIndex = parts.indexOf('schemas');
+  const kept = ['schemas', 'securitySchemes'];
   return parts
     .map((part, index) =>
       index <= 1 ||
-      ['channels', 'messages', 'operations', 'components', 'schemas'].includes(part) ||
-      (schemaIndex >= 0 && index === schemaIndex + 1)
+      ['channels', 'messages', 'operations', 'components', ...kept].includes(part) ||
+      kept.includes(parts[index - 1]!)
         ? part
         : camelizeKey(part),
     )

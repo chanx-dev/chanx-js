@@ -360,12 +360,12 @@ describe('authentication', () => {
         data: { detail: 'Authentication credentials were not provided.' },
       },
     });
-    await client.closed;
+    expect((await client.closed).code).toBe(4401);
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(client.pending).toEqual([]);
   });
 
-  it('uses the status an AuthenticationError carries', async () => {
+  it('uses the status an AuthenticationError carries, closing with 4000 + it', async () => {
     const client = connect(
       guarded(() => {
         throw new AuthenticationError({
@@ -381,16 +381,17 @@ describe('authentication', () => {
       status_text: 'Forbidden',
       data: { detail: 'No.' },
     });
+    expect((await client.closed).code).toBe(4403);
   });
 
-  it('closes without a word when authenticate itself crashes, as chanx does', async () => {
+  it('closes with 4500, without a word, when authenticate itself crashes, as chanx does', async () => {
     const client = connect(
       guarded(() => {
         throw new Error('db down');
       }),
       '/ws',
     );
-    await client.closed;
+    expect((await client.closed).code).toBe(4500);
     expect(client.pending).toEqual([]);
   });
 

@@ -68,8 +68,10 @@ consumer('/ws/chat/{room}', {
 ```
 
 The client always gets an `authentication` message: status 200 on success, 401 when
-`authenticate` returns `false`, `null` or `undefined`, then the socket closes. Throw an
-`AuthenticationError` to choose the status and data:
+`authenticate` returns `false`, `null` or `undefined`. A refused socket then closes with
+`4000 + status` (`4401`, or `4403` for a forbidden one), so `@chanx-js/client` stops
+reconnecting instead of retrying. Throw an `AuthenticationError` to choose the status and
+data:
 
 ```ts
 throw new AuthenticationError({
@@ -80,7 +82,28 @@ throw new AuthenticationError({
 ```
 
 This is chanx's flow: the socket is accepted first, so a browser client can read why it
-was refused. `onConnect` runs once authenticated and the groups are joined;
+was refused. When `authenticate` itself throws, the client is told nothing and the socket
+closes with `4500`, which a client retries.
+
+Declare where `authenticate` reads its credentials, and [AsyncAPI](/server/asyncapi#security)
+documents them as security schemes:
+
+```ts
+consumer('/ws/chat/{room}', {
+  name: 'chat',
+  credentials: [
+    {
+      name: 'token',
+      location: 'query',
+      description: 'Access token',
+    },
+  ],
+  authenticate,
+});
+```
+
+That alone does not read anything: `authenticate` still does.
+`onConnect` runs once authenticated and the groups are joined;
 `onDisconnect` runs when the socket closes, before the groups are left.
 
 ### Refusing before the upgrade

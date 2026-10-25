@@ -253,7 +253,7 @@ describe('ChanxModule', () => {
   it("authenticates through the gateway's injected service", async () => {
     const { url } = await start();
     const client = open(`${url}/ws/chat/lobby`);
-    expect(await client.closed).toBe(1000);
+    expect(await client.closed).toBe(4401);
     expect(client.frames[0]).toMatchObject({
       action: 'authentication',
       payload: { status_code: 401 },
@@ -476,7 +476,7 @@ describe('request-scoped gateways', () => {
   it('authenticates on that same gateway, with the connection as REQUEST', async () => {
     const url = await serve([Visit, VisitGateway]);
     const refused = open(`${url}/ws/visit/lobby?token=bad`);
-    expect(await refused.closed).toBe(1000);
+    expect(await refused.closed).toBe(4401);
     expect(refused.frames[0]).toMatchObject({ payload: { status_code: 401 } });
   });
 

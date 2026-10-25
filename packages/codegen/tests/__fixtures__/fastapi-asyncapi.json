@@ -936,26 +936,41 @@
       "analytics_message": {
         "payload": {
           "$ref": "#/components/schemas/AnalyticsMessage"
+        },
+        "correlationId": {
+          "$ref": "#/components/correlationIds/ref"
         }
       },
       "analytics_notification_message": {
         "payload": {
           "$ref": "#/components/schemas/AnalyticsNotificationMessage"
+        },
+        "correlationId": {
+          "$ref": "#/components/correlationIds/ref"
         }
       },
       "chat_message": {
         "payload": {
           "$ref": "#/components/schemas/ChatMessage"
+        },
+        "correlationId": {
+          "$ref": "#/components/correlationIds/ref"
         }
       },
       "chat_notification_message": {
         "payload": {
           "$ref": "#/components/schemas/ChatNotificationMessage"
+        },
+        "correlationId": {
+          "$ref": "#/components/correlationIds/ref"
         }
       },
       "echo_message": {
         "payload": {
           "$ref": "#/components/schemas/EchoMessage"
+        },
+        "correlationId": {
+          "$ref": "#/components/correlationIds/ref"
         }
       },
       "extra_passthrough_message": {
@@ -966,41 +981,65 @@
       "extra_request_message": {
         "payload": {
           "$ref": "#/components/schemas/ExtraRequestMessage"
+        },
+        "correlationId": {
+          "$ref": "#/components/correlationIds/ref"
         }
       },
       "extra_response_message": {
         "payload": {
           "$ref": "#/components/schemas/ExtraResponseMessage"
+        },
+        "correlationId": {
+          "$ref": "#/components/correlationIds/ref"
         }
       },
       "job_message": {
         "payload": {
           "$ref": "#/components/schemas/JobMessage"
+        },
+        "correlationId": {
+          "$ref": "#/components/correlationIds/ref"
         }
       },
       "job_status_message": {
         "payload": {
           "$ref": "#/components/schemas/JobStatusMessage"
+        },
+        "correlationId": {
+          "$ref": "#/components/correlationIds/ref"
         }
       },
       "notification_broadcast_message": {
         "payload": {
           "$ref": "#/components/schemas/NotificationBroadcastMessage"
+        },
+        "correlationId": {
+          "$ref": "#/components/correlationIds/ref"
         }
       },
       "notification_message": {
         "payload": {
           "$ref": "#/components/schemas/NotificationMessage"
+        },
+        "correlationId": {
+          "$ref": "#/components/correlationIds/ref"
         }
       },
       "ping_message": {
         "payload": {
           "$ref": "#/components/schemas/PingMessage"
+        },
+        "correlationId": {
+          "$ref": "#/components/correlationIds/ref"
         }
       },
       "pong_message": {
         "payload": {
           "$ref": "#/components/schemas/PongMessage"
+        },
+        "correlationId": {
+          "$ref": "#/components/correlationIds/ref"
         }
       },
       "post_message": {
@@ -1011,6 +1050,9 @@
       "posted_message": {
         "payload": {
           "$ref": "#/components/schemas/PostedMessage"
+        },
+        "correlationId": {
+          "$ref": "#/components/correlationIds/ref"
         }
       },
       "presence_changed": {
@@ -1021,16 +1063,25 @@
       "reliable_chat_message": {
         "payload": {
           "$ref": "#/components/schemas/ReliableChatMessage"
+        },
+        "correlationId": {
+          "$ref": "#/components/correlationIds/ref"
         }
       },
       "reliable_chat_notification_message": {
         "payload": {
           "$ref": "#/components/schemas/ReliableChatNotificationMessage"
+        },
+        "correlationId": {
+          "$ref": "#/components/correlationIds/ref"
         }
       },
       "room_chat_message": {
         "payload": {
           "$ref": "#/components/schemas/RoomChatMessage"
+        },
+        "correlationId": {
+          "$ref": "#/components/correlationIds/ref"
         }
       },
       "room_event": {
@@ -1041,11 +1092,17 @@
       "room_notification_message": {
         "payload": {
           "$ref": "#/components/schemas/RoomNotificationMessage"
+        },
+        "correlationId": {
+          "$ref": "#/components/correlationIds/ref"
         }
       },
       "system_echo_message": {
         "payload": {
           "$ref": "#/components/schemas/SystemEchoMessage"
+        },
+        "correlationId": {
+          "$ref": "#/components/correlationIds/ref"
         }
       },
       "user_joined_notification": {
@@ -1061,6 +1118,9 @@
       "user_message": {
         "payload": {
           "$ref": "#/components/schemas/UserMessage"
+        },
+        "correlationId": {
+          "$ref": "#/components/correlationIds/ref"
         }
       }
     },
@@ -1656,6 +1716,12 @@
         "required": ["payload"],
         "title": "UserMessage",
         "type": "object"
+      }
+    },
+    "correlationIds": {
+      "ref": {
+        "description": "A reply carries the `ref` of the request it answers.",
+        "location": "$message.payload#/ref"
       }
     }
   }

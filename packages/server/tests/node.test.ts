@@ -104,11 +104,11 @@ describe('attachChanx', () => {
     ]);
   });
 
-  it('closes with 1000 after a failed authentication, as chanx does', async () => {
+  it('closes with 4000 + status after a failed authentication, as chanx does', async () => {
     const { url } = await serve();
     const client = open(`${url}/ws/chat/lobby`);
 
-    expect((await client.closed).code).toBe(1000);
+    expect((await client.closed).code).toBe(4401);
     expect(client.frames).toMatchObject([
       { action: 'authentication', payload: { status_code: 401 } },
     ]);
