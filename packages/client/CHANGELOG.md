@@ -1,5 +1,11 @@
 # @chanx-js/client
 
+## 2.3.0
+
+### Minor Changes
+
+- f075cee: A socket closed with 4400 to 4499, a refused authentication, no longer reconnects by default; a server error (4500) still does. Pass `shouldReconnect` to choose otherwise.
+
 ## 2.2.1
 
 ### Patch Changes
