@@ -1,6 +1,6 @@
 {
   "name": "@chanx-js/layers",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "Channel layers for Node: groups and cross-process messaging, wire-compatible with Python's channels_redis and fast-channels.",
   "license": "MIT",
   "author": "Huy Nguyen",
