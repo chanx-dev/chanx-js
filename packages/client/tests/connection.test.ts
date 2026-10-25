@@ -589,6 +589,39 @@ describe('default sharing', () => {
   });
 });
 
+describe('a refused authentication', () => {
+  it.each([4401, 4403])('stops reconnecting on %i', async (code) => {
+    const connection = makeClient({ reconnectInterval: 1 }).connect(hub);
+    FakeSocket.last.accept();
+
+    FakeSocket.last.close(code);
+    await wait(10);
+
+    expect(FakeSocket.instances).toHaveLength(1);
+    expect(connection.status).toBe('closed');
+  });
+
+  it('reconnects after a server error (4500), which may pass', async () => {
+    makeClient({ reconnectInterval: 1 }).connect(hub);
+    FakeSocket.last.accept();
+
+    FakeSocket.last.close(4500);
+    await wait(10);
+
+    expect(FakeSocket.instances).toHaveLength(2);
+  });
+
+  it('reconnects when shouldReconnect says so', async () => {
+    makeClient({ reconnectInterval: 1, shouldReconnect: () => true }).connect(hub);
+    FakeSocket.last.accept();
+
+    FakeSocket.last.close(4401);
+    await wait(10);
+
+    expect(FakeSocket.instances).toHaveLength(2);
+  });
+});
+
 describe('rejoining a socket', () => {
   it('opens one replacement when a consumer joins during a pending reconnect', async () => {
     const client = makeClient({ reconnectInterval: 10 });

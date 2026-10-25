@@ -46,6 +46,7 @@ export interface SocketOptions {
    * plain channel every consumer of a shared socket sees every reply.
    */
   share?: boolean;
+  /** Defaults to every close but a refused authentication (4400 to 4499). */
   shouldReconnect?: (event: { code?: number; reason?: string }) => boolean;
   reconnectAttempts?: number;
   /** Fixed delay, or a function of the attempt number for backoff. */
@@ -84,6 +85,11 @@ const DEFAULTS = {
   heartbeatInterval: 25_000,
   heartbeatTimeout: 10_000,
 };
+
+// chanx closes a refused authentication with 4000 + its status. Retrying a 4xx cannot
+// succeed; a 5xx (an authenticator that crashed) may.
+const reconnectUnlessRefused = ({ code }: { code?: number }) =>
+  code === undefined || code < 4400 || code >= 4500;
 
 const defaultFactory: SocketFactory = (url, protocols, options) => {
   if (typeof WebSocket === 'undefined') {
@@ -309,7 +315,7 @@ export class SharedSocket {
   }
 
   private scheduleReconnect(event: { code?: number; reason?: string }): void {
-    const shouldReconnect = this.options.shouldReconnect ?? (() => true);
+    const shouldReconnect = this.options.shouldReconnect ?? reconnectUnlessRefused;
     const max = this.options.reconnectAttempts ?? DEFAULTS.reconnectAttempts;
 
     if (this.refs === 0 || !shouldReconnect(event)) {

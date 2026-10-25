@@ -16,7 +16,7 @@ const client = createClient({ baseUrl: 'wss://api.example.com' });
 | `share`             | topic channels only          | Share one socket per URL and subprotocols; see [Sharing](/client/sharing) |
 | `reconnectAttempts` | `10`                         | Give up after this many consecutive failures                              |
 | `reconnectInterval` | backoff, capped at 30s       | A fixed delay, or `(attempt) => ms`                                       |
-| `shouldReconnect`   | always                       | `(closeEvent) => boolean`                                                 |
+| `shouldReconnect`   | all but a refused login      | `(closeEvent) => boolean`; by default 4400 to 4499 stop reconnecting      |
 | `retryOnError`      | `false`                      | Close and reconnect on a socket error                                     |
 | `onReconnectStop`   |                              | Called when reconnecting gives up                                         |
 | `heartbeat`         | automatic                    | See [Heartbeat](#heartbeat)                                               |
