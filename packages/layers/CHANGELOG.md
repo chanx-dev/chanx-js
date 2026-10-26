@@ -1,5 +1,11 @@
 # @chanx-js/layers
 
+## 2.1.1
+
+### Patch Changes
+
+- 91e6aa7: Point the repository, homepage and issue links at the chanx-dev org and the js.chanx.dev docs.
+
 ## 2.1.0
 
 ### Minor Changes

@@ -1,5 +1,11 @@
 # @chanx-js/client
 
+## 2.3.1
+
+### Patch Changes
+
+- 91e6aa7: Point the repository, homepage and issue links at the chanx-dev org and the js.chanx.dev docs.
+
 ## 2.3.0
 
 ### Minor Changes
