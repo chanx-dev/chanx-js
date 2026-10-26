@@ -5,9 +5,9 @@ parts work together.
 
 ## chanx
 
-[chanx](https://github.com/huynguyengl99/chanx) is the original: the same framework for
+[chanx](https://github.com/chanx-dev/chanx) is the original: the same framework for
 Python, on Django Channels and FastAPI, with Pydantic messages, AsyncAPI generation and
-testing utilities. Its [documentation](https://chanx.readthedocs.io) covers the Python
+testing utilities. Its [documentation](https://python.chanx.dev) covers the Python
 side.
 
 - A chanx-js client talks to a chanx server: generate it from the server's AsyncAPI.
@@ -17,14 +17,14 @@ side.
 
 ## chanx-go
 
-[chanx-go](https://huynguyengl99.github.io/chanx-go/) is the Go implementation: messages as structs, a consumer
+[chanx-go](https://go.chanx.dev/) is the Go implementation: messages as structs, a consumer
 as a struct of handler methods, on net/http, gin, echo or Fiber. It emits the same AsyncAPI
 document, so `@chanx-js/codegen` generates clients for a Go server unchanged, and Go, Node
 and Python servers can share one Redis.
 
 ## chanx-kit
 
-[chanx-kit](https://huynguyengl99.github.io/chanx-kit/) is a set of WebSocket components
+[chanx-kit](https://kit.chanx.dev/) is a set of WebSocket components
 for chanx, such as notifications, chat with replayed history, a presence roster and an
 agent streaming tokens. Each is copied into your project with one command, as code you
 own, in the spirit of shadcn/ui. Server kits are Python; UI kits, React first, are

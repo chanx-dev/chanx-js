@@ -6,7 +6,7 @@ releases.
 
 ## The repo
 
-The JavaScript home for [chanx](https://github.com/huynguyengl99/chanx), a second
+The JavaScript home for [chanx](https://github.com/chanx-dev/chanx), a second
 implementation of its protocol held in line by tests.
 
 | Path                | What                                                                               |

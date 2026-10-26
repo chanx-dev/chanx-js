@@ -10,7 +10,7 @@ import { data as changelogs } from './changelog.data.ts';
 
 Each package has its own version and changelog. Majors follow chanx's: every 2.x package
 speaks the chanx 2 protocol, so any 2.x client works with any 2.x server. Releases are
-also on [GitHub](https://github.com/huynguyengl99/chanx-js/releases).
+also on [GitHub](https://github.com/chanx-dev/chanx-js/releases).
 
 ## @chanx-js/server
 

@@ -6,10 +6,10 @@
   "author": "Huy Nguyen",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/huynguyengl99/chanx-js.git",
+    "url": "git+https://github.com/chanx-dev/chanx-js.git",
     "directory": "packages/server"
   },
-  "bugs": "https://github.com/huynguyengl99/chanx-js/issues",
+  "bugs": "https://github.com/chanx-dev/chanx-js/issues",
   "type": "module",
   "sideEffects": false,
   "files": [

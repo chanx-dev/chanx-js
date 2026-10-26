@@ -139,5 +139,5 @@ cd packages/<name> && pnpm publish --access public
 
 npm holds a new name for review for a few minutes before releasing it. Then, on npmjs.com,
 add the package's trusted publisher: GitHub Actions, repository
-`huynguyengl99/chanx-js`, workflow `publish.yml`, environment `deploy`. From then on,
+`chanx-dev/chanx-js`, workflow `publish.yml`, environment `deploy`. From then on,
 releases publish it.

@@ -1,6 +1,6 @@
 # Python and Node together
 
-chanx-js speaks the same protocol as [chanx](https://github.com/huynguyengl99/chanx) on
+chanx-js speaks the same protocol as [chanx](https://github.com/chanx-dev/chanx) on
 Django Channels and FastAPI, and its Redis layer writes the same bytes. So the two mix
 at every level: one client for either server, and Node and Python servers in one
 deployment.

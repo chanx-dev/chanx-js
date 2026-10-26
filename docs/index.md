@@ -13,7 +13,7 @@ hero:
       link: /client/
     - theme: alt
       text: GitHub
-      link: https://github.com/huynguyengl99/chanx-js
+      link: https://github.com/chanx-dev/chanx-js
 
 features:
   - title: Handlers, not if/else

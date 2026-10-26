@@ -4,7 +4,7 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/huynguyengl99/chanx-js.git"
+    "url": "git+https://github.com/chanx-dev/chanx-js.git"
   },
   "packageManager": "pnpm@10.13.1",
   "scripts": {

@@ -3,8 +3,8 @@
 Channel layers for Node: groups and messaging across processes, so a broadcast reaches
 every server and worker, not only the one that sent it.
 
-**[Documentation](https://huynguyengl99.github.io/chanx-js/server/layers)** · [chanx-js](https://huynguyengl99.github.io/chanx-js/) ·
-[Why chanx-js?](https://huynguyengl99.github.io/chanx-js/introduction/why)
+**[Documentation](https://js.chanx.dev/server/layers)** · [chanx-js](https://js.chanx.dev/) ·
+[Why chanx-js?](https://js.chanx.dev/introduction/why)
 
 The Redis layer is wire-compatible with `RedisPubSubChannelLayer` from Python's
 [channels_redis](https://github.com/django/channels_redis) and

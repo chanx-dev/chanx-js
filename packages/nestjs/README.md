@@ -2,10 +2,10 @@
 
 chanx for NestJS: consumers and topics as injectable gateways, with Nest's guards,
 interceptors, pipes and exception filters. Built on `@chanx-js/server`, so clients
-cannot tell it from Python's [chanx](https://github.com/huynguyengl99/chanx).
+cannot tell it from Python's [chanx](https://github.com/chanx-dev/chanx).
 
-**[Documentation](https://huynguyengl99.github.io/chanx-js/server/integrations/nestjs)** · [chanx-js](https://huynguyengl99.github.io/chanx-js/) ·
-[Why chanx-js?](https://huynguyengl99.github.io/chanx-js/introduction/why)
+**[Documentation](https://js.chanx.dev/server/integrations/nestjs)** · [chanx-js](https://js.chanx.dev/) ·
+[Why chanx-js?](https://js.chanx.dev/introduction/why)
 
 ```ts
 import { Module, UseGuards } from '@nestjs/common';

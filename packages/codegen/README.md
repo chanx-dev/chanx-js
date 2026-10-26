@@ -1,13 +1,13 @@
 # @chanx-js/codegen
 
 Generate typed channel descriptors for the [`@chanx-js/client`](https://www.npmjs.com/package/@chanx-js/client)
-WebSocket client from a [chanx](https://github.com/huynguyengl99/chanx) AsyncAPI 3 schema.
+WebSocket client from a [chanx](https://github.com/chanx-dev/chanx) AsyncAPI 3 schema.
 
 Point it at a running server, Node or Python, and get the client's types, including
 what each request is answered with.
 
-**[Documentation](https://huynguyengl99.github.io/chanx-js/client/codegen)** · [Getting started](https://huynguyengl99.github.io/chanx-js/client/) ·
-[Why chanx-js?](https://huynguyengl99.github.io/chanx-js/introduction/why)
+**[Documentation](https://js.chanx.dev/client/codegen)** · [Getting started](https://js.chanx.dev/client/) ·
+[Why chanx-js?](https://js.chanx.dev/introduction/why)
 
 ```bash
 npm install -D @chanx-js/codegen

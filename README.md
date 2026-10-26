@@ -1,13 +1,13 @@
 <h1>
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/huynguyengl99/chanx-js/main/docs/public/brand/chanx-js-wordmark-dark.svg?v=4">
-    <img alt="chanx-js" src="https://raw.githubusercontent.com/huynguyengl99/chanx-js/main/docs/public/brand/chanx-js-wordmark.svg?v=4" height="72">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/chanx-dev/chanx-js/main/docs/public/brand/chanx-js-wordmark-dark.svg?v=4">
+    <img alt="chanx-js" src="https://raw.githubusercontent.com/chanx-dev/chanx-js/main/docs/public/brand/chanx-js-wordmark.svg?v=4" height="72">
   </picture>
 </h1>
 
 [![@chanx-js/server](https://img.shields.io/npm/v/@chanx-js/server?label=%40chanx-js%2Fserver)](https://www.npmjs.com/package/@chanx-js/server)
 [![@chanx-js/client](https://img.shields.io/npm/v/@chanx-js/client?label=%40chanx-js%2Fclient)](https://www.npmjs.com/package/@chanx-js/client)
-[![CI](https://github.com/huynguyengl99/chanx-js/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/huynguyengl99/chanx-js/actions/workflows/ci.yml)
+[![CI](https://github.com/chanx-dev/chanx-js/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/chanx-dev/chanx-js/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 **Type-safe WebSockets for TypeScript, end to end.**
@@ -21,17 +21,17 @@ Declare your messages once, and chanx-js types both ends of the socket:
   AsyncAPI, so a message the server does not accept fails to compile. Works in the
   browser, React, Vue, Svelte, Solid and Node services.
 
-It speaks the [chanx](https://github.com/huynguyengl99/chanx) protocol, so a chanx-js
+It speaks the [chanx](https://github.com/chanx-dev/chanx) protocol, so a chanx-js
 client also talks to Python chanx servers (Django Channels, FastAPI), and Node and Python
 servers can share one Redis.
 
-**[Documentation](https://huynguyengl99.github.io/chanx-js/)** ·
-[Why chanx-js?](https://huynguyengl99.github.io/chanx-js/introduction/why) ·
-[Server guide](https://huynguyengl99.github.io/chanx-js/server/) ·
-[Client guide](https://huynguyengl99.github.io/chanx-js/client/) ·
-[API reference](https://huynguyengl99.github.io/chanx-js/api/)
+**[Documentation](https://js.chanx.dev/)** ·
+[Why chanx-js?](https://js.chanx.dev/introduction/why) ·
+[Server guide](https://js.chanx.dev/server/) ·
+[Client guide](https://js.chanx.dev/client/) ·
+[API reference](https://js.chanx.dev/api/)
 
-![A chanx-js consumer, the AsyncAPI docs generated from it, generating the client, and that client catching a typo](https://raw.githubusercontent.com/huynguyengl99/chanx-js/main/docs/public/chanx-js-demo.gif)
+![A chanx-js consumer, the AsyncAPI docs generated from it, generating the client, and that client catching a typo](https://raw.githubusercontent.com/chanx-dev/chanx-js/main/docs/public/chanx-js-demo.gif)
 
 ## Why chanx-js
 
@@ -163,22 +163,22 @@ Every package's major version follows chanx's: 2.x speaks the chanx 2 protocol, 
   through [crossws](https://crossws.h3.dev).
 - **Clients**: browsers, React, Vue, Svelte, Solid, and Node, Bun or Deno scripts and
   services.
-- **Python**: [chanx](https://github.com/huynguyengl99/chanx) servers on Django Channels
+- **Python**: [chanx](https://github.com/chanx-dev/chanx) servers on Django Channels
   or FastAPI.
 
 ## Ecosystem
 
-- [chanx](https://github.com/huynguyengl99/chanx): the original, for Django Channels and
+- [chanx](https://github.com/chanx-dev/chanx): the original, for Django Channels and
   FastAPI.
-- [chanx-go](https://huynguyengl99.github.io/chanx-go/): the Go implementation, servers and a typed client
+- [chanx-go](https://go.chanx.dev/): the Go implementation, servers and a typed client
   generator, on the same protocol and Redis layer.
-- [chanx-kit](https://huynguyengl99.github.io/chanx-kit/): WebSocket components for chanx,
+- [chanx-kit](https://kit.chanx.dev/): WebSocket components for chanx,
   such as notifications, chat and presence, copied into your project in one command.
 
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests and releases, and the
-[design notes](https://huynguyengl99.github.io/chanx-js/design) for why things are built
+[design notes](https://js.chanx.dev/design) for why things are built
 the way they are.
 
 ## License

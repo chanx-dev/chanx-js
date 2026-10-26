@@ -6,7 +6,7 @@ server documents itself as AsyncAPI, so its clients are generated, not hand-type
 page takes you from install to a running server in a few minutes; for how it compares
 with Socket.IO or `ws`, see [Why chanx-js?](/introduction/why).
 
-It speaks the protocol of Python's [chanx](https://github.com/huynguyengl99/chanx), so
+It speaks the protocol of Python's [chanx](https://github.com/chanx-dev/chanx), so
 the same clients work against either, and the two can share one Redis.
 
 Three packages make up the server side:

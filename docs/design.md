@@ -4,7 +4,7 @@ Why chanx-js is built the way it is. For how to use it, start with [What is chan
 
 ## Scope
 
-This repo is the JavaScript home for [chanx](https://github.com/huynguyengl99/chanx), not only a client: `@chanx-js/client` (runtime), `@chanx-js/codegen` (CLI), a Node.js server (`@chanx-js/server`), channel layers (`@chanx-js/layers`) and a NestJS integration (`@chanx-js/nestjs`), all speaking the same protocol as the Python server.
+This repo is the JavaScript home for [chanx](https://github.com/chanx-dev/chanx), not only a client: `@chanx-js/client` (runtime), `@chanx-js/codegen` (CLI), a Node.js server (`@chanx-js/server`), channel layers (`@chanx-js/layers`) and a NestJS integration (`@chanx-js/nestjs`), all speaking the same protocol as the Python server.
 
 The wire format lives in one private workspace package, `@chanx-js/protocol`: envelope v1, the reserved keys, the framework actions, topic patterns and group naming. It is never published. Each package that needs it lists it as a dev dependency, so the build bundles the parts it uses: the client stays a single, zero-dependency install, and what only a server needs (group naming and its hash) is tree-shaken out of it. The client's public API re-exports the protocol values it always has.
 

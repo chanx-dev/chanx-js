@@ -55,7 +55,7 @@ A few optional fields route it:
 Validation errors come back as an `error` frame in the shape of pydantic's errors
 (`type`, `loc`, `msg`), so a client can branch on them whichever server answered.
 
-This is the [chanx](https://github.com/huynguyengl99/chanx) protocol, the one Python's
+This is the [chanx](https://github.com/chanx-dev/chanx) protocol, the one Python's
 chanx speaks on Django Channels and FastAPI. That is why the pieces mix: a chanx-js client
 talks to a Python server, and Node and Python servers share one Redis.
 

@@ -4,8 +4,8 @@ Type-safe WebSocket client for TypeScript. Generate it from a server's AsyncAPI 
 and every message you send and receive is typed: in the browser, React, Vue, Svelte,
 Solid, or another Node service. No runtime dependencies.
 
-**[Documentation](https://huynguyengl99.github.io/chanx-js/)** · [Getting started](https://huynguyengl99.github.io/chanx-js/client/) ·
-[Why chanx-js?](https://huynguyengl99.github.io/chanx-js/introduction/why) · [API](https://huynguyengl99.github.io/chanx-js/api/)
+**[Documentation](https://js.chanx.dev/)** · [Getting started](https://js.chanx.dev/client/) ·
+[Why chanx-js?](https://js.chanx.dev/introduction/why) · [API](https://js.chanx.dev/api/)
 
 ```bash
 npm install @chanx-js/client
@@ -30,8 +30,8 @@ connection.send({ action: 'chat', payload: { text: 'hello' } });
   `request()` resolves with the reply its action declares.
 - **Topics:** many subscriptions over one socket, restored after a reconnect.
 - **Reconnects and heartbeats** built in, and sockets shared safely between components.
-- **Works with any chanx server,** [Node](https://huynguyengl99.github.io/chanx-js/server/) or
-  [Python](https://github.com/huynguyengl99/chanx).
+- **Works with any chanx server,** [Node](https://js.chanx.dev/server/) or
+  [Python](https://github.com/chanx-dev/chanx).
 
 | Import                    | For                                       |
 | ------------------------- | ----------------------------------------- |
