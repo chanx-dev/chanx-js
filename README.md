@@ -170,6 +170,8 @@ Every package's major version follows chanx's: 2.x speaks the chanx 2 protocol, 
 
 - [chanx](https://github.com/huynguyengl99/chanx): the original, for Django Channels and
   FastAPI.
+- [chanx-go](https://huynguyengl99.github.io/chanx-go/): the Go implementation, servers and a typed client
+  generator, on the same protocol and Redis layer.
 - [chanx-kit](https://huynguyengl99.github.io/chanx-kit/): WebSocket components for chanx,
   such as notifications, chat and presence, copied into your project in one command.
 

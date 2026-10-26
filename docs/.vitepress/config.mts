@@ -175,6 +175,7 @@ export default defineConfig({
         items: [
           { text: 'Overview', link: '/ecosystem' },
           { text: 'chanx', link: 'https://github.com/huynguyengl99/chanx' },
+          { text: 'chanx-go', link: 'https://huynguyengl99.github.io/chanx-go/' },
           { text: 'chanx-kit', link: 'https://huynguyengl99.github.io/chanx-kit/' },
         ],
       },

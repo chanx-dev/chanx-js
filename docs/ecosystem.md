@@ -15,6 +15,13 @@ side.
   [Python and Node together](/advanced/python).
 - Majors move together: chanx-js 2.x speaks the chanx 2 protocol.
 
+## chanx-go
+
+[chanx-go](https://huynguyengl99.github.io/chanx-go/) is the Go implementation: messages as structs, a consumer
+as a struct of handler methods, on net/http, gin, echo or Fiber. It emits the same AsyncAPI
+document, so `@chanx-js/codegen` generates clients for a Go server unchanged, and Go, Node
+and Python servers can share one Redis.
+
 ## chanx-kit
 
 [chanx-kit](https://huynguyengl99.github.io/chanx-kit/) is a set of WebSocket components
