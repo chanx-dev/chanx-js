@@ -1,5 +1,11 @@
 # @chanx-js/client
 
+## 2.3.2
+
+### Patch Changes
+
+- 43268f3: Say in the README that the package supports plain JavaScript as well as TypeScript.
+
 ## 2.3.1
 
 ### Patch Changes
