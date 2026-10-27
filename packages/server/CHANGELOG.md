@@ -1,5 +1,11 @@
 # @chanx-js/server
 
+## 2.1.4
+
+### Patch Changes
+
+- 63fdb6b: A handler's `output` now also declares what it broadcasts, as chanx's `output_type` does: a handler with `output` may return nothing. `emits` is for messages sent outside any handler.
+
 ## 2.1.3
 
 ### Patch Changes
