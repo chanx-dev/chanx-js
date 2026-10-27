@@ -99,6 +99,12 @@ importers:
       '@chanx-js/client':
         specifier: workspace:*
         version: link:../packages/client
+      '@chanx-js/server':
+        specifier: workspace:*
+        version: link:../packages/server
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
     devDependencies:
       tsx:
         specifier: ^4.20.0

@@ -3,14 +3,17 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "A plain-JavaScript consumer of the generated client, type-checked with checkJs. Proves `--emit js` gives a JS project the same narrowing a TS project gets.",
+  "description": "Plain-JavaScript consumers of chanx-js, type-checked with checkJs. Proves `--emit js` gives a JS client the same narrowing a TS one gets, and that a JS server is typed and runs without a transpiler.",
   "scripts": {
     "gen": "tsx ../packages/codegen/src/cli.ts ../packages/codegen/tests/__fixtures__/fastapi-asyncapi.json -o generated --emit js",
     "typecheck": "tsc -p jsconfig.json",
-    "typecheck:dist": "tsc -p jsconfig.dist.json"
+    "typecheck:dist": "tsc -p jsconfig.dist.json",
+    "smoke": "node smoke.js"
   },
   "dependencies": {
-    "@chanx-js/client": "workspace:*"
+    "@chanx-js/client": "workspace:*",
+    "@chanx-js/server": "workspace:*",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "tsx": "^4.20.0"

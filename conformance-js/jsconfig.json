@@ -9,9 +9,11 @@
     "types": ["node"],
     "baseUrl": ".",
     "paths": {
-      "@chanx-js/client": ["../packages/client/src/index.ts"]
+      "@chanx-js/client": ["../packages/client/src/index.ts"],
+      "@chanx-js/server": ["../packages/server/src/index.ts"],
+      "@chanx-js/server/testing": ["../packages/server/src/testing.ts"]
     }
   },
-  "include": ["generated", "usage.js"],
+  "include": ["generated", "usage.js", "server.js", "smoke.js"],
   "exclude": ["**/node_modules/**"]
 }

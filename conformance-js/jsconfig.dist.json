@@ -2,7 +2,9 @@
   "extends": "./jsconfig.json",
   "compilerOptions": {
     "paths": {
-      "@chanx-js/client": ["../packages/client/dist/index.d.mts"]
+      "@chanx-js/client": ["../packages/client/dist/index.d.mts"],
+      "@chanx-js/server": ["../packages/server/dist/index.d.mts"],
+      "@chanx-js/server/testing": ["../packages/server/dist/testing.d.mts"]
     }
   }
 }
