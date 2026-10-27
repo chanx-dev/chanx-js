@@ -108,7 +108,7 @@ const clientSidebar = [
 export default defineConfig({
   title: 'chanx-js',
   description:
-    'Type-safe WebSocket servers and clients for TypeScript, end to end: one schema types both sides, with topics and groups.',
+    'Type-safe WebSocket servers and clients for JavaScript and TypeScript, end to end: one schema types both sides, with topics and groups.',
   cleanUrls: true,
   // Tutorials link to the server the reader runs, at localhost.
   ignoreDeadLinks: 'localhostLinks',
@@ -125,7 +125,8 @@ export default defineConfig({
       'meta',
       {
         property: 'og:image:alt',
-        content: 'chanx-js: type-safe WebSockets for TypeScript, end to end',
+        content:
+          'chanx-js: type-safe WebSockets for JavaScript and TypeScript, end to end',
       },
     ],
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],

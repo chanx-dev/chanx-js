@@ -1,6 +1,6 @@
 # @chanx-js/client
 
-Type-safe WebSocket client for TypeScript. Generate it from a server's AsyncAPI schema,
+Type-safe WebSocket client for JavaScript and TypeScript. Generate it from a server's AsyncAPI schema,
 and every message you send and receive is typed: in the browser, React, Vue, Svelte,
 Solid, or another Node service. No runtime dependencies.
 

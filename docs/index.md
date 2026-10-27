@@ -2,7 +2,7 @@
 layout: home
 
 hero:
-  text: Type-safe WebSockets for TypeScript, end to end.
+  text: Type-safe WebSockets for JavaScript and TypeScript, end to end.
   tagline: Declare your messages once. chanx-js routes, validates, broadcasts and documents them on the server, and generates a typed client for the browser, your framework or another Node service.
   actions:
     - theme: brand
@@ -19,7 +19,7 @@ features:
   - title: Handlers, not if/else
     details: 'Each action gets a typed handler. Payloads are validated by Zod, Valibot, ArkType or any Standard Schema before your code sees them.'
   - title: Typed on both ends
-    details: 'The server publishes AsyncAPI 3; codegen turns it into a typed client. Sending a message the server does not accept is a compile error.'
+    details: 'The server publishes AsyncAPI 3; codegen turns it into a typed client. Sending a message the server does not accept is a compile error, or an editor error in plain JavaScript.'
   - title: Groups and topics
     details: 'Broadcast to groups across processes over Redis. Clients subscribe to many topics over one socket, restored after a reconnect.'
   - title: Requests that await

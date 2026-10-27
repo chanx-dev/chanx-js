@@ -1,6 +1,6 @@
 # @chanx-js/server
 
-Type-safe WebSocket server for TypeScript. Declare messages once: each action gets a
+Type-safe WebSocket server for JavaScript and TypeScript. Declare messages once: each action gets a
 validated, typed handler, groups broadcast across processes, and the whole API is
 documented as AsyncAPI, from which [`@chanx-js/codegen`](https://js.chanx.dev/client/codegen) generates
 a typed client.

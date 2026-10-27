@@ -10,7 +10,7 @@
 [![CI](https://github.com/chanx-dev/chanx-js/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/chanx-dev/chanx-js/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**Type-safe WebSockets for TypeScript, end to end.**
+**Type-safe WebSockets for JavaScript and TypeScript, end to end.**
 
 Declare your messages once, and chanx-js types both ends of the socket:
 

@@ -1,7 +1,7 @@
 # What is chanx-js?
 
-chanx-js is a WebSocket framework for TypeScript, on the server and the client. You
-declare your messages once, as schemas. The server routes each incoming message to its
+chanx-js is a WebSocket framework for JavaScript and TypeScript, on the server and the
+client. You declare your messages once, as schemas. The server routes each incoming message to its
 handler, validates it, and documents the whole API as AsyncAPI. The client is generated
 from that document, so every message you send and receive is typed, in a browser, a
 framework app or another service.

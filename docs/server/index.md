@@ -43,6 +43,12 @@ yarn add @chanx-js/server zod
 Each server below adds its own packages. Any [Standard Schema](https://standardschema.dev)
 library validates payloads; these pages use Zod.
 
+::: tip Plain JavaScript
+The builder API needs no TypeScript syntax, so the files on this page run unchanged
+as `.js`, with handlers still typed in your editor or under `checkJs`. Only the
+[class API](./classes) needs a compiler, for its decorators.
+:::
+
 ## Define messages and a consumer
 
 Put the app in `chanx.ts`, apart from the server, so tests and any server can share it:

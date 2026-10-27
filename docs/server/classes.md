@@ -43,7 +43,9 @@ class ChatConsumer extends AsyncJsonWebsocketConsumer<User> {
 createChanx({ consumers: [ChatConsumer] });
 ```
 
-The decorators work with standard decorators and with `experimentalDecorators`. A
+The decorators work with standard decorators and with `experimentalDecorators`.
+JavaScript runtimes do not run decorators yet, so classes need TypeScript or Babel; a
+plain JavaScript server uses the builder. A
 subclass method overrides the handler of the same name, decorated or not, and two
 methods handling one action are an error. `@OnEvent` handles events; the error hooks
 are methods to override.
