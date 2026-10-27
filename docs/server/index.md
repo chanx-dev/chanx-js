@@ -46,7 +46,8 @@ library validates payloads; these pages use Zod.
 ::: tip Plain JavaScript
 The builder API needs no TypeScript syntax, so the files on this page run unchanged
 as `.js`, with handlers still typed in your editor or under `checkJs`. Only the
-[class API](./classes) needs a compiler, for its decorators.
+[class API](./classes) needs a compiler, for its decorators. See
+[Plain JavaScript](/advanced/javascript).
 :::
 
 ## Define messages and a consumer

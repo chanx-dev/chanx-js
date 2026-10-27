@@ -42,12 +42,21 @@ Both packages are ESM only. The types need TypeScript 5.0 or later.
 
 chanx serves its AsyncAPI schema over HTTP. Point the generator at it:
 
-```bash
+::: code-group
+
+```bash [TypeScript]
 npx @chanx-js/codegen http://localhost:8000/asyncapi.json \
   -o src/generated
 ```
 
-This writes three files:
+```bash [JavaScript]
+npx @chanx-js/codegen http://localhost:8000/asyncapi.json \
+  -o src/generated --emit js
+```
+
+:::
+
+For TypeScript, this writes three files:
 
 | File          | Contains                                                                   |
 | ------------- | -------------------------------------------------------------------------- |
@@ -55,7 +64,8 @@ This writes three files:
 | `channels.ts` | A descriptor per channel, with topics nested under the connection they use |
 | `index.ts`    | Re-exports both                                                            |
 
-Commit the output and regenerate whenever the server's schema changes. See [Code generation](/client/codegen) for every option, including JavaScript output and reusing types you already have.
+With `--emit js`, each becomes a `.js` file plus a `.d.ts`, so a JavaScript project keeps
+the same types; see [Plain JavaScript](/advanced/javascript). Commit the output and regenerate whenever the server's schema changes. See [Code generation](/client/codegen) for every option, including reusing types you already have.
 
 ## Connect
 

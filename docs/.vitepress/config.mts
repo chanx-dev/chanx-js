@@ -27,6 +27,7 @@ const guideSidebar = [
       { text: 'Server guide', link: '/server/' },
       { text: 'Client guide', link: '/client/' },
       { text: 'Python and Node together', link: '/advanced/python' },
+      { text: 'Plain JavaScript', link: '/advanced/javascript' },
     ],
   },
   {
