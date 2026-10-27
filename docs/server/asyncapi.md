@@ -66,7 +66,7 @@ your own way.
 - **A channel per consumer**, named by its `name`, with its path params. Topics get
   their own channel, marked with chanx's `x-topic` extension.
 - **An operation per handler.** A message handler is `receive`, with a `reply` listing
-  its `output`. An event or a consumer's `emits` is `send`.
+  its `output`, returned or broadcast. An event or a consumer's `emits` is `send`.
 - **A component per message,** under its `title` (`ChatMessage` for `chat` by default).
   Request and reply messages carry a `correlationId` pointing at the frame's `ref`.
 

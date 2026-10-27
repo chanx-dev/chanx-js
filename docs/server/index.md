@@ -72,12 +72,11 @@ const Notice = defineMessage(
 
 const chat = consumer('/ws/chat/{room}', {
   name: 'chat',
-  emits: [Notice],
 })
   .on(PingMessage, { output: PongMessage }, () =>
     PongMessage.create(),
   )
-  .on(Chat, async (m, ctx) => {
+  .on(Chat, { output: Notice }, async (m, ctx) => {
     await ctx.send(
       Notice.create({
         text: `${ctx.params.room}: ${m.payload.text}`,
@@ -93,8 +92,8 @@ export const chanx = createChanx({ consumers: [chat] });
   `PongMessage` are built in.
 - **`consumer`** serves one route and routes each message to its handler.
 - The handler's message and `ctx` are typed: `m.payload.text` is a string,
-  `ctx.params.room` comes from the path, and `ctx.send` accepts only what the consumer
-  declares in `emits`.
+  `ctx.params.room` comes from the path, and `ctx.send` accepts only the handler's
+  declared `output`.
 
 ## Serve it
 

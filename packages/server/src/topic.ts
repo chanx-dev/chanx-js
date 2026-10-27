@@ -111,7 +111,7 @@ type Outputs = AnyMessageDefinition | readonly AnyMessageDefinition[];
 type OutputMessages<O> = [O] extends [never]
   ? never
   : MessageOf<O extends readonly (infer D)[] ? D : O>;
-type Returned<O> = [O] extends [never] ? void : OutputMessages<O>;
+type Returned<O> = [O] extends [never] ? void : void | OutputMessages<O>;
 type Handler<In, Ctx, Out> = (message: In, ctx: Ctx) => Out | Promise<Out>;
 
 /** What `topic()` returns: chain handlers, then list it in a consumer's `topics`. */

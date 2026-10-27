@@ -16,7 +16,7 @@ import {
   On,
 } from '@chanx-js/server';
 
-@Consumer('/ws/chat/{room}', { name: 'chat', emits: [Notice] })
+@Consumer('/ws/chat/{room}', { name: 'chat' })
 class ChatConsumer extends AsyncJsonWebsocketConsumer<User> {
   messages = 0;
 
@@ -25,7 +25,7 @@ class ChatConsumer extends AsyncJsonWebsocketConsumer<User> {
     return PongMessage.create();
   }
 
-  @On(Chat)
+  @On(Chat, { output: Notice })
   async chat(m: MessageOf<typeof Chat>) {
     this.messages++;
     await this.push(

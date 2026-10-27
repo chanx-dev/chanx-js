@@ -70,7 +70,7 @@ type Outputs = AnyMessageDefinition | readonly AnyMessageDefinition[];
 type OutputMessages<O> = [O] extends [never]
   ? never
   : MessageOf<O extends readonly (infer D)[] ? D : O>;
-type Returned<O> = [O] extends [never] ? unknown : OutputMessages<O>;
+type Returned<O> = [O] extends [never] ? unknown : void | OutputMessages<O>;
 
 // Parameters come from `@Payload()` and `@Ctx()`, so only the reply is checked.
 type HandlerDecorator<O> = <
@@ -81,7 +81,7 @@ type HandlerDecorator<O> = <
   descriptor: TypedPropertyDescriptor<M>,
 ) => void;
 
-/** Handle a client message. Return a declared `output` to reply. */
+/** Handle a client message. `output` declares what it returns or broadcasts. */
 export function On<D extends AnyMessageDefinition, const O extends Outputs = never>(
   message: D,
   options?: HandlerOptions<O>,

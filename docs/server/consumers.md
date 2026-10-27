@@ -34,11 +34,19 @@ What else a handler can do through `ctx`:
 | `conn`        | The connection: `user`, `groups`, `join()`, `leave()`, ...    |
 | `signal`      | Aborts when the connection closes, to stop long-running work. |
 
-Messages a handler sends without returning them belong in `emits`, so they are
-documented and typed:
+`output` also covers what a handler sends through `ctx` instead of returning, such as a
+broadcast. A broadcast carries no `ref`, so it never resolves the sender's
+`connection.request()`.
+
+Messages sent outside any handler, such as a welcome from `onConnect`, belong in the
+consumer's `emits`, so they are documented and typed:
 
 ```ts
-consumer('/ws/chat/{room}', { name: 'chat', emits: [Notice] });
+consumer('/ws/chat/{room}', {
+  name: 'chat',
+  emits: [Welcome],
+  onConnect: (ctx) => ctx.push(Welcome.create()),
+});
 ```
 
 ## Per-connection state
@@ -135,9 +143,8 @@ process sharing the [channel layer](/server/layers).
 ```ts
 consumer('/ws/room/{name}', {
   name: 'room',
-  emits: [Said],
   groups: (conn) => [`room.${conn.params.name}`],
-}).on(Say, (m, ctx) =>
+}).on(Say, { output: Said }, (m, ctx) =>
   ctx.broadcast(Said.create(m.payload), { excludeCurrent: true }),
 );
 ```

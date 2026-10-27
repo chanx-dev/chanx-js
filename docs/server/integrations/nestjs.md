@@ -29,7 +29,7 @@ import {
   Payload,
 } from '@chanx-js/nestjs';
 
-@ChanxConsumer('/ws/chat/{room}', { name: 'chat', emits: [Notice] })
+@ChanxConsumer('/ws/chat/{room}', { name: 'chat' })
 export class ChatGateway {
   constructor(private readonly users: UsersService) {}
 

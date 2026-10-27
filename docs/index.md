@@ -71,13 +71,12 @@ const Notice = defineMessage(
 
 const chat = consumer('/ws/chat/{room}', {
   name: 'chat',
-  emits: [Notice],
   groups: (conn) => [`room.${conn.params.room}`],
 })
   .on(PingMessage, { output: PongMessage }, () =>
     PongMessage.create(),
   )
-  .on(Chat, (m, ctx) =>
+  .on(Chat, { output: Notice }, (m, ctx) =>
     ctx.broadcast(Notice.create({ text: m.payload.text })),
   );
 

@@ -74,7 +74,7 @@ export interface Context<Path extends string, State, User, Emits extends Message
 export interface HandlerOptions<Out> {
   /** The AsyncAPI operation name. Defaults to `handle_<action>`. */
   name?: string;
-  /** What the handler returns: one message or a list. Documented, and checked in development. */
+  /** What the handler returns or broadcasts: one message or a list. Documented, and a returned one is checked in development. */
   output?: Out;
   /** The AsyncAPI operation's summary. */
   summary?: string;
@@ -86,7 +86,7 @@ export interface HandlerOptions<Out> {
 
 type OutputsOf<O> = O extends readonly (infer D)[] ? D : O;
 type OutputMessages<O> = [O] extends [never] ? never : MessageOf<OutputsOf<O>>;
-type Returned<O> = [O] extends [never] ? void : OutputMessages<O>;
+type Returned<O> = [O] extends [never] ? void : void | OutputMessages<O>;
 type Handler<In, Ctx, Out> = (message: In, ctx: Ctx) => Out | Promise<Out>;
 type Outputs = AnyMessageDefinition | readonly AnyMessageDefinition[];
 
@@ -128,7 +128,7 @@ export interface ConsumerOptions<
   description?: string;
   /** Tags on the AsyncAPI channel. */
   tags?: string[];
-  /** Messages pushed through `ctx` rather than returned by a handler. */
+  /** Messages sent outside any handler, such as a welcome from `onConnect`. */
   emits?: readonly Emits[];
   /** Topics clients can subscribe to on this connection: `topic()` builders or `Topic` classes. */
   topics?: readonly TopicLike[];
@@ -254,7 +254,7 @@ interface HandlerMethods<
     message: D,
     handler: Handler<MessageOf<D>, Context<Path, State, User, Emits>, void | Emits>,
   ): Next<Kind, Path, State, User, Emits, Events>;
-  /** Handle a client message; return a declared `output` to reply. */
+  /** Handle a client message; `output` declares what it returns or broadcasts. */
   on<D extends AnyMessageDefinition, const O extends Outputs = never>(
     message: D,
     options: HandlerOptions<O>,
@@ -269,7 +269,7 @@ interface HandlerMethods<
     message: D,
     handler: Handler<MessageOf<D>, Context<Path, State, User, Emits>, void | Emits>,
   ): Next<Kind, Path, State, User, Emits, Events | MessageOf<D>>;
-  /** Handle a server-side event; return a declared `output` to send it to the client. */
+  /** Handle a server-side event; `output` declares what it returns or broadcasts to the client. */
   event<D extends AnyMessageDefinition, const O extends Outputs = never>(
     message: D,
     options: HandlerOptions<O>,

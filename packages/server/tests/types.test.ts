@@ -63,6 +63,18 @@ describe('builder types', () => {
     expect(true).toBe(true);
   });
 
+  it('lets a handler broadcast its declared output instead of returning it', () => {
+    consumer('/ws', { name: 'x', groups: ['all'] })
+      .on(Chat, { output: Joined }, (_m, ctx) =>
+        ctx.broadcast(Joined.create({ user: 1 })),
+      )
+      .on(History, { output: HistoryResult }, async (_m, ctx) => {
+        // @ts-expect-error: not this handler's output
+        await ctx.broadcast(Joined.create({ user: 1 }));
+      });
+    expect(true).toBe(true);
+  });
+
   it('refuses a handler set whose state the consumer lacks', () => {
     const needsRoom = handlers<{ room: RoomService }>().on(PingMessage, () => {});
     // @ts-expect-error: this consumer has no `room` in its state
@@ -98,6 +110,9 @@ describe('builder types', () => {
         void ctx.params.room;
         return Posted.create({ body: m.payload.text });
       })
+      .on(History, { output: Posted }, (_m, ctx) =>
+        ctx.push(Posted.create({ body: 'x' })),
+      )
       .passthrough(Joined);
     const chanx = createChanx({
       consumers: [consumer('/ws', { name: 'hub', topics: [room] })],

@@ -126,7 +126,7 @@ import { onlineUsers, room } from './rooms.js';
 
 export const chat = consumer('/ws/chat/{room}', {
   name: 'chat',
-  emits: [Said, History, Online],
+  emits: [History, Online],
   authenticate: ({ url }) => {
     const name = url.searchParams.get('name')?.trim();
     return name ? { name } : false;
@@ -154,7 +154,7 @@ export const chat = consumer('/ws/chat/{room}', {
   .on(PingMessage, { output: PongMessage }, () =>
     PongMessage.create(),
   )
-  .on(Say, async (m, ctx) => {
+  .on(Say, { output: Said }, async (m, ctx) => {
     const line = {
       user: ctx.conn.user.name,
       text: m.payload.text,
@@ -180,9 +180,11 @@ Piece by piece:
   who is online.
 - **`onDisconnect`** runs when the socket closes, before the connection leaves its
   groups, so it can still tell the others.
-- **`emits`** lists what the consumer sends on its own initiative. TypeScript holds
-  `ctx.push` and `ctx.broadcast` to these, and AsyncAPI documents them.
-- **`.on(Say, ...)`** handles a `say`. It records the line and broadcasts it.
+- **`emits`** lists what the consumer sends outside its handlers, here from `onConnect`
+  and `onDisconnect`. TypeScript holds `ctx.push` and `ctx.broadcast` to these, and
+  AsyncAPI documents them.
+- **`.on(Say, { output: Said }, ...)`** handles a `say`. It records the line and
+  broadcasts it; `output` declares the broadcast as it would a reply.
 - **`.on(PingMessage, { output: PongMessage }, ...)`** answers pings. Returning a message
   replies to the sender, with the request's `ref`, so `connection.request()` on the
   client resolves with it. Declaring ping and pong also turns on the client's heartbeat.

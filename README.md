@@ -60,9 +60,10 @@ ws.onmessage = (event) => {
 ```ts
 // server
 const chat = consumer('/ws/chat/{room}', {
-  emits: [Notice],
   groups: (conn) => [`room.${conn.params.room}`],
-}).on(Chat, (m, ctx) => ctx.broadcast(Notice.create({ text: m.payload.text })));
+}).on(Chat, { output: Notice }, (m, ctx) =>
+  ctx.broadcast(Notice.create({ text: m.payload.text })),
+);
 
 // client, generated from the server's AsyncAPI
 connection.on('notice', (message) => message.payload.text); // string
@@ -108,11 +109,12 @@ const Notice = defineMessage('notice', z.object({ text: z.string() }));
 
 const chat = consumer('/ws/chat/{room}', {
   name: 'chat',
-  emits: [Notice],
   groups: (conn) => [`room.${conn.params.room}`],
 })
   .on(PingMessage, { output: PongMessage }, () => PongMessage.create())
-  .on(Chat, (m, ctx) => ctx.broadcast(Notice.create({ text: m.payload.text })));
+  .on(Chat, { output: Notice }, (m, ctx) =>
+    ctx.broadcast(Notice.create({ text: m.payload.text })),
+  );
 
 const chanx = createChanx({ consumers: [chat] });
 const server = createServer(asyncapiMiddleware(chanx)); // docs at /asyncapi

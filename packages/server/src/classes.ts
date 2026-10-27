@@ -86,7 +86,7 @@ export type ClassContext<User = unknown> = Context<
 type OutputMessages<O> = [O] extends [never]
   ? never
   : MessageOf<O extends readonly (infer D)[] ? D : O>;
-type Returned<O> = [O] extends [never] ? void | Message : OutputMessages<O>;
+type Returned<O> = [O] extends [never] ? void | Message : void | OutputMessages<O>;
 type Outputs = AnyMessageDefinition | readonly AnyMessageDefinition[];
 
 // `never` accepts any context annotation: a consumer's or a topic's.
@@ -134,7 +134,7 @@ function mark(
   };
 }
 
-/** Handle a client message. Return a declared `output` to reply. */
+/** Handle a client message. `output` declares what it returns or broadcasts. */
 export function On<D extends AnyMessageDefinition, const O extends Outputs = never>(
   message: D,
   options: HandlerOptions<O> = {},

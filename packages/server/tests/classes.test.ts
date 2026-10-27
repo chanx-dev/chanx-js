@@ -258,9 +258,9 @@ describe('Class consumers broadcasting', () => {
   const Shout = defineMessage('shout', z.object({ text: z.string() }));
   const Heard = defineMessage('heard', z.object({ text: z.string() }));
 
-  @Consumer('/ws/room/{name}', { name: 'room', emits: [Heard], groups: ['room'] })
+  @Consumer('/ws/room/{name}', { name: 'room', groups: ['room'] })
   class RoomConsumer extends AsyncJsonWebsocketConsumer {
-    @On(Shout)
+    @On(Shout, { output: Heard })
     async shout(m: { payload: { text: string } }) {
       await this.broadcast(Heard.create(m.payload), { excludeCurrent: true });
     }

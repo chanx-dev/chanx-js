@@ -38,13 +38,12 @@ const Notice = defineMessage(
 
 const chat = consumer('/ws/chat/{room}', {
   name: 'chat',
-  emits: [Notice],
   groups: (conn) => [`room.${conn.params.room}`],
 })
   .on(PingMessage, { output: PongMessage }, () =>
     PongMessage.create(),
   )
-  .on(Chat, (m, ctx) =>
+  .on(Chat, { output: Notice }, (m, ctx) =>
     ctx.broadcast(Notice.create({ text: m.payload.text })),
   );
 
@@ -62,8 +61,8 @@ What each part does:
   `conn.params.room` is a `string`.
 - **`.on(Message, handler)`** routes a message by its action. The payload is validated
   before the handler runs, and a bad one gets an `error` frame back.
-- **`output`** declares the reply, and **`emits`** what the consumer sends otherwise.
-  Both are checked by TypeScript and documented.
+- **`output`** declares what a handler sends: a reply it returns, or a broadcast.
+  TypeScript checks it, and AsyncAPI documents it.
 - **`groups`** puts each connection in its room, and **`ctx.broadcast`** sends to
   everyone in it.
 

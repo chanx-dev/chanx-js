@@ -64,6 +64,7 @@ const Chat = defineMessage('chat', z.object({ text: z.string() }));
 const Notice = defineMessage('notice', z.object({ text: z.string() }));
 const Secret = defineMessage('secret');
 const Shout = defineMessage('shout', z.object({ text: z.string() }));
+const Announce = defineMessage('announce', z.object({ text: z.string() }));
 const Joined = defineMessage('user_joined', z.object({ user: z.string() }));
 const Post = defineMessage('post', z.object({ body: z.string() }));
 const Posted = defineMessage('posted', z.object({ body: z.string() }));
@@ -166,6 +167,14 @@ class ChatGateway {
     @ConnectedSocket() ctx: { ref?: string },
   ) {
     return Notice.create({ text: `${payload.text} (${ctx.ref})` });
+  }
+
+  @On(Announce, { output: Notice })
+  async announce(
+    @Payload('text') text: string,
+    @Ctx() ctx: Context<'/ws/chat/{room}', unknown, unknown, MessageOf<typeof Notice>>,
+  ) {
+    await ctx.broadcast(Notice.create({ text }));
   }
 
   @On(Secret)
@@ -332,6 +341,23 @@ describe('ChanxModule', () => {
         status_code: 400,
       },
     });
+  });
+
+  it('lets a handler broadcast its declared output instead of returning it', async () => {
+    const { url } = await start();
+    const ann = open(`${url}/ws/chat/lobby?token=ok`);
+    const bob = open(`${url}/ws/chat/lobby?token=ok`);
+    await Promise.all([ann.request({ action: 'ping' }), bob.request({ action: 'ping' })]);
+
+    ann.ws.send(
+      JSON.stringify({ action: 'announce', payload: { text: 'hi' }, version: 1 }),
+    );
+
+    await vi.waitFor(() =>
+      expect(bob.frames).toContainEqual(
+        expect.objectContaining({ action: 'notice', payload: { text: 'hi' } }),
+      ),
+    );
   });
 
   it('broadcasts events and publishes to topics through ChanxService', async () => {

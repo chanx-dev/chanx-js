@@ -17,7 +17,7 @@ import { ChanxConsumer, ChanxModule, Ctx, On, Payload } from '@chanx-js/nestjs';
 const Chat = defineMessage('chat', z.object({ text: z.string() }));
 const Notice = defineMessage('notice', z.object({ text: z.string() }));
 
-@ChanxConsumer('/ws/chat/{room}', { name: 'chat', emits: [Notice] })
+@ChanxConsumer('/ws/chat/{room}', { name: 'chat' })
 export class ChatGateway {
   constructor(private readonly users: UsersService) {}
 

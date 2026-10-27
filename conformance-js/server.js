@@ -17,9 +17,9 @@ const Chat = defineMessage('chat', z.object({ text: z.string() }));
 const Notice = defineMessage('notice', z.object({ text: z.string() }));
 const Undeclared = defineMessage('undeclared', z.object({}));
 
-const chat = consumer('/ws/chat/{room}', { name: 'chat', emits: [Notice] })
+const chat = consumer('/ws/chat/{room}', { name: 'chat' })
   .on(PingMessage, { output: PongMessage }, () => PongMessage.create())
-  .on(Chat, async (m, ctx) => {
+  .on(Chat, { output: Notice }, async (m, ctx) => {
     // @ts-expect-error `chat` carries no `missing` field.
     void m.payload.missing;
 
@@ -27,7 +27,7 @@ const chat = consumer('/ws/chat/{room}', { name: 'chat', emits: [Notice] })
     void ctx.params.missing;
 
     if (m.payload.text === 'undeclared') {
-      // @ts-expect-error `undeclared` is not in the consumer's `emits`.
+      // @ts-expect-error `undeclared` is not this handler's `output`.
       await ctx.send(Undeclared.create({}));
     }
 
