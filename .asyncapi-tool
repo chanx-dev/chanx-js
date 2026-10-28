@@ -1,0 +1,25 @@
+---
+title: chanx-js
+description: Type-safe WebSocket framework for JavaScript and TypeScript with AsyncAPI 3.0 generation from code and typed client generation from AsyncAPI documents
+links:
+  websiteUrl: https://js.chanx.dev/
+  docsUrl: https://js.chanx.dev/
+  repoUrl: https://github.com/chanx-dev/chanx-js
+filters:
+  language:
+  - TypeScript
+  - JavaScript
+  technology:
+  - Node js
+  - React JS
+  - Express.js
+  - Fastify
+  - Hono
+  - NestJS
+  - Bun
+  - Deno
+  categories:
+  - code-first
+  - code-generator
+  - framework
+  hasCommercial: false
