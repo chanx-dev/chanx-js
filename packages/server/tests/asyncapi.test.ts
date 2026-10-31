@@ -159,6 +159,8 @@ function subset(document: AsyncAPIDocument): AsyncAPIDocument {
     }
   };
   walk([...messages].map((name) => document.components.messages[name]));
+  // Listed in every document, though no channel refers to them.
+  walk({ $ref: '#/components/schemas/ProblemDetails' });
   return {
     ...document,
     channels,
@@ -242,6 +244,35 @@ describe('AsyncAPI, against chanx', () => {
     } finally {
       await Promise.all(dirs.map((dir) => rm(dir, { recursive: true, force: true })));
     }
+  });
+});
+
+describe('error payload schemas', () => {
+  it('are listed for the standard error format only, as chanx does', () => {
+    const hub = consumer('/ws/hub', { name: 'hub' }).on(Post, () => {});
+    const standard = createChanx({ consumers: [hub] }).asyncapi();
+    const pydantic = createChanx({
+      consumers: [hub],
+      errorFormat: 'pydantic',
+    }).asyncapi();
+    expect(standard.components.schemas.ProblemDetails).toEqual(
+      fixture.components.schemas.ProblemDetails,
+    );
+    expect(standard.components.schemas.ValidationFailure).toEqual(
+      fixture.components.schemas.ValidationFailure,
+    );
+    expect(pydantic.components.schemas).not.toHaveProperty('ProblemDetails');
+  });
+
+  it("refuse a schema of the user's with the same name", () => {
+    const Note = defineMessage(
+      'note',
+      z.object({ text: z.string() }).meta({ title: 'ProblemDetails' }),
+    );
+    const notes = consumer('/ws/notes', { name: 'notes' }).on(Note, () => {});
+    expect(() => createChanx({ consumers: [notes] }).asyncapi()).toThrow(
+      '"ProblemDetails"',
+    );
   });
 });
 

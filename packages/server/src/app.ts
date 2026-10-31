@@ -269,7 +269,7 @@ export function createChanx(options: ChanxOptions): Chanx {
       generateAsyncAPI(
         routes.map((route) => route.definition),
         asyncapiOptions,
-        { camelize: resolved.camelize },
+        { camelize: resolved.camelize, errorFormat: resolved.errorFormat },
       ),
     async sendEvent(consumer, event, channelName) {
       await layerOf(definitionOf(consumer)).send(channelName, {

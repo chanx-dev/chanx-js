@@ -66,13 +66,8 @@ export function envelopeIssues(frame: unknown): ValidationIssue[] {
   const integer = (key: string, optional: boolean) => {
     const value = frame[key];
     if (value === undefined || (optional && value === null)) return;
-    if (!Number.isInteger(value)) {
-      issues.push({
-        type: 'int_type',
-        loc: [key],
-        msg: 'Input should be a valid integer',
-      });
-    }
+    const issue = laxIntegerIssue(value);
+    if (issue) issues.push({ ...issue, loc: [key] });
   };
   const string = (key: string) => {
     const value = frame[key];
@@ -89,6 +84,28 @@ export function envelopeIssues(frame: unknown): ValidationIssue[] {
   string('ref');
   integer('seq', true);
   return issues;
+}
+
+// Pydantic's lax int, which chanx's Envelope applies: "12", " 7 ", "1_000", "12.0", true
+// and 1.0 are integers; 1.5 and "1.5" are not.
+const INTEGER_STRING = /^[+-]?\d+(?:_\d+)*(?:\.0+)?$/;
+
+function laxIntegerIssue(value: unknown): Omit<ValidationIssue, 'loc'> | undefined {
+  if (typeof value === 'boolean' || Number.isInteger(value)) return undefined;
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return {
+      type: 'int_from_float',
+      msg: 'Input should be a valid integer, got a number with a fractional part',
+    };
+  }
+  if (typeof value === 'string') {
+    if (INTEGER_STRING.test(value.trim())) return undefined;
+    return {
+      type: 'int_parsing',
+      msg: 'Input should be a valid integer, unable to parse string as an integer',
+    };
+  }
+  return { type: 'int_type', msg: 'Input should be a valid integer' };
 }
 
 /** Validate a frame against a consumer's messages, as chanx's discriminated union does. */

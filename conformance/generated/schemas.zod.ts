@@ -127,6 +127,15 @@ export const PresencePayloadSchema = z.object({
   online: z.boolean(),
 });
 
+export const ProblemDetailsSchema = z.object({
+  type: z.string(),
+  title: z.string(),
+  status: z.number().int().optional(),
+  detail: z.string(),
+  instance: z.string().optional(),
+  errors: z.array(z.lazy(() => ValidationFailureSchema)).optional(),
+});
+
 export const ReliableChatMessageSchema = z.object({
   action: z.literal('reliable_chat'),
   payload: z.lazy(() => ReliableChatPayloadSchema),
@@ -180,6 +189,13 @@ export const UserLeftNotificationSchema = z.object({
 export const UserMessageSchema = z.object({
   action: z.literal('user_message'),
   payload: z.lazy(() => MessagePayloadSchema),
+});
+
+export const ValidationFailureSchema = z.object({
+  keyword: z.string(),
+  pointer: z.string(),
+  detail: z.string(),
+  property: z.union([z.string(), z.number().int()]).optional(),
 });
 
 export const AnalyticsToServerSchema = z.discriminatedUnion('action', [

@@ -193,9 +193,34 @@ describe('envelope', () => {
     expect(envelopeIssues({ ref: 5, seq: 'x', version: null })).toEqual([
       { type: 'int_type', loc: ['version'], msg: 'Input should be a valid integer' },
       { type: 'string_type', loc: ['ref'], msg: 'Input should be a valid string' },
-      { type: 'int_type', loc: ['seq'], msg: 'Input should be a valid integer' },
+      {
+        type: 'int_parsing',
+        loc: ['seq'],
+        msg: 'Input should be a valid integer, unable to parse string as an integer',
+      },
     ]);
     expect(envelopeIssues([1])).toMatchObject([{ type: 'model_type', loc: [] }]);
+  });
+
+  it('reads integers leniently, as pydantic does for chanx Envelope', () => {
+    for (const value of ['12', ' 7 ', '+3', '-4', '1_000', '12.0', true, false, 1.0]) {
+      expect(envelopeIssues({ version: value, seq: value })).toEqual([]);
+    }
+    expect(envelopeIssues({ version: 1.5, seq: '1.5' })).toEqual([
+      {
+        type: 'int_from_float',
+        loc: ['version'],
+        msg: 'Input should be a valid integer, got a number with a fractional part',
+      },
+      {
+        type: 'int_parsing',
+        loc: ['seq'],
+        msg: 'Input should be a valid integer, unable to parse string as an integer',
+      },
+    ]);
+    for (const value of ['x', '1.', '', '1 2', '0x1', '1e2']) {
+      expect(envelopeIssues({ version: value })).toMatchObject([{ type: 'int_parsing' }]);
+    }
   });
 });
 
