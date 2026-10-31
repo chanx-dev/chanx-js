@@ -70,5 +70,7 @@ same, so the generated client does not even change.
   in Python as an int.
 - **Bytes.** msgpack, the default serializer, carries bytes (`Uint8Array` in Node); the
   JSON serializer does not.
-- **Validation messages.** Errors keep pydantic's shape and locations, but the `msg` text
-  comes from your schema library, so branch on `type` and `loc`, not the wording.
+- **Validation messages.** Errors carry the same `keyword` and `pointer` as Python's, but
+  the `detail` text comes from your schema library, so branch on `keyword` and `pointer`,
+  not the wording. Keywords are exact for Zod; other schema libraries report `custom`
+  except for a missing member, which is `required` everywhere.

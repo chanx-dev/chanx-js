@@ -28,9 +28,11 @@ import type {
 } from '@chanx-js/server';
 import {
   ErrorMessage,
+  ErrorType,
   consumer,
   createChanx,
   handlerMethods,
+  problem,
   topic,
 } from '@chanx-js/server';
 import type { Attachment } from '@chanx-js/server/node';
@@ -320,28 +322,52 @@ export class ChanxExplorer
       onHandlerError:
         hook('onHandlerError') ??
         ((error, message, ctx) => {
+          const failed = `Failed to process message for ${message.action}`;
+          const pydanticErrors = this.options.errorFormat === 'pydantic';
           // Nest's exceptions, a guard's ForbiddenException or a pipe's BadRequestException
-          // among them, are meant for the client: chanx sends `detail`, so they do too.
+          // among them, are meant for the client, so what they carry is sent.
           if (error instanceof HttpException) {
+            const response = error.getResponse();
             return ctx.send(
-              ErrorMessage.create({
-                detail: error.getResponse(),
-                status_code: error.getStatus(),
-              }),
+              pydanticErrors
+                ? ErrorMessage.create({
+                    detail: response,
+                    status_code: error.getStatus(),
+                  })
+                : ErrorMessage.create(nestProblem(response, failed)),
             );
           }
           if (isWsException(error)) {
-            return ctx.send(ErrorMessage.create({ detail: error.getError() }));
+            const response = error.getError();
+            return ctx.send(
+              ErrorMessage.create(
+                pydanticErrors ? { detail: response } : nestProblem(response, failed),
+              ),
+            );
           }
           this.logger.error(`Handler for "${message.action}" failed`, error as Error);
           return ctx.send(
-            ErrorMessage.create({
-              detail: `Failed to process message for ${message.action}`,
-            }),
+            ErrorMessage.create(
+              pydanticErrors
+                ? { detail: failed }
+                : problem(ErrorType.HANDLER_FAILED, failed),
+            ),
           );
         }),
     };
   }
+}
+
+// A Nest exception's message is the problem's detail; a structured response, such as a
+// ValidationPipe's message list, travels whole as the `data` extension member.
+function nestProblem(response: unknown, fallback: string) {
+  const message =
+    typeof response === 'object' && response !== null && 'message' in response
+      ? response.message
+      : response;
+  const detail = typeof message === 'string' ? message : fallback;
+  const payload = problem(ErrorType.HANDLER_FAILED, detail);
+  return typeof response === 'string' ? payload : { ...payload, data: response };
 }
 
 // Matched by class name so `@nestjs/websockets` stays optional; WsException sets no `name`.

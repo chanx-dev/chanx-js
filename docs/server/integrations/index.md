@@ -20,7 +20,7 @@ install only the one you use.
 - A path no consumer serves is refused, and so, with an HTTP status, is an
   unauthenticated upgrade to a consumer with
   [`rejectBeforeUpgrade`](/server/consumers#refusing-before-the-upgrade).
-- Binary frames are answered with an `error` (`json_invalid`), as chanx answers them;
+- Binary frames are answered with an `error` (`invalid-json`), as chanx answers them;
   the connection stays open. crossws's uWebSockets adapter drops the binary flag, so
   every frame there looks binary: chanx cannot run on it.
 - The Node and Fastify adapters ping each client and drop the ones that stop answering

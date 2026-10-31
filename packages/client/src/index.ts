@@ -71,9 +71,11 @@ export {
   ENVELOPE_FIELDS,
   ENVELOPE_VERSION,
   ERROR_ACTION,
+  ErrorType,
   SUBSCRIPTION_ACTIONS,
   formatPattern,
   isFrameworkAction,
+  isProblem,
   stripEnvelope,
   withEnvelope,
 } from '@chanx-js/protocol';
@@ -81,5 +83,7 @@ export type {
   ChanxErrorFrame,
   ChanxMessage,
   Envelope,
+  ProblemDetails,
+  ValidationFailure,
   RawFrame,
 } from '@chanx-js/protocol';

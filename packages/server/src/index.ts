@@ -9,6 +9,7 @@ export type {
   Chanx,
   ChanxOptions,
   ConsumerLike,
+  ErrorFormat,
   Logger,
   RefusedUpgrade,
   Transport,
@@ -96,3 +97,5 @@ export type {
 } from './topic';
 export type { JsonSchema, StandardSchemaV1 } from './standard-schema';
 export type { ValidationIssue } from './validation';
+export { ErrorType, isProblem, problem } from '@chanx-js/protocol';
+export type { ProblemDetails, ValidationFailure } from '@chanx-js/protocol';

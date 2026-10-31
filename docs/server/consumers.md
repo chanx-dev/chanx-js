@@ -204,12 +204,19 @@ consumer('/ws/room/{name}', {
 
 ## Errors
 
-Failures reach the client as chanx sends them:
+Failures reach the client as chanx sends them, as an `error` frame holding a problem
+details object (see the
+[protocol reference](https://python.chanx.dev/en/latest/protocol.html#protocol-errors)):
 
-- A frame that fails validation gets an `error` frame listing the issues, in the shape
-  of pydantic's errors (`type`, `loc`, `msg`).
-- A handler that throws is logged, and the client gets an `error` naming the action.
+- A frame that fails validation gets the `validation-failed` type, with `errors` giving
+  each failure's JSON Schema `keyword` and a JSON `pointer` into the frame.
+- A handler that throws is logged, and the client gets `handler-failed` naming the action.
 - An event handler that throws is logged; the client is told nothing.
+
+`createChanx({ errorFormat: 'pydantic' })` sends chanx's earlier payloads instead: pydantic's
+error list (`type`, `loc`, `msg`), `{ detail }` and `{ reason, detail }`. The hooks below
+still receive pydantic-shaped issues; `problem()` builds a standard payload for a hook
+that sends its own.
 
 Override any of them per consumer:
 

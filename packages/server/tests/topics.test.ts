@@ -87,7 +87,7 @@ describe.each([
     () => createChanx({ consumers: [classHub], logger: { error() {}, warn() {} } }),
   ],
 ])('topics as %s, against a chanx transcript', (_surface, makeApp) => {
-  it('answers every frame as chanx 2.11.7 does', async () => {
+  it('answers every frame as chanx does', async () => {
     const client = connect(makeApp(), '/ws/hub');
     await client.ready;
     const sent = [
@@ -140,13 +140,14 @@ describe.each([
       },
       {
         action: 'error',
-        payload: [
-          {
-            type: 'value_error',
-            loc: ['post', 'payload', 'body'],
-            msg: expect.any(String),
-          },
-        ],
+        payload: {
+          type: 'https://chanx.dev/errors/validation-failed',
+          title: 'Message failed validation',
+          detail: '1 validation error',
+          errors: [
+            { keyword: 'type', pointer: '/payload/body', detail: expect.any(String) },
+          ],
+        },
         version: 1,
         topic: 'room:lobby',
         ref: '4',
@@ -154,7 +155,8 @@ describe.each([
       {
         action: 'error',
         payload: {
-          reason: 'unauthorized',
+          type: 'https://chanx.dev/errors/unauthorized',
+          title: 'Subscription not allowed',
           detail: "Not allowed to subscribe to 'room:secret'",
         },
         version: 1,
@@ -163,14 +165,22 @@ describe.each([
       },
       {
         action: 'error',
-        payload: { reason: 'unknown_topic', detail: "Unknown topic 'nope:x'" },
+        payload: {
+          type: 'https://chanx.dev/errors/unknown-topic',
+          title: 'Unknown topic',
+          detail: "Unknown topic 'nope:x'",
+        },
         version: 1,
         topic: 'nope:x',
         ref: '6',
       },
       {
         action: 'error',
-        payload: { reason: 'not_subscribed', detail: "Not subscribed to 'room:other'" },
+        payload: {
+          type: 'https://chanx.dev/errors/not-subscribed',
+          title: 'Not subscribed to topic',
+          detail: "Not subscribed to 'room:other'",
+        },
         version: 1,
         topic: 'room:other',
         ref: '7',

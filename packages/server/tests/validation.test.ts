@@ -6,7 +6,8 @@ import { createValidator, envelopeIssues } from '../src/validation';
 
 const Chat = defineMessage('chat', z.object({ message: z.string() }));
 
-// Expected issues are pydantic's, from validating the same frames with chanx.
+// Expected issues are pydantic's, and errors chanx's standard ones, from validating the
+// same frames with chanx.
 describe('a consumer with several handlers', () => {
   const validate = createValidator([PingMessage, Chat]);
 
@@ -21,6 +22,7 @@ describe('a consumer with several handlers', () => {
           msg: "Input tag 'nope' found using 'action' does not match any of the expected tags: 'chat', 'ping'",
         },
       ],
+      [{ keyword: 'enum', path: ['action'] }],
     ],
     [
       'no action',
@@ -32,19 +34,23 @@ describe('a consumer with several handlers', () => {
           msg: "Unable to extract tag using discriminator 'action'",
         },
       ],
+      [{ keyword: 'required', path: [], property: 'action' }],
     ],
     [
       'no payload',
       { action: 'chat' },
       [{ type: 'missing', loc: ['chat', 'payload'], msg: 'Field required' }],
+      [{ keyword: 'required', path: [], property: 'payload' }],
     ],
     [
       'a payload on a message without one',
       { action: 'ping', payload: 1 },
       [{ type: 'none_required', loc: ['ping', 'payload'], msg: 'Input should be None' }],
+      [{ keyword: 'type', path: ['payload'] }],
     ],
-  ])('rejects %s', async (_case, frame, issues) => {
-    expect(await validate(frame)).toEqual({ issues });
+  ])('rejects %s', async (_case, frame, issues, errors) => {
+    const result = await validate(frame);
+    expect(result).toEqual({ issues, errors: issues.map(withDetail(errors)) });
   });
 
   it('locates payload issues under the action, with the schema library message', async () => {
@@ -56,6 +62,9 @@ describe('a consumer with several handlers', () => {
           loc: ['chat', 'payload', 'message'],
           msg: expect.any(String),
         },
+      ],
+      errors: [
+        { keyword: 'type', path: ['payload', 'message'], detail: expect.any(String) },
       ],
     });
   });
@@ -109,12 +118,68 @@ describe('a consumer with one handler', () => {
       [{ type: 'missing', loc: ['chat', 'payload'], msg: 'Field required' }],
     ],
   ])('rejects %s as chanx does', async (_case, frame, issues) => {
-    expect(await validate(frame)).toEqual({ issues });
+    expect(await validate(frame)).toMatchObject({ issues });
   });
 
   it('locates payload issues under the action', async () => {
     const result = await validate({ action: 'chat', payload: { message: 5 } });
     expect(result).toMatchObject({ issues: [{ loc: ['chat', 'payload', 'message'] }] });
+  });
+});
+
+// The keyword each Zod issue maps to, and where it points, as chanx reports the same
+// failure from Pydantic.
+describe('schema library issues in the standard format', () => {
+  const Signup = defineMessage(
+    'signup',
+    z.strictObject({
+      username: z.string().min(3).max(8),
+      password: z.string().regex(/^[a-z]+$/),
+      email: z.email().optional(),
+      age: z.number().int().gt(0).lte(150).multipleOf(1).optional(),
+      tags: z.array(z.string()).min(1).optional(),
+      role: z.enum(['admin', 'user']).optional(),
+      profile: z.object({ bio: z.string() }).optional(),
+    }),
+  );
+  const validate = createValidator([PingMessage, Signup]);
+  const valid = { username: 'ann', password: 'abc' };
+
+  it.each([
+    ['minLength', { ...valid, username: 'al' }, ['payload', 'username']],
+    ['maxLength', { ...valid, username: 'a'.repeat(9) }, ['payload', 'username']],
+    ['pattern', { ...valid, password: 'ABC' }, ['payload', 'password']],
+    ['format', { ...valid, email: 'nope' }, ['payload', 'email']],
+    ['exclusiveMinimum', { ...valid, age: 0 }, ['payload', 'age']],
+    ['maximum', { ...valid, age: 151 }, ['payload', 'age']],
+    ['minItems', { ...valid, tags: [] }, ['payload', 'tags']],
+    ['enum', { ...valid, role: 'root' }, ['payload', 'role']],
+    ['type', { ...valid, tags: ['a', 1] }, ['payload', 'tags', 1]],
+    ['additionalProperties', { ...valid, extra: 1 }, ['payload', 'extra']],
+  ])('reports %s', async (keyword, payload, path) => {
+    const result = await validate({ action: 'signup', payload });
+    expect(result).toMatchObject({ errors: [{ keyword, path }] });
+  });
+
+  it('reports a missing member as required, on the object that lacks it', async () => {
+    const result = await validate({
+      action: 'signup',
+      payload: { ...valid, profile: {} },
+    });
+    expect(result).toMatchObject({
+      errors: [{ keyword: 'required', path: ['payload', 'profile'], property: 'bio' }],
+    });
+  });
+
+  it('reports a refinement as custom', async () => {
+    const Even = defineMessage(
+      'even',
+      z.object({ n: z.number().refine((n) => n % 2 === 0) }),
+    );
+    const result = await createValidator([Even])({ action: 'even', payload: { n: 1 } });
+    expect(result).toMatchObject({
+      errors: [{ keyword: 'custom', path: ['payload', 'n'] }],
+    });
   });
 });
 
@@ -133,3 +198,10 @@ describe('envelope', () => {
     expect(envelopeIssues([1])).toMatchObject([{ type: 'model_type', loc: [] }]);
   });
 });
+
+function withDetail(errors: object[]) {
+  return (issue: { msg: string }, index: number) => ({
+    ...errors[index],
+    detail: issue.msg,
+  });
+}

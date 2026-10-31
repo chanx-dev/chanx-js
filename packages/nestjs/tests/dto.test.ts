@@ -110,13 +110,16 @@ describe('dtoSchema', () => {
       await client.request({ action: 'rename', payload: { name: 'x' } }),
     ).toMatchObject({
       action: 'error',
-      payload: [
-        {
-          type: 'value_error',
-          loc: ['rename', 'payload', 'name'],
-          msg: 'name must be longer than or equal to 2 characters',
-        },
-      ],
+      payload: {
+        type: 'https://chanx.dev/errors/validation-failed',
+        errors: [
+          {
+            keyword: 'custom',
+            pointer: '/payload/name',
+            detail: 'name must be longer than or equal to 2 characters',
+          },
+        ],
+      },
     });
   });
 });

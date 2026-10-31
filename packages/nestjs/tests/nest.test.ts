@@ -298,8 +298,9 @@ describe('ChanxModule', () => {
     expect(await client.request({ action: 'secret' })).toMatchObject({
       action: 'error',
       payload: {
-        detail: { message: 'Forbidden resource', statusCode: 403 },
-        status_code: 403,
+        type: 'https://chanx.dev/errors/handler-failed',
+        detail: 'Forbidden resource',
+        data: { message: 'Forbidden resource', statusCode: 403 },
       },
     });
   });
@@ -309,7 +310,11 @@ describe('ChanxModule', () => {
     const client = open(`${url}/ws/chat/lobby?token=ok`);
     expect(await client.request({ action: 'refuse' })).toMatchObject({
       action: 'error',
-      payload: { detail: { reason: 'closed' } },
+      payload: {
+        type: 'https://chanx.dev/errors/handler-failed',
+        detail: 'Failed to process message for refuse',
+        data: { reason: 'closed' },
+      },
     });
   });
 
@@ -320,7 +325,11 @@ describe('ChanxModule', () => {
 
     expect(reply).toMatchObject({
       action: 'error',
-      payload: { detail: 'Failed to process message for crash' },
+      payload: {
+        type: 'https://chanx.dev/errors/handler-failed',
+        title: 'Message handler failed',
+        detail: 'Failed to process message for crash',
+      },
     });
     expect(JSON.stringify(reply)).not.toContain('database down');
   });
@@ -337,8 +346,11 @@ describe('ChanxModule', () => {
     ).toMatchObject({
       action: 'error',
       payload: {
-        detail: { message: ['name must be longer than or equal to 2 characters'] },
-        status_code: 400,
+        type: 'https://chanx.dev/errors/handler-failed',
+        data: {
+          message: ['name must be longer than or equal to 2 characters'],
+          statusCode: 400,
+        },
       },
     });
   });
@@ -413,7 +425,7 @@ describe('ChanxModule', () => {
     expect(
       await client.request({ action: 'subscribe', topic: 'room:secret' }),
     ).toMatchObject({
-      payload: { reason: 'unauthorized' },
+      payload: { type: 'https://chanx.dev/errors/unauthorized' },
     });
     await client.request({ action: 'subscribe', topic: 'room:lobby' });
     expect(
@@ -567,7 +579,7 @@ describe('request-scoped gateways', () => {
     expect(await count('counter:b')).toEqual({ count: 1, room: 'b' });
     expect(
       await client.request({ action: 'subscribe', topic: 'counter:secret' }),
-    ).toMatchObject({ payload: { reason: 'unauthorized' } });
+    ).toMatchObject({ payload: { type: 'https://chanx.dev/errors/unauthorized' } });
   });
 
   it('refuses to start with a transient gateway, naming it', async () => {
@@ -733,7 +745,7 @@ describe('exception filters', () => {
     const client = await shop();
     expect(await client.request({ action: 'secret' })).toMatchObject({
       action: 'error',
-      payload: { status_code: 403 },
+      payload: { data: { statusCode: 403 } },
     });
   });
 
@@ -743,7 +755,7 @@ describe('exception filters', () => {
     expect(
       await client.request({ action: 'order', payload: { item: 'broken' } }),
     ).toMatchObject({
-      payload: { status_code: 403 },
+      payload: { data: { statusCode: 403 } },
     });
     expect(seen).toEqual(['ws: Forbidden']);
   });

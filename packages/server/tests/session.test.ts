@@ -5,11 +5,14 @@ import { z } from 'zod';
 import type { ChanxOptions } from '../src';
 import {
   AuthenticationError,
+  ErrorType,
   PingMessage,
   PongMessage,
   consumer,
   createChanx,
   defineMessage,
+  isProblem,
+  problem,
 } from '../src';
 import { connect } from '../src/testing';
 
@@ -91,7 +94,19 @@ describe('errors', () => {
     const client = connect(app().chanx, '/ws/chat/lobby');
     expect(await client.request({ action: 'chat' })).toEqual({
       action: 'error',
-      payload: [{ type: 'missing', loc: ['chat', 'payload'], msg: 'Field required' }],
+      payload: {
+        type: 'https://chanx.dev/errors/validation-failed',
+        title: 'Message failed validation',
+        detail: '1 validation error',
+        errors: [
+          {
+            keyword: 'required',
+            pointer: '',
+            detail: 'Field required',
+            property: 'payload',
+          },
+        ],
+      },
       version: 1,
       ref: 'test-1',
     });
@@ -102,9 +117,14 @@ describe('errors', () => {
     client.send({ action: 'ping', ref: 5 });
     expect(await client.receive()).toEqual({
       action: 'error',
-      payload: [
-        { type: 'string_type', loc: ['ref'], msg: 'Input should be a valid string' },
-      ],
+      payload: {
+        type: 'https://chanx.dev/errors/validation-failed',
+        title: 'Message failed validation',
+        detail: '1 validation error',
+        errors: [
+          { keyword: 'type', pointer: '/ref', detail: 'Input should be a valid string' },
+        ],
+      },
     });
   });
 
@@ -120,22 +140,22 @@ describe('errors', () => {
 
     await vi.waitFor(() => expect(sent).toHaveLength(3));
     const [invalid, binary, pong] = sent.map((data) => JSON.parse(data));
-    // msg carries the JSON parser's own reason, which differs from Python's.
-    expect(invalid).toMatchObject({
+    // detail carries the JSON parser's own reason, which differs from Python's.
+    expect(invalid).toEqual({
       action: 'error',
-      payload: [
-        { type: 'json_invalid', loc: [], msg: expect.stringMatching(/^Invalid JSON: /) },
-      ],
+      payload: {
+        type: 'https://chanx.dev/errors/invalid-json',
+        title: 'Frame is not valid JSON',
+        detail: expect.stringMatching(/^Invalid JSON: /),
+      },
     });
     expect(binary).toEqual({
       action: 'error',
-      payload: [
-        {
-          type: 'json_invalid',
-          loc: [],
-          msg: 'Invalid JSON: binary frames are not supported',
-        },
-      ],
+      payload: {
+        type: 'https://chanx.dev/errors/invalid-json',
+        title: 'Frame is not valid JSON',
+        detail: 'Invalid JSON: binary frames are not supported',
+      },
     });
     expect(pong).toEqual({ action: 'pong', payload: null });
   });
@@ -154,7 +174,11 @@ describe('errors', () => {
     const client = connect(chanx, '/ws');
     expect(await client.request({ action: 'boom' })).toMatchObject({
       action: 'error',
-      payload: { detail: 'Failed to process message for boom' },
+      payload: {
+        type: 'https://chanx.dev/errors/handler-failed',
+        title: 'Message handler failed',
+        detail: 'Failed to process message for boom',
+      },
     });
     expect(logger.error).toHaveBeenCalledWith(
       expect.stringContaining('boom'),
@@ -171,8 +195,49 @@ describe('errors', () => {
     client.send({ action: 'ping' });
     expect(await client.receive()).toEqual({
       action: 'error',
-      payload: { detail: 'Failed to process message' },
+      payload: {
+        type: 'https://chanx.dev/errors/internal-error',
+        title: 'Message could not be processed',
+        detail: 'Failed to process message',
+      },
     });
+  });
+});
+
+describe('error formats', () => {
+  it('points at keys as the client sent them when camelizing', async () => {
+    const client = connect(app({ camelize: true }).chanx, '/ws/chat/lobby');
+    const wrongType = await client.request({
+      action: 'chat',
+      payload: { messageText: 1 },
+    });
+    const missing = await client.request({ action: 'chat', payload: {} });
+    expect(wrongType.payload).toMatchObject({
+      errors: [{ keyword: 'type', pointer: '/payload/messageText' }],
+    });
+    expect(missing.payload).toMatchObject({
+      errors: [{ keyword: 'required', pointer: '/payload', property: 'messageText' }],
+    });
+  });
+
+  it('keeps the payloads chanx sent before with errorFormat pydantic', async () => {
+    const client = connect(app({ errorFormat: 'pydantic' }).chanx, '/ws/chat/lobby');
+    expect((await client.request({ action: 'chat' })).payload).toEqual([
+      { type: 'missing', loc: ['chat', 'payload'], msg: 'Field required' },
+    ]);
+    expect((await client.request({ action: 'post', topic: 'room:1' })).payload).toEqual({
+      reason: 'not_subscribed',
+      detail: "Not subscribed to 'room:1'",
+    });
+  });
+
+  it('tells a standard payload from a custom one', () => {
+    expect(isProblem(problem(ErrorType.INTERNAL_ERROR, 'x'))).toBe(true);
+    expect(isProblem({ detail: 'Failed to process message' })).toBe(false);
+    expect(isProblem([{ type: 'missing', loc: [], msg: 'Field required' }])).toBe(false);
+    expect(problem(ErrorType.UNKNOWN_TOPIC, 'x').type).toBe(
+      'https://chanx.dev/errors/unknown-topic',
+    );
   });
 });
 
@@ -437,14 +502,22 @@ describe('topic frames, with no topics mounted', () => {
       'subscribe',
       {
         action: 'error',
-        payload: { reason: 'unknown_topic', detail: "Unknown topic 'room:1'" },
+        payload: {
+          type: 'https://chanx.dev/errors/unknown-topic',
+          title: 'Unknown topic',
+          detail: "Unknown topic 'room:1'",
+        },
       },
     ],
     [
       'post',
       {
         action: 'error',
-        payload: { reason: 'not_subscribed', detail: "Not subscribed to 'room:1'" },
+        payload: {
+          type: 'https://chanx.dev/errors/not-subscribed',
+          title: 'Not subscribed to topic',
+          detail: "Not subscribed to 'room:1'",
+        },
       },
     ],
     ['unsubscribe', { action: 'unsubscribed', payload: null }],

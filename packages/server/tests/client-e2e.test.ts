@@ -187,7 +187,7 @@ describe.each(SERVERS)(
       const error = await room.subscribe().catch((caught: unknown) => caught);
       expect(error).toBeInstanceOf(ChanxRequestError);
       expect((error as ChanxRequestError).frame.payload).toMatchObject({
-        reason: 'unauthorized',
+        type: 'https://chanx.dev/errors/unauthorized',
       });
     });
 

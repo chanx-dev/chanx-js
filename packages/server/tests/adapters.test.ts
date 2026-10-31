@@ -148,13 +148,11 @@ describe.each(SERVERS)('the %s adapter', (name, startServer) => {
     expect(client.frames.slice(1)).toEqual([
       {
         action: 'error',
-        payload: [
-          {
-            type: 'json_invalid',
-            loc: [],
-            msg: 'Invalid JSON: binary frames are not supported',
-          },
-        ],
+        payload: {
+          type: 'https://chanx.dev/errors/invalid-json',
+          title: 'Frame is not valid JSON',
+          detail: 'Invalid JSON: binary frames are not supported',
+        },
       },
       { action: 'pong', payload: null },
     ]);

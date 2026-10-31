@@ -1,13 +1,17 @@
 import type { ChannelLayer, ChannelMessage, LayerChannel } from '@chanx-js/layers';
 import {
   ENVELOPE_VERSION,
+  ErrorType,
   TopicErrorReason,
   formatPattern,
+  jsonPointer,
+  problem,
   safeGroupName,
 } from '@chanx-js/protocol';
+import type { ValidationFailure } from '@chanx-js/protocol';
 
 import type { Logger, ResolvedOptions, Transport } from './app';
-import { camelize, decamelize } from './case';
+import { camelize, camelizeKey, decamelize } from './case';
 import type {
   BroadcastOptions,
   ConnectRequest,
@@ -28,8 +32,8 @@ import {
 } from './messages';
 import type { PublishOptions, TopicDefinition } from './topic';
 import { topicDefinitionOf, topicsOf } from './topic';
-import type { ValidationResult } from './validation';
-import { createValidator, envelopeIssues, isObject } from './validation';
+import type { ErrorItem, ValidationIssue, ValidationResult } from './validation';
+import { createValidator, envelopeIssues, errorItems, isObject } from './validation';
 
 /** A binary WebSocket frame, in whichever form the runtime delivers it. */
 export type BinaryFrame = ArrayBufferLike | ArrayBufferView | Blob;
@@ -92,6 +96,12 @@ function handlersOf(definition: ConsumerDefinition | TopicDefinition) {
   return found;
 }
 
+const TOPIC_ERROR_TYPES: Readonly<Record<TopicErrorReason, ErrorType>> = {
+  [TopicErrorReason.UNKNOWN_TOPIC]: ErrorType.UNKNOWN_TOPIC,
+  [TopicErrorReason.UNAUTHORIZED]: ErrorType.UNAUTHORIZED,
+  [TopicErrorReason.NOT_SUBSCRIBED]: ErrorType.NOT_SUBSCRIBED,
+};
+
 // As chanx: 4000 + a 4xx or 5xx status, so a client can tell a refusal from a drop.
 export function authenticationCloseCode(status: number): number {
   return status >= 400 && status < 600 ? 4000 + status : 4401;
@@ -136,6 +146,7 @@ export function openSession(
   authenticated?: { user: unknown },
 ): Session {
   const { logger, layer } = options;
+  const pydanticErrors = options.errorFormat === 'pydantic';
   const consumer = definition.options;
   const abort = new AbortController();
   const warned = new Set<string>();
@@ -325,10 +336,13 @@ export function openSession(
 
     const rejectFrame = (reason: string) => {
       logger.warn('chanx: malformed frame', reason);
+      const msg = `Invalid JSON: ${reason}`;
       write(
-        ErrorMessage.create([
-          { type: 'json_invalid', loc: [], msg: `Invalid JSON: ${reason}` },
-        ]),
+        ErrorMessage.create(
+          pydanticErrors
+            ? [{ type: 'json_invalid', loc: [], msg }]
+            : problem(ErrorType.INVALID_JSON, msg),
+        ),
         {},
       );
     };
@@ -340,7 +354,9 @@ export function openSession(
       return rejectFrame((error as SyntaxError).message);
     }
     const issues = envelopeIssues(content);
-    if (issues.length) return void write(ErrorMessage.create(issues), {});
+    if (issues.length) {
+      return void write(validationError(issues, errorItems(issues, content)), {});
+    }
 
     // Checked above: topic and ref are strings, null or absent.
     const { version, topic, ref, seq, ...rest } = content as Record<string, unknown>;
@@ -384,7 +400,7 @@ export function openSession(
     if (scope.handlers.size === 0) {
       logger.error(`chanx: consumer "${consumer.name}" has no message handlers`);
       return write(
-        ErrorMessage.create({ detail: 'Failed to process message' }),
+        detailError(ErrorType.INTERNAL_ERROR, 'Failed to process message'),
         envelope,
       );
     }
@@ -392,7 +408,8 @@ export function openSession(
     const result = await scope.validate(frame);
     if ('issues' in result) {
       const {
-        onValidationError = () => write(ErrorMessage.create(result.issues), envelope),
+        onValidationError = () =>
+          write(validationError(result.issues, result.errors), envelope),
       } = scope.hooks;
       return hook(() => onValidationError(result.issues, ctx));
     }
@@ -410,9 +427,10 @@ export function openSession(
         onHandlerError = () => {
           logger.error(`chanx: handler for "${message.action}" failed`, error);
           write(
-            ErrorMessage.create({
-              detail: `Failed to process message for ${message.action}`,
-            }),
+            detailError(
+              ErrorType.HANDLER_FAILED,
+              `Failed to process message for ${message.action}`,
+            ),
             envelope,
           );
         },
@@ -423,7 +441,46 @@ export function openSession(
 
   function topicError(reason: TopicErrorReason, detail: string, envelope: Envelope) {
     logger.warn('chanx: topic error', { topic: envelope.topic, reason, detail });
-    write(ErrorMessage.create({ reason, detail }), envelope);
+    write(
+      ErrorMessage.create(
+        pydanticErrors ? { reason, detail } : problem(TOPIC_ERROR_TYPES[reason], detail),
+      ),
+      envelope,
+    );
+  }
+
+  function validationError(issues: ValidationIssue[], errors: ErrorItem[]) {
+    if (pydanticErrors) return ErrorMessage.create(issues);
+    const count = errors.length;
+    return ErrorMessage.create(
+      problem(
+        ErrorType.VALIDATION_FAILED,
+        `${count} validation error${count === 1 ? '' : 's'}`,
+        errors.map(validationFailure),
+      ),
+    );
+  }
+
+  function detailError(type: ErrorType, detail: string) {
+    return ErrorMessage.create(pydanticErrors ? { detail } : problem(type, detail));
+  }
+
+  // Pointers name keys as the client sent them.
+  function validationFailure({
+    keyword,
+    path,
+    detail,
+    property,
+  }: ErrorItem): ValidationFailure {
+    const wire = (segment: string | number) =>
+      options.camelize && typeof segment === 'string' ? camelizeKey(segment) : segment;
+    const error: ValidationFailure = {
+      keyword,
+      pointer: jsonPointer(path.map(wire)),
+      detail,
+    };
+    if (property !== undefined) error.property = wire(property);
+    return error;
   }
 
   async function subscribe(value: string, envelope: Envelope) {

@@ -1,3 +1,6 @@
+import { instancePath } from '@chanx-js/protocol';
+
+import { keywordForPydantic, keywordForSchemaIssue } from './keywords';
 import type { AnyMessageDefinition, Message } from './messages';
 import type { SchemaIssue } from './standard-schema';
 
@@ -8,7 +11,39 @@ export interface ValidationIssue {
   msg: string;
 }
 
-export type ValidationResult = { message: Message } | { issues: ValidationIssue[] };
+/** A failure in the standard format, with its location as segments until the wire casing is known. */
+export interface ErrorItem {
+  keyword: string;
+  path: (string | number)[];
+  detail: string;
+  property?: string | number;
+}
+
+export type ValidationResult =
+  { message: Message } | { issues: ValidationIssue[]; errors: ErrorItem[] };
+
+export function errorItems(
+  issues: readonly ValidationIssue[],
+  data: unknown,
+): ErrorItem[] {
+  return issues.map((issue) => {
+    const item: ErrorItem = {
+      keyword: keywordForPydantic(issue.type),
+      path: [],
+      detail: issue.msg,
+    };
+    if (issue.type === 'union_tag_not_found') {
+      item.property = 'action';
+    } else if (issue.type === 'union_tag_invalid') {
+      item.path = ['action'];
+    } else {
+      const { path, missing } = instancePath(issue.loc, data);
+      item.path = path;
+      if (issue.type === 'missing' && missing !== undefined) item.property = missing;
+    }
+    return item;
+  });
+}
 
 type Frame = Record<string, unknown>;
 
@@ -64,33 +99,45 @@ export function createValidator(messages: readonly AnyMessageDefinition[]) {
     .sort()
     .join(', ');
 
+  const failed = (issues: ValidationIssue[], frame: Frame) => ({
+    issues,
+    errors: errorItems(issues, frame),
+  });
+
   return async (frame: Frame): Promise<ValidationResult> => {
     if (!('action' in frame)) {
-      return {
-        issues: [
+      return failed(
+        [
           {
             type: 'union_tag_not_found',
             loc: [],
             msg: "Unable to extract tag using discriminator 'action'",
           },
         ],
-      };
+        frame,
+      );
     }
     const definition =
       typeof frame.action === 'string' ? byAction.get(frame.action) : undefined;
     if (!definition) {
-      return {
-        issues: [
+      return failed(
+        [
           {
             type: 'union_tag_invalid',
             loc: [],
             msg: `Input tag '${pythonStr(frame.action)}' found using 'action' does not match any of the expected tags: ${tags}`,
           },
         ],
-      };
+        frame,
+      );
     }
     const payload = await validatePayload(definition, frame, [definition.action]);
-    if ('issues' in payload) return payload;
+    if ('issues' in payload) {
+      return {
+        issues: payload.issues,
+        errors: payload.errors ?? errorItems(payload.issues, frame),
+      };
+    }
     return { message: { action: definition.action, payload: payload.value } };
   };
 }
@@ -99,7 +146,7 @@ async function validatePayload(
   definition: AnyMessageDefinition,
   frame: Frame,
   prefix: string[],
-): Promise<{ value: unknown } | { issues: ValidationIssue[] }> {
+): Promise<{ value: unknown } | { issues: ValidationIssue[]; errors?: ErrorItem[] }> {
   const loc = [...prefix, 'payload'];
   if (!definition.payload) {
     if (frame.payload === undefined || frame.payload === null) return { value: null };
@@ -108,7 +155,8 @@ async function validatePayload(
   if (!('payload' in frame)) {
     return { issues: [{ type: 'missing', loc, msg: 'Field required' }] };
   }
-  const result = await definition.payload['~standard'].validate(frame.payload);
+  const schema = definition.payload['~standard'];
+  const result = await schema.validate(frame.payload);
   if (!result.issues) return { value: result.value };
   return {
     issues: result.issues.map((issue) => ({
@@ -117,7 +165,34 @@ async function validatePayload(
       loc: [...loc, ...(issue.path ?? []).map(pathKey)],
       msg: issue.message,
     })),
+    errors: result.issues.flatMap((issue) =>
+      schemaErrorItems(schema.vendor, issue, frame.payload),
+    ),
   };
+}
+
+function schemaErrorItems(
+  vendor: string,
+  issue: SchemaIssue,
+  payload: unknown,
+): ErrorItem[] {
+  const loc = (issue.path ?? []).map(pathKey);
+  const { path, missing } = instancePath(loc, payload);
+  const at = ['payload', ...path];
+  if (missing !== undefined) {
+    return [{ keyword: 'required', path: at, detail: issue.message, property: missing }];
+  }
+  const keyword = keywordForSchemaIssue(vendor, issue);
+  const extra = (issue as unknown as { keys?: unknown }).keys;
+  if (keyword === 'additionalProperties' && Array.isArray(extra)) {
+    // Zod reports every unknown key on the object; chanx points at each key.
+    return extra.map((key) => ({
+      keyword,
+      path: [...at, String(key)],
+      detail: issue.message,
+    }));
+  }
+  return [{ keyword, path: at, detail: issue.message }];
 }
 
 function pathKey(segment: NonNullable<SchemaIssue['path']>[number]): string | number {

@@ -44,6 +44,8 @@ export interface ChanxOptions {
   camelize?: boolean;
   /** Send a `complete` frame after each handled frame. Defaults to `false`. */
   sendCompletion?: boolean;
+  /** `error` payloads: `standard` (RFC 9457, as every chanx sends) or `pydantic` (chanx's earlier ones). Defaults to `standard`. */
+  errorFormat?: ErrorFormat;
   /** Defaults to `console`. */
   logger?: Logger;
   /** Development checks, such as undeclared replies. Defaults to `NODE_ENV !== 'production'`. */
@@ -54,9 +56,13 @@ export interface ChanxOptions {
 export type ConsumerLike =
   ConsumerSource | (abstract new (conn: never) => AsyncJsonWebsocketConsumer<unknown>);
 
+/** Shape of `error` payloads; see `ChanxOptions.errorFormat`. */
+export type ErrorFormat = 'standard' | 'pydantic';
+
 export interface ResolvedOptions {
   camelize: boolean;
   sendCompletion: boolean;
+  errorFormat: ErrorFormat;
   logger: Logger;
   dev: boolean;
 }
@@ -151,6 +157,7 @@ export function createChanx(options: ChanxOptions): Chanx {
   const resolved: ResolvedOptions = {
     camelize: options.camelize ?? false,
     sendCompletion: options.sendCompletion ?? false,
+    errorFormat: options.errorFormat === 'pydantic' ? 'pydantic' : 'standard',
     logger: options.logger ?? console,
     dev: options.dev ?? globalThis.process?.env?.NODE_ENV !== 'production',
   };

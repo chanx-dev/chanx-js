@@ -180,7 +180,10 @@ async function scenarios(baseUrl) {
     ),
     'binary frame',
   );
-  check(binary.frame?.payload?.[0]?.type === 'json_invalid', 'a binary frame is refused');
+  check(
+    binary.frame?.payload?.type === 'https://chanx.dev/errors/invalid-json',
+    'a binary frame is refused',
+  );
 }
 
 let failed = false;

@@ -52,8 +52,9 @@ A few optional fields route it:
   carries many subscriptions.
 - **`seq`**: a number a publisher may stamp on topic messages, for gap detection.
 
-Validation errors come back as an `error` frame in the shape of pydantic's errors
-(`type`, `loc`, `msg`), so a client can branch on them whichever server answered.
+Errors come back as an `error` frame holding an RFC 9457 problem details object, the
+format every chanx server sends, so a client can branch on its `type` whichever server
+answered. `isProblem()` and the `ProblemDetails` type describe it.
 
 This is the [chanx](https://github.com/chanx-dev/chanx) protocol, the one Python's
 chanx speaks on Django Channels and FastAPI. That is why the pieces mix: a chanx-js client

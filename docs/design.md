@@ -38,9 +38,11 @@ same as from the Python sandbox's schema.
   produce the same definition object; dispatch and AsyncAPI only read that. Decorators
   record their message on the method itself, so they work as standard decorators and as
   `experimentalDecorators`, and follow chanx's override rule along the class chain.
-- **Validation errors keep pydantic's shape** (`type`, `loc`, `msg`), so a client branching
-  on them works against either server. Locations match exactly; a schema library's
-  wording cannot.
+- **Errors use chanx's standard format**, an RFC 9457 problem details object whose
+  validation `errors` carry a JSON Schema `keyword` and a JSON Pointer, so a client
+  branching on them works against any chanx server. Pointers match exactly; keywords match
+  for Zod and fall back to `custom` for other schema libraries, whose issues carry no
+  machine-readable kind; a schema library's wording cannot match.
 
 ## Versions
 
