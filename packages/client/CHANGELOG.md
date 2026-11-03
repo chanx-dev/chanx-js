@@ -1,5 +1,11 @@
 # @chanx-js/client
 
+## 2.4.0
+
+### Minor Changes
+
+- a59d0b1: Error frames now carry chanx's standard error format, an RFC 9457 problem details object with a `type` URI, and for validation failures `errors` giving each failure's JSON Schema `keyword` and a JSON `pointer`. Set `errorFormat: 'pydantic'` in `createChanx` to keep the earlier payloads. The client exports `isProblem()`, `ErrorType` and the `Problem` type.
+
 ## 2.3.2
 
 ### Patch Changes

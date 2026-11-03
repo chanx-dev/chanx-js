@@ -1,5 +1,12 @@
 # @chanx-js/server
 
+## 2.2.0
+
+### Minor Changes
+
+- 215258b: AsyncAPI documents list the error payload schemas, `ChanxProblem` and `ChanxProblemError`, as chanx does, so generated clients get typed errors. Envelope integers (`version`, `seq`) are read leniently as chanx reads them: `"12"`, `"1_000"`, `"12.0"` and `true` are accepted.
+- a59d0b1: Error frames now carry chanx's standard error format, an RFC 9457 problem details object with a `type` URI, and for validation failures `errors` giving each failure's JSON Schema `keyword` and a JSON `pointer`. Set `errorFormat: 'pydantic'` in `createChanx` to keep the earlier payloads. The client exports `isProblem()`, `ErrorType` and the `Problem` type.
+
 ## 2.1.4
 
 ### Patch Changes

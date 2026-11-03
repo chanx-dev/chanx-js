@@ -1,5 +1,17 @@
 # @chanx-js/nestjs
 
+## 2.1.0
+
+### Minor Changes
+
+- a59d0b1: Error frames now carry chanx's standard error format, an RFC 9457 problem details object with a `type` URI, and for validation failures `errors` giving each failure's JSON Schema `keyword` and a JSON `pointer`. Set `errorFormat: 'pydantic'` in `createChanx` to keep the earlier payloads. The client exports `isProblem()`, `ErrorType` and the `Problem` type.
+
+### Patch Changes
+
+- Updated dependencies [215258b]
+- Updated dependencies [a59d0b1]
+  - @chanx-js/server@2.2.0
+
 ## 2.0.4
 
 ### Patch Changes
