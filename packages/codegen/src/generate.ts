@@ -198,13 +198,15 @@ export async function generate(
   const isJs = target === 'js';
 
   // Message types have no runtime, so in JS mode they are declarations only.
-  await write(
-    isJs ? 'schemas.d.ts' : 'schemas.ts',
-    HEADER +
-      renderImports(reuse.imports) +
-      renderReexports(reuse.imports) +
-      emitSchemas(schemas, reuse.skip),
-  );
+  const schemasBody =
+    renderImports(reuse.imports) +
+    renderReexports(reuse.imports) +
+    emitSchemas(schemas, reuse.skip);
+  // When every type is an ambient global, keep the file a module so `export *` can name it.
+  const schemasModule = /^(import|export)\b/m.test(schemasBody)
+    ? schemasBody
+    : `${schemasBody}export {};\n`;
+  await write(isJs ? 'schemas.d.ts' : 'schemas.ts', HEADER + schemasModule);
 
   const messageNames = [
     ...new Set(
@@ -217,6 +219,11 @@ export async function generate(
     ),
   ];
 
+  // Ambient types are globals, so `schemas` does not export them.
+  const importedMessageNames = options.ambient
+    ? messageNames.filter((name) => !reuse.skip.has(name))
+    : messageNames;
+
   const channelOptions = {
     withZod,
     // With the extension, as Node's ESM resolution and TypeScript's NodeNext need; bundlers
@@ -228,12 +235,12 @@ export async function generate(
 
   await write(
     isJs ? 'channels.js' : 'channels.ts',
-    HEADER + emitChannels(connections, messageNames, channelOptions),
+    HEADER + emitChannels(connections, importedMessageNames, channelOptions),
   );
   if (isJs) {
     await write(
       'channels.d.ts',
-      HEADER + emitChannelsDeclaration(connections, messageNames, channelOptions),
+      HEADER + emitChannelsDeclaration(connections, importedMessageNames, channelOptions),
     );
   }
 

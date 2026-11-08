@@ -627,3 +627,53 @@ describe('input checks', () => {
     await expect(loadSchema(path)).rejects.toThrow('Expected an AsyncAPI 3 document');
   });
 });
+
+describe('ambient reuse', () => {
+  const declaredTypes = (source: string) =>
+    [...source.matchAll(/^export (?:interface|type) (\w+)/gm)].map((m) => m[1]!);
+
+  async function compileAmbient(globals: string[]): Promise<string[]> {
+    const document = await loadSchema(join(fixtures, 'fastapi-asyncapi.json'));
+    const root = await mkdtemp(join(tmpdir(), 'chanx-codegen-'));
+    const typesDir = join(root, 'types');
+    await mkdir(typesDir, { recursive: true });
+    const globalsSource = globals.map((name) => `type ${name} = any;`).join('\n');
+    await writeFile(join(typesDir, 'globals.d.ts'), globalsSource);
+    const outDir = join(root, 'generated');
+    await generate(document, {
+      outDir,
+      format: false,
+      reuseFrom: [join(typesDir, '*.ts')],
+      ambient: true,
+    });
+
+    const project = new Project({
+      useInMemoryFileSystem: true,
+      compilerOptions: { strict: true, noEmit: true },
+    });
+    project.createSourceFile('/globals.d.ts', globalsSource);
+    for (const name of ['schemas.ts', 'channels.ts', 'index.ts']) {
+      project.createSourceFile(`/${name}`, await readFile(join(outDir, name), 'utf-8'));
+    }
+    // The runtime package is absent here; only cross-file references are under test.
+    return project
+      .getPreEmitDiagnostics()
+      .filter((d) => d.getCode() !== 2307)
+      .map((d) => String(d.getMessageText()));
+  }
+
+  async function allSchemaTypes(): Promise<string[]> {
+    const document = await loadSchema(join(fixtures, 'fastapi-asyncapi.json'));
+    const outDir = await mkdtemp(join(tmpdir(), 'chanx-codegen-'));
+    await generate(document, { outDir, format: false });
+    return declaredTypes(await readFile(join(outDir, 'schemas.ts'), 'utf-8'));
+  }
+
+  it('does not import a reused global from the schemas module', async () => {
+    expect(await compileAmbient(['PostedMessage', 'PostPayload'])).toEqual([]);
+  });
+
+  it('still emits a module when every type is a reused global', async () => {
+    expect(await compileAmbient(await allSchemaTypes())).toEqual([]);
+  });
+});
