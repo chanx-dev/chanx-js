@@ -14,8 +14,6 @@ export type HandlerMap<ToClient extends ChanxMessage> = {
   [A in ToClient['action']]?: ActionHandler<Extract<ToClient, { action: A }>>;
 };
 
-type Flush = () => void;
-
 /**
  * Coalesces frames so a token stream renders once per frame instead of once per token.
  *
@@ -54,19 +52,28 @@ export class BatchQueue {
     }
     this.pending.set(action, { messages: [message], envelopes: [envelope] });
 
-    const flush: Flush = () => {
-      this.timers.delete(action);
-      const queued = this.pending.get(action);
-      this.pending.delete(action);
-      if (queued) this.flushAction(action, queued.messages, queued.envelopes);
-    };
-
+    const flush = () => this.flush(action);
     if (window === 'raf' && typeof requestAnimationFrame === 'function') {
       this.timers.set(action, { kind: 'raf', id: requestAnimationFrame(flush) });
     } else {
       const delay = window === 'raf' ? 16 : window;
       this.timers.set(action, { kind: 'timeout', id: setTimeout(flush, delay) });
     }
+  }
+
+  /** Deliver every pending batch now, so a later frame cannot overtake them. */
+  flushAll(): void {
+    for (const action of [...this.pending.keys()]) this.flush(action);
+  }
+
+  private flush(action: string): void {
+    const timer = this.timers.get(action);
+    if (timer?.kind === 'raf') cancelAnimationFrame(timer.id);
+    else if (timer) clearTimeout(timer.id);
+    this.timers.delete(action);
+    const queued = this.pending.get(action);
+    this.pending.delete(action);
+    if (queued) this.flushAction(action, queued.messages, queued.envelopes);
   }
 
   dispose(): void {

@@ -73,6 +73,8 @@ on: {
 
 `batch: 'raf'` delivers once per animation frame; a number delivers once per that many milliseconds.
 
+Handlers still see frames in arrival order: a frame for an unbatched handler first delivers every batch still waiting, so a final `agent_response` cannot be overtaken by the last `agent_streaming` tokens.
+
 ## Mixing them
 
 A batched handler also receives the envelopes, `(messages, envelopes)`, with `envelopes[i]` belonging to `messages[i]`.

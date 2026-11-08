@@ -176,6 +176,36 @@ describe('on handlers', () => {
     expect(envelopes.map((envelope: { seq: number }) => envelope.seq)).toEqual([1, 2, 3]);
   });
 
+  it('delivers pending batches before a later unbatched frame', () => {
+    const order: string[] = [];
+    start({
+      on: {
+        posted: {
+          batch: 1000,
+          handler: (messages) => order.push(`posted x${messages.length}`),
+        },
+        pong: () => order.push('pong'),
+      },
+    });
+
+    receive({ version: 1, action: 'posted', payload: { body: 'a' } });
+    receive({ version: 1, action: 'posted', payload: { body: 'b' } });
+    receive({ version: 1, action: 'pong', payload: null });
+
+    expect(order).toEqual(['posted x2', 'pong']);
+  });
+
+  it('does not deliver a flushed batch a second time when its timer would fire', async () => {
+    const handler = vi.fn();
+    start({ on: { posted: { batch: 1, handler }, pong: () => {} } });
+
+    receive({ version: 1, action: 'posted', payload: { body: 'a' } });
+    receive({ version: 1, action: 'pong', payload: null });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(handler).toHaveBeenCalledOnce();
+  });
+
   it('picks up handlers replaced through setOptions', () => {
     const first = vi.fn();
     const second = vi.fn();

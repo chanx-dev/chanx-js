@@ -159,6 +159,7 @@ export function createChannelController<D extends ChannelDescriptor<any, any, an
   const handle = (message: ToClient, envelope: Envelope) => {
     const handler = options.on?.[message.action as ToClient['action']];
     if (typeof handler === 'function') {
+      queue?.flushAll();
       handler(message as never, envelope);
     } else if (handler) {
       queue?.push(message.action, message, envelope, handler.batch);
@@ -422,8 +423,10 @@ export function createTopicsController<
         topicDisposers.push(
           handle.onAny((message: ChanxMessage, envelope: Envelope) => {
             const handler = handlerFor(message.action);
-            if (typeof handler === 'function') handler(message, envelope);
-            else if (handler)
+            if (typeof handler === 'function') {
+              queue?.flushAll();
+              handler(message, envelope);
+            } else if (handler)
               queue?.push(message.action, message, envelope, handler.batch);
 
             const mode = options.buffer ?? 'latest';
