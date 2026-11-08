@@ -38,19 +38,48 @@ export interface GenerateResult {
   topics: number;
 }
 
-async function maybeFormat(
-  code: string,
-  filePath: string,
-  enabled: boolean,
-): Promise<string> {
-  if (!enabled) return code;
-  let prettier: typeof Prettier;
+type PrettierApi = Pick<typeof Prettier, 'format' | 'resolveConfig'>;
+
+function isPrettierApi(candidate: unknown): candidate is PrettierApi {
+  if (typeof candidate !== 'object' || candidate === null) return false;
+  if (!('format' in candidate) || !('resolveConfig' in candidate)) return false;
+  return (
+    typeof candidate.format === 'function' &&
+    typeof candidate.resolveConfig === 'function'
+  );
+}
+
+// Prettier 2 is CommonJS, so under ESM its API sits on `default` only.
+function prettierApi(loaded: unknown): PrettierApi | null {
+  if (isPrettierApi(loaded)) return loaded;
+  if (typeof loaded !== 'object' || loaded === null || !('default' in loaded))
+    return null;
+  return isPrettierApi(loaded.default) ? loaded.default : null;
+}
+
+async function loadPrettier(): Promise<PrettierApi | null> {
+  let loaded: unknown;
   try {
-    prettier = await import('prettier');
+    loaded = await import('prettier');
   } catch {
     // Prettier is an optional peer; unformatted output is still valid.
-    return code;
+    return null;
   }
+  const prettier = prettierApi(loaded);
+  if (!prettier) {
+    console.warn(
+      'chanx-codegen: the installed prettier has no usable API, writing unformatted output',
+    );
+  }
+  return prettier;
+}
+
+async function formatWith(
+  prettier: PrettierApi | null,
+  code: string,
+  filePath: string,
+): Promise<string> {
+  if (!prettier) return code;
   // A formatting failure means the generated code does not parse: never hide that.
   const config = await prettier.resolveConfig(filePath);
   return prettier.format(code, { ...config, filepath: filePath });
@@ -151,7 +180,7 @@ export async function generate(
   const schemas = document.components?.schemas ?? {};
   const connections = analyze(document);
   checkNames(connections, Object.keys(schemas));
-  const format = options.format ?? true;
+  const prettier = (options.format ?? true) ? await loadPrettier() : null;
   const withZod = validation === 'zod';
 
   const reuse = await resolveReuse(new Set(Object.keys(schemas)), outDir, options);
@@ -162,7 +191,7 @@ export async function generate(
 
   const write = async (name: string, code: string) => {
     const filePath = join(outDir, name);
-    await writeFile(filePath, await maybeFormat(code, filePath, format), 'utf-8');
+    await writeFile(filePath, await formatWith(prettier, code, filePath), 'utf-8');
     files.push(filePath);
   };
 
