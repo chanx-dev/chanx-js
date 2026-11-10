@@ -1,5 +1,12 @@
 # @chanx-js/codegen
 
+## 2.1.3
+
+### Patch Changes
+
+- b16670f: `--ambient` output compiles: channels no longer import reused globals from `schemas`, which stays a module when every type is reused.
+- d114640: Format with a project's prettier 2 instead of crashing; a prettier with no usable API leaves the output unformatted, with a warning.
+
 ## 2.1.2
 
 ### Patch Changes

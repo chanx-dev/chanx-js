@@ -1,5 +1,11 @@
 # @chanx-js/nestjs
 
+## 2.2.0
+
+### Minor Changes
+
+- 2469a31: A consumer's `topics` takes plain `@chanx-js/server` topics, such as chanx-kit kits, next to `@ChanxTopic` classes; `ChanxService.chanx` exposes the app.
+
 ## 2.1.0
 
 ### Minor Changes

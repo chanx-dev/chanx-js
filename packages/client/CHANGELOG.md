@@ -1,5 +1,11 @@
 # @chanx-js/client
 
+## 2.4.1
+
+### Patch Changes
+
+- 9933ac4: Unbatched `on` handlers no longer overtake waiting batches: those are delivered first, in arrival order.
+
 ## 2.4.0
 
 ### Minor Changes
