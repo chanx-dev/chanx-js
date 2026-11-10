@@ -68,8 +68,10 @@ starts and serves them on the app's HTTP server. Run Nest with
   subscription), with the connection as Nest's `REQUEST`.
 - **AsyncAPI in CI:** `npx chanx-nestjs asyncapi dist/app.module.js -o asyncapi.json`
   writes the document without serving it; `asyncapiOf(AppModule)` returns it in code.
+- **Plain topics:** a consumer's `topics` also takes topics built with `topic()`, such as
+  copied-in [chanx-kit](https://kit.chanx.dev/) kits, next to `@ChanxTopic` classes.
 - **From services**, inject `ChanxService` to `broadcastEvent`, `sendEvent`, `publish`
-  to a topic, or get the `asyncapi()` document.
+  to a topic, get the `asyncapi()` document, or the `chanx` app for helpers that take it.
 
 `ChanxModule.forRoot()` takes `createChanx`'s options (`layers`, `camelize`, ...) plus
 `pingInterval`, and `asyncapi: true` (or its options) to serve the AsyncAPI docs page at

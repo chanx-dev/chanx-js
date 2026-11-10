@@ -61,7 +61,8 @@ export class ChanxService {
     return this.chanx.asyncapi(options);
   }
 
-  private get chanx(): Chanx {
+  /** The chanx app, for helpers that take it. */
+  get chanx(): Chanx {
     if (!this.app)
       throw new Error('chanx is not ready until the application has bootstrapped');
     return this.app;

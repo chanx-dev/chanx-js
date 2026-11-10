@@ -5,6 +5,7 @@ import type {
   ConsumerOptions,
   HandlerOptions,
   MessageOf,
+  TopicLike,
 } from '@chanx-js/server';
 import { On as CoreOn, OnEvent as CoreOnEvent } from '@chanx-js/server';
 
@@ -27,8 +28,8 @@ export type ChanxConsumerOptions = Omit<
   | 'onHandlerError'
   | 'onEventError'
 > & {
-  /** `@ChanxTopic` classes clients can subscribe to on this connection. */
-  topics?: readonly Type[];
+  /** Topics clients can subscribe to on this connection: `@ChanxTopic` classes or plain topics. */
+  topics?: readonly (Type | TopicLike)[];
   /** Events forwarded to the client unchanged. */
   passthrough?: readonly AnyMessageDefinition[];
 };

@@ -184,6 +184,18 @@ export class RoomTopic {
 
 Mount it in a consumer's options: `@ChanxConsumer('/ws/hub', { name: 'hub', topics: [RoomTopic] })`.
 
+`topics` also takes plain topics built with `@chanx-js/server`'s `topic()`, such as
+copied-in [chanx-kit](https://kit.chanx.dev/) kits, listed as they are next to your
+`@ChanxTopic` classes:
+
+```ts
+@ChanxConsumer('/ws/rooms/{room}', {
+  name: 'room',
+  topics: [RoomChatTopic, PresenceTopic],
+})
+export class RoomGateway {}
+```
+
 ## AsyncAPI in CI
 
 `chanx-nestjs asyncapi` writes the document from the compiled module, without serving
@@ -222,7 +234,8 @@ export class RoomsService {
 }
 ```
 
-It also has `sendEvent`, `publish` (to a topic) and `asyncapi()`.
+It also has `sendEvent`, `publish` (to a topic) and `asyncapi()`. Its `chanx` property is
+the app itself, for helpers that take one, such as a kit's `notifyUser(app, ...)`.
 
 ## Scope
 

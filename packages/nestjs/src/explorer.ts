@@ -183,10 +183,13 @@ export class ChanxExplorer
       this.hook(gateway, name, (args) => this.connectionGateway(gateway, connIn(args)));
     let builder = consumer(path, {
       ...rest,
-      topics: topicTypes.map((topicType) => {
-        const source = topics.get(topicType);
-        if (!source) throw new Error(`${topicType.name} is not a @ChanxTopic provider`);
-        return source;
+      topics: topicTypes.map((entry) => {
+        const source = topics.get(entry as Type);
+        if (source) return source;
+        if (Reflect.hasMetadata(TOPIC, entry))
+          throw new Error(`${(entry as Type).name} is a @ChanxTopic but not a provider`);
+        // A plain @chanx-js/server topic; the consumer validates it.
+        return entry;
       }),
       authenticate: hook('authenticate', (args) => args[0] as object),
       onConnect: hook('onConnect'),
