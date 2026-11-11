@@ -1,5 +1,12 @@
 # @chanx-js/server
 
+## 2.2.1
+
+### Patch Changes
+
+- 7342d51: Handlers start in the order frames arrive, as in chanx: a frame without a payload no longer overtakes the one before it. Synchronous schemas are no longer awaited.
+- 4a1a8b4: `.passthrough()` relays a published event as sent once it validates, instead of its parsed value, so a schema's transforms (such as base64 to bytes) no longer reach the client. Fields a schema would default are no longer filled in on the way out; the message type already requires them.
+
 ## 2.2.0
 
 ### Minor Changes
