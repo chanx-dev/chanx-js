@@ -89,6 +89,23 @@ describe('replies', () => {
   });
 });
 
+describe('dispatch', () => {
+  it('starts handlers in arrival order, a payload or not', async () => {
+    const Begin = defineMessage('begin', z.object({ n: z.number() }));
+    const Finish = defineMessage('finish');
+    const started: string[] = [];
+    const stream = consumer('/ws/stream', { name: 'stream' })
+      .on(Begin, () => void started.push('begin'))
+      .on(Finish, () => void started.push('finish'));
+    const client = connect(createChanx({ consumers: [stream] }), '/ws/stream');
+    await client.ready;
+    client.send(Begin.create({ n: 1 }));
+    client.send(Finish.create());
+    await vi.waitFor(() => expect(started).toHaveLength(2));
+    expect(started).toEqual(['begin', 'finish']);
+  });
+});
+
 describe('errors', () => {
   it('answers a frame that fails validation with the issues, under its ref', async () => {
     const client = connect(app().chanx, '/ws/chat/lobby');

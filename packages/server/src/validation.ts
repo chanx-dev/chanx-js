@@ -173,7 +173,9 @@ async function validatePayload(
     return { issues: [{ type: 'missing', loc, msg: 'Field required' }] };
   }
   const schema = definition.payload['~standard'];
-  const result = await schema.validate(frame.payload);
+  // Awaiting only an async result keeps handlers starting in arrival order, as in chanx.
+  const validated = schema.validate(frame.payload);
+  const result = validated instanceof Promise ? await validated : validated;
   if (!result.issues) return { value: result.value };
   return {
     issues: result.issues.map((issue) => ({
