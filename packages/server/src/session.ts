@@ -580,7 +580,9 @@ export function openSession(
     const handler = scope.events.get(message.action)!;
     const ctx = scope.context(envelope) as never;
     try {
-      const reply = await handler.handle(message, ctx);
+      const reply = handler.passthrough
+        ? { action: message.action, payload: data.payload ?? null }
+        : await handler.handle(message, ctx);
       if (reply !== undefined) {
         checkDeclared(handler, reply);
         write(reply as object, envelope);

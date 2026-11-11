@@ -100,6 +100,8 @@ export interface HandlerDefinition {
   readonly description?: string;
   readonly tags?: readonly string[];
   readonly handle: (message: Message, ctx: Context<string, any, any, any>) => unknown;
+  /** Relays the event as published once it validates, so a schema's transforms stay server-side. */
+  readonly passthrough?: boolean;
 }
 
 interface HandlerSetDefinition {
@@ -207,6 +209,7 @@ export function eventHandlersOf(
       name: `handle_passthrough_${decamelizeKey(message.title)}`,
       description: `Passthrough handler for ${message.title}`,
       handle: (event) => event,
+      passthrough: true,
     });
   }
   return handlers;

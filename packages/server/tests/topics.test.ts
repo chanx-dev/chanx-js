@@ -326,6 +326,44 @@ describe('topics', () => {
   });
 });
 
+describe('passthrough', () => {
+  it('relays a published event as sent, not as its schema parses it', async () => {
+    const Sized = defineMessage(
+      'sized',
+      z.object({ body: z.string().transform((body) => body.length) }),
+    );
+    const sizes = topic('sizes:{name}').passthrough(Sized);
+    const chanx = createChanx({
+      consumers: [consumer('/ws/sizes', { name: 'sizes', topics: [sizes] })],
+    });
+    const client = connect(chanx, '/ws/sizes');
+    await client.subscribe('sizes:a');
+    await chanx.publish(sizes, 'sizes:a', Sized.create({ body: 'abc' } as never));
+    expect(await client.receive()).toMatchObject({
+      action: 'sized',
+      payload: { body: 'abc' },
+    });
+  });
+
+  it('still drops a published event that fails its schema', async () => {
+    const Strict = defineMessage('strict', z.object({ n: z.number() }));
+    const strict = topic('strict:{name}').passthrough(Strict);
+    const logger = { error: vi.fn(), warn: vi.fn() };
+    const chanx = createChanx({
+      consumers: [consumer('/ws/strict', { name: 'strict', topics: [strict] })],
+      logger,
+    });
+    const client = connect(chanx, '/ws/strict');
+    await client.subscribe('strict:a');
+    await chanx.publish(strict, 'strict:a', {
+      action: 'strict',
+      payload: { n: 'nope' },
+    } as never);
+    await vi.waitFor(() => expect(logger.error).toHaveBeenCalled());
+    expect(await client.receiveNothing({ timeout: 50 })).toBe(true);
+  });
+});
+
 describe('Topic classes', () => {
   it('get an instance per subscription, so fields are per-subscription state', async () => {
     const Bump = defineMessage('bump');
